@@ -1,0 +1,11 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+strictDepBuilds: false
+
+allowBuilds:
+  esbuild: true
+  argon2: true
+  msgpackr-extract: true
+  "@esbuild/win32-x64": true

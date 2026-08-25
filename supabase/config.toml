@@ -1,0 +1,27 @@
+# Supabase local/project config (subset relevant to Loop).
+
+project_id = "loop"
+
+[functions.ingest-meeting]
+verify_jwt = false          # authenticated via webhook secret / service role
+
+[functions.whatsapp-webhook]
+verify_jwt = false          # authenticated via X-Twilio-Signature
+
+[functions.extract-commitments]
+verify_jwt = true           # internal (service role)
+
+[functions.send-checkin]
+verify_jwt = true
+
+[functions.escalate]
+verify_jwt = true
+
+[functions.generate-report]
+verify_jwt = true
+
+[functions.verify-otp]
+verify_jwt = true
+
+[functions.oauth]
+verify_jwt = false          # start/callback hit from the browser + provider redirect

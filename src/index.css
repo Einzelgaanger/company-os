@@ -1,0 +1,745 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+ * Design tokens — 07_DESIGN_SYSTEM §7.3.
+ *
+ * Brand and status are disjoint sets: no colour appears in both, ever. A colour
+ * that is both a button and an alarm makes every screen carry a low-level false
+ * signal, so the rule is enforced in CI by `pnpm check:tokens`
+ * (scripts/checks/tokens.mjs), which parses this block and fails on any overlap.
+ *
+ * Charts cannot read CSS custom properties from SVG presentation attributes, so
+ * the same values are mirrored in `src/lib/tokens.ts`. The check asserts the two
+ * stay in step — edit both or neither.
+ * ------------------------------------------------------------------------- */
+:root {
+  /* ---- Brand set — identity and interaction only. Never a status. ---- */
+  --brand-ink: #0e1f1a; /* primary text, sidebar, dark surfaces */
+  --brand-primary: #0e1f1a; /* primary buttons — dark on light */
+  /* Lime is DECORATIVE ONLY: logo, marketing, illustration, focus ring. It is
+     roughly 1.5:1 on white, so it can never carry text, and it is never a CTA
+     surface and never a status. */
+  --brand-accent: #d3f36b;
+  --brand-muted: #5b6b66; /* secondary text */
+  --surface: #ffffff; /* cards */
+  --bg: #f6f8f7; /* app background */
+  --border: #e2e8e5; /* hairlines */
+
+  /* ---- Status set — flow states only, on a blue → orange axis. ----
+     Blue → orange survives all three common colour-vision deficiencies, which
+     red → green does not. Red is the critical tier only; green is `done` only,
+     never "on track" and never reassurance.
+
+     Each state carries three values: the mark colour (charts, dots), an `-ink`
+     that clears WCAG AA on its `-tint`, and the `-tint` chip surface. */
+  --status-moving: #2d7a9e;
+  --status-moving-ink: #1f5a75;
+  --status-moving-tint: #eaf2f7;
+  --status-ready: #7c8b99;
+  --status-ready-ink: #4a5560;
+  --status-ready-tint: #f0f2f4;
+  --status-waiting: #c77d18;
+  --status-waiting-ink: #8a5410;
+  --status-waiting-tint: #fbf1e2;
+  --status-review: #5b7c99;
+  --status-review-ink: #3f5a73;
+  --status-review-tint: #edf1f6;
+  --status-attention: #b3402b;
+  --status-attention-ink: #8c2f1f;
+  --status-attention-tint: #faedea;
+  --status-done: #3e7a5b;
+  --status-done-ink: #2a5a42;
+  --status-done-tint: #eaf3ee;
+
+  /* ---- Fever chart zones — §7.3, the one place a traffic pattern is correct.
+     Position on the chart carries the meaning; colour reinforces it, so these
+     deliberately reuse the status hues rather than introducing new ones. ---- */
+  --fever-ok: #3e7a5b;
+  --fever-watch: #c77d18;
+  --fever-act: #b3402b;
+
+  /* ---- Backward-compatible aliases. Both map into the brand set: lime keeps
+     its identity role and loses every functional one. ---- */
+  --forest: var(--brand-ink);
+  --lime: var(--brand-accent); /* decorative only — see --brand-accent */
+
+  /* ---- Legacy shadcn channels (HSL triplets). Retained so third-party
+     primitives keep resolving; --primary is forest, not lime, because a primary
+     action is never an accent surface. ---- */
+  --background: 140 20% 97%;
+  --foreground: 152 32% 9%;
+  --card: 0 0% 100%;
+  --card-foreground: 152 32% 9%;
+  --primary: 152 32% 9%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 140 18% 93%;
+  --secondary-foreground: 152 28% 14%;
+  --muted: 140 14% 92%;
+  --muted-foreground: 152 12% 32%;
+  --accent: 74 85% 69%;
+  --accent-foreground: 152 32% 9%;
+  --destructive: 4 72% 48%;
+  --ring: 74 85% 55%; /* focus glow — §7.11, lime's one functional job */
+  --radius: 0.75rem;
+
+  --tab-bar-h: 64px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    background: #eef2ee;
+    color: #0e1f1a;
+    font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+    color: #0e1f1a;
+  }
+  .lucide {
+    stroke-width: 1.75;
+  }
+  * {
+    scrollbar-width: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer components {
+  /* ---- Shell §6 / §12.6 / §31 ---- */
+  .portal-shell {
+    position: relative;
+    display: flex;
+    height: 100dvh;
+    overflow: hidden;
+    background: #eef2ee;
+  }
+
+  .portal-backdrop {
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+
+  /* Stack: solid veil base, then photo whisper on top (§12.6 exact colors) */
+  .portal-backdrop__veil {
+    position: absolute;
+    inset: 0;
+    background: #eef2ee;
+  }
+
+  .portal-backdrop__photo {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 28%;
+    opacity: 0.12;
+  }
+
+  /* Solid white + border — NOT frosted glass (§6.2) */
+  .glass,
+  .glass-strong,
+  .glass-nav {
+    background: #ffffff;
+    border: 1px solid rgba(14, 31, 26, 0.1);
+  }
+
+  .sidebar-glass {
+    position: relative;
+    z-index: 20;
+    margin: 0.5rem;
+    display: flex;
+    flex-shrink: 0;
+    flex-direction: column;
+    width: 15.5rem;
+    border-radius: 1rem;
+    background: #0e1f1a;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 8px 28px rgba(8, 20, 16, 0.35);
+    color: #e8f0ea;
+  }
+  .sidebar-glass.collapsed {
+    width: 4.5rem;
+  }
+  @media (min-width: 1280px) {
+    .sidebar-glass:not(.collapsed) {
+      width: 16rem; /* xl:w-64 */
+    }
+  }
+
+  .sidebar-divider {
+    height: 1px;
+    margin: 0.5rem 0.75rem;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .sidebar-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 40px;
+    padding: 0.55rem 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: rgba(232, 240, 234, 0.72);
+    transition:
+      background-color 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+      color 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .sidebar-nav-link:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #f3faf5;
+  }
+  .sidebar-nav-link.active {
+    background: #d3f36b;
+    color: #0e1f1a;
+    font-weight: 600;
+  }
+
+  .content-canvas {
+    position: relative;
+    z-index: 10;
+    min-height: 100%;
+    min-width: 0;
+    background: #fff;
+    border: 1px solid rgba(14, 31, 26, 0.08);
+    border-radius: 0.75rem;
+  }
+
+  .main-pad {
+    padding: 0.5rem;
+  }
+  @media (min-width: 640px) {
+    .main-pad {
+      padding: 0.75rem;
+    }
+  }
+  @media (min-width: 1024px) {
+    .main-pad {
+      padding: 1rem;
+    }
+  }
+
+  .surface-card {
+    background: #fff;
+    border: 1px solid rgba(14, 31, 26, 0.1);
+    border-radius: 0.625rem;
+    box-shadow: none;
+    overflow: hidden;
+  }
+
+  /* ---- Page anatomy §7 / §26 ---- */
+  .portal-page {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  @media (min-width: 640px) {
+    .portal-page {
+      gap: 0.875rem;
+    }
+  }
+
+  /* §26.1 exact */
+  .page-hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: 0.5rem; /* rounded-lg */
+    padding: 0.625rem 0.75rem; /* py-2.5 px-3 */
+    background: #0e1f1a;
+    border: 1px solid rgba(14, 31, 26, 0.2);
+    box-shadow: none;
+    color: #fff;
+  }
+  @media (min-width: 640px) {
+    .page-hero {
+      padding: 0.75rem 0.875rem; /* sm:px-3.5 sm:py-3 */
+    }
+  }
+  .page-hero::after {
+    display: none;
+  }
+  .page-hero-glass {
+    /* alias only — still solid */
+  }
+
+  .portal-section {
+    overflow: hidden;
+    border-radius: 0.625rem;
+    background: #fff;
+    border: 1px solid rgba(14, 31, 26, 0.1);
+    box-shadow: none;
+  }
+  .portal-section__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: #f7faf6;
+    border-bottom: 1px solid rgba(14, 31, 26, 0.08);
+  }
+  @media (min-width: 640px) {
+    .portal-section__head {
+      padding: 0.55rem 0.875rem;
+    }
+  }
+  .portal-section__title {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: #0e1f1a;
+  }
+  .portal-section__desc {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: #5a6b7d;
+  }
+  .portal-section__body--pad {
+    padding: 0.75rem;
+  }
+  @media (min-width: 640px) {
+    .portal-section__body--pad {
+      padding: 0.875rem;
+    }
+  }
+
+  .portal-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+  @media (min-width: 640px) {
+    .portal-metrics {
+      gap: 0.625rem;
+    }
+  }
+  @media (min-width: 1024px) {
+    .portal-metrics {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+  .portal-metrics--3 {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.5rem;
+  }
+  @media (min-width: 640px) {
+    .portal-metrics--3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .portal-callout {
+    border-radius: 0.5rem;
+    border: 1px solid rgba(211, 243, 107, 0.55);
+    background: #f4fbe3;
+    padding: 0.5rem 0.75rem;
+    font-size: 12px;
+    font-weight: 500;
+    color: #0e1f1a;
+  }
+
+  .portal-empty {
+    border-radius: 0.5rem;
+    border: 1px dashed rgba(14, 31, 26, 0.14);
+    background: #f7faf6;
+    padding: 2rem 1rem;
+    text-align: center;
+  }
+
+  .portal-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+  @media (min-width: 1024px) {
+    .portal-split {
+      grid-template-columns: 1fr 1.65fr;
+    }
+  }
+  .portal-split--aside {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+  @media (min-width: 1024px) {
+    .portal-split--aside {
+      grid-template-columns: 1.65fr 1fr;
+    }
+  }
+  .portal-grid-2 {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+  @media (min-width: 768px) {
+    .portal-grid-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  .portal-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  @media (min-width: 640px) {
+    .portal-toolbar {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+    }
+  }
+  /* Filter selects: full-bleed on phone, fixed on sm+ — prevents toolbar overflow */
+  .portal-filter {
+    width: 100%;
+    min-width: 0;
+  }
+  @media (min-width: 640px) {
+    .portal-filter {
+      width: 10rem;
+    }
+    .portal-filter--md {
+      width: 11rem;
+    }
+    .portal-filter--lg {
+      width: 12rem;
+    }
+  }
+
+  /* Horizontal table scroll affordance (table wrapper only) */
+  .table-scroll {
+    position: relative;
+  }
+  .table-scroll__edge {
+    pointer-events: none;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1.25rem;
+    z-index: 1;
+    opacity: 0;
+  }
+  @media (max-width: 767px) {
+    .table-scroll__edge {
+      opacity: 1;
+    }
+    .table-scroll__edge--start {
+      left: 0;
+      background: linear-gradient(90deg, #fff, transparent);
+    }
+    .table-scroll__edge--end {
+      right: 0;
+      background: linear-gradient(270deg, #fff, transparent);
+    }
+  }
+
+  img,
+  video,
+  iframe {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .form-surface {
+    border-radius: 0.625rem;
+    border: 1px solid rgba(14, 31, 26, 0.1);
+    background: #fff;
+    padding: 0.75rem;
+    box-shadow: none;
+  }
+  @media (min-width: 640px) {
+    .form-surface {
+      padding: 1rem;
+    }
+  }
+
+  .auth-card {
+    border-radius: 1rem; /* rounded-2xl */
+    background: #fff;
+    padding: 1.5rem;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+  }
+
+  .detail-tile {
+    border-radius: 0.375rem;
+    background: #f7faf6;
+    border: 1px solid rgba(14, 31, 26, 0.06);
+    padding: 0.5rem;
+  }
+  .detail-tile__label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #5a6b7d;
+  }
+  .detail-tile__value {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #0e1f1a;
+  }
+
+  /* ---- Fields §8 ---- */
+  .field-label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 10px;
+    font-weight: 600;
+    color: #5a6b7d;
+  }
+  .field-input {
+    width: 100%;
+    min-height: 2.5rem;
+    border-radius: 0.5rem; /* rounded-lg */
+    border: 1px solid rgba(14, 31, 26, 0.1);
+    background: #f7faf6;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #0e1f1a;
+  }
+  .field-input:focus {
+    outline: none;
+    border-color: rgba(211, 243, 107, 0.9);
+    box-shadow: 0 0 0 2px rgba(211, 243, 107, 0.25);
+  }
+
+  .input-glass {
+    width: 100%;
+    min-height: 2.5rem;
+    border-radius: 1rem; /* rounded-2xl auth */
+    border: 1px solid rgba(14, 31, 26, 0.1);
+    background: #ffffff;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #0e1f1a;
+  }
+  .input-glass:focus {
+    outline: none;
+    border-color: #d3f36b;
+    box-shadow: 0 0 0 3px rgba(211, 243, 107, 0.3);
+  }
+
+  /* ---- Buttons §8.3 / §32 ----
+     The CTA surface is brand-primary (forest), never brand-accent. Lime on white
+     is ~1.5:1 and cannot carry a label; `check:tokens` asserts this rule holds. */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 1rem; /* rounded-2xl */
+    background: var(--brand-primary);
+    padding: 0.625rem 1.25rem; /* py-2.5 px-5 */
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #ffffff;
+    transition:
+      background-color 0.15s,
+      box-shadow 0.15s,
+      transform 0.1s;
+  }
+  .btn-primary:hover {
+    background: #1a3a2e;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); /* shadow-md */
+  }
+  .btn-primary:active {
+    transform: scale(0.985);
+  }
+  .btn-primary:disabled {
+    opacity: 0.5;
+  }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(14, 31, 26, 0.1);
+    background: #f7faf6;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #0e1f1a;
+  }
+  .btn-secondary:hover {
+    background: #f4fbe3;
+  }
+  .btn-secondary:active {
+    transform: scale(0.985);
+  }
+
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 1rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #0e1f1a;
+    background: transparent;
+  }
+  .btn-ghost:hover {
+    background: #f7faf6;
+  }
+
+  .btn-action-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    border-radius: 0.375rem;
+    background: #d3f36b;
+    padding: 0.25rem 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #0e1f1a;
+  }
+  .btn-action-chip:hover {
+    background: #c5e85a;
+  }
+
+  /* ---- StatCard §9.3 / §31.4 ---- */
+  .stat-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 0.625rem;
+    border: 1px solid rgba(14, 31, 26, 0.1);
+    background: #fff;
+    padding: 0.75rem;
+    box-shadow: none;
+  }
+  .stat-card__bar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 2px; /* w-0.5 */
+  }
+
+  /* ---- Data table §9.1 ---- */
+  .data-table {
+    width: 100%;
+    font-size: 0.875rem;
+  }
+  .data-table thead th {
+    background: #f7faf6;
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #5a6b7d;
+  }
+  .data-table tbody td {
+    border-top: 1px solid rgba(14, 31, 26, 0.06);
+    padding: 0.625rem 0.75rem;
+    color: #0e1f1a;
+  }
+  .data-table tbody tr:hover {
+    background: #f7faf6;
+  }
+
+  .touch-target {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .safe-pad-x {
+    padding-left: max(0.75rem, var(--safe-left));
+    padding-right: max(0.75rem, var(--safe-right));
+  }
+  .safe-pad-top {
+    padding-top: max(0.5rem, var(--safe-top));
+  }
+  .safe-pad-bottom {
+    padding-bottom: max(0.5rem, var(--safe-bottom));
+  }
+
+  .glass-tabbar {
+    border-top: 1px solid rgba(14, 31, 26, 0.1);
+    background: #ffffff;
+    box-shadow: 0 -2px 10px hsl(220 35% 12% / 0.05);
+  }
+
+  .underline-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid rgba(14, 31, 26, 0.1);
+  }
+  .underline-tab {
+    border-bottom: 2px solid transparent;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #5a6b7d;
+  }
+  .underline-tab.active {
+    border-bottom-color: #0e1f1a;
+    color: #0e1f1a;
+  }
+
+  .brand-mark {
+    background: linear-gradient(145deg, #0e1f1a, #1a3a2e 45%, #d3f36b);
+    border-radius: 1rem;
+  }
+
+  .scroll-x-pad {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .scroll-x-pad::-webkit-scrollbar {
+    display: none;
+  }
+  .break-anywhere {
+    overflow-wrap: anywhere;
+  }
+  .scroll-touch {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-soft-rise,
+  .uzimaKenBurns,
+  .uzimaFloat,
+  .mk-wave-draw {
+    animation: none !important;
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "id": "extract-standup-01",
+  "kind": "extraction",
+  "expectedCommitments": [
+    { "title": "Ship deck redesign", "hasDueDate": true },
+    { "title": "Update investor memo", "hasDueDate": false }
+  ],
+  "modelOutput": {
+    "titles": ["Ship deck redesign", "Update investor memo"],
+    "dueDates": ["2026-08-30", null]
+  }
+}

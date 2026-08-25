@@ -1,0 +1,23 @@
+{
+  "name": "@loop/messaging",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./templates": "./src/templates.ts",
+    "./eligibility": "./src/eligibility.ts",
+    "./bundle": "./src/bundle.ts",
+    "./optIn": "./src/optIn.ts",
+    "./conversation": "./src/conversation.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
