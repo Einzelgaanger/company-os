@@ -1,16 +1,43 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
+/** Rewrite relative og/twitter image paths to absolute URLs (required by WhatsApp/FB). */
+function absoluteSocialMeta(siteUrl: string): Plugin {
+  const base = siteUrl.replace(/\/$/, "");
+  return {
+    name: "absolute-social-meta",
+    transformIndexHtml(html) {
+      if (!base) return html;
+      return html
+        .replace(
+          /(property="og:image(?::secure_url)?"\s+content=")(\/[^"]+)(")/g,
+          `$1${base}$2$3`,
+        )
+        .replace(
+          /(name="twitter:image"\s+content=")(\/[^"]+)(")/g,
+          `$1${base}$2$3`,
+        )
+        .replace(/(property="og:url"\s+content=")(\/)(")/, `$1${base}/$3`);
     },
-  },
-  server: {
-    port: 5173,
-    host: true,
-  },
+  };
+}
+
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  const siteUrl =
+    env.VITE_PUBLIC_SITE_URL?.trim() || env.APP_BASE_URL?.trim() || "";
+
+  return {
+    plugins: [react(), absoluteSocialMeta(siteUrl)],
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+      },
+    },
+    server: {
+      port: 5173,
+      host: true,
+    },
+  };
 });

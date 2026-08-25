@@ -35,6 +35,7 @@ export const BRAND = {
   portalBackdrop: "/images/portal-backdrop.jpg",
   marketingHero: "/images/marketing-hero.jpg",
   ogImage: "/og-image.jpg",
+  ogWhatsapp: "/og-whatsapp.jpg",
   ribbonDesk: "/images/ribbon-desk.jpg",
   ribbonCheckin: "/images/ribbon-checkin.jpg",
   ribbonEscalate: "/images/ribbon-escalate.jpg",
