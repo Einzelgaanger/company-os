@@ -246,4 +246,4 @@ export const apiDb = new Proxy(apiDbImpl, {
     }
     return (..._args: unknown[]) => unwired(String(prop));
   },
-}) as typeof apiDbImpl & Record<string, (...args: unknown[]) => never>;
+}) as unknown as typeof apiDbImpl;

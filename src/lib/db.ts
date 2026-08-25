@@ -6,16 +6,17 @@ import { apiConfigured } from "./api";
 
 /**
  * Data plane selection:
- * - VITE_API_URL → Fastify API (required in production)
+ * - VITE_API_URL → Fastify API (required in production unless VITE_ALLOW_MOCK=1)
  * - else Supabase when configured (legacy)
- * - else mock — DEV/test only; production refuses to boot on mock
+ * - else mock — DEV/test, or production only with VITE_ALLOW_MOCK=1
  */
-function resolveDb() {
-  if (apiConfigured()) return apiDb as typeof mockDb;
+function resolveDb(): typeof mockDb {
+  if (apiConfigured()) return apiDb as unknown as typeof mockDb;
 
   const allowMock =
     import.meta.env.DEV ||
     import.meta.env.MODE === "test" ||
+    import.meta.env.VITE_ALLOW_MOCK === "1" ||
     Boolean(
       typeof window !== "undefined" &&
         (window as { __LOOP_ALLOW_MOCK__?: boolean }).__LOOP_ALLOW_MOCK__,
@@ -23,11 +24,11 @@ function resolveDb() {
 
   if (import.meta.env.PROD && !allowMock) {
     throw new Error(
-      "[loop] Production build refuses the mock data plane. Set VITE_API_URL to the Fastify API.",
+      "[loop] Production build refuses the mock data plane. Set VITE_API_URL to the Fastify API (or VITE_ALLOW_MOCK=1 for a demo-only host).",
     );
   }
 
-  if (!isMockMode) return supabaseDb as typeof mockDb;
+  if (!isMockMode) return supabaseDb as unknown as typeof mockDb;
   return mockDb;
 }
 
