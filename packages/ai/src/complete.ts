@@ -53,11 +53,22 @@ export function createOpenRouterComplete(opts?: {
 export const stubComplete: CompleteFn = async () =>
   JSON.stringify({ commitments: [] });
 
-/** Prefer live when keyed; else stub (never throws "not wired"). */
+import { getAppSecret } from "@loop/shared/appSecrets";
+
+/** Prefer live when keyed (env or app_secrets); else stub (never throws "not wired"). */
 export function resolveComplete(override?: CompleteFn): CompleteFn {
   if (override) return override;
   if (process.env.OPENROUTER_API_KEY) {
     return createOpenRouterComplete();
   }
+  return stubComplete;
+}
+
+/** Async resolver — reads OpenRouter from app_secrets when env unset. */
+export async function resolveCompleteAsync(override?: CompleteFn): Promise<CompleteFn> {
+  if (override) return override;
+  const apiKey = (await getAppSecret("OPENROUTER_API_KEY")) ?? undefined;
+  const model = (await getAppSecret("OPENROUTER_MODEL")) ?? undefined;
+  if (apiKey) return createOpenRouterComplete({ apiKey, model });
   return stubComplete;
 }

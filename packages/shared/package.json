@@ -18,7 +18,8 @@
     "./trace": "./src/trace.ts",
     "./escalation": "./src/escalation.ts",
     "./workingTime": "./src/workingTime.ts",
-    "./costOfDelay": "./src/costOfDelay.ts"
+    "./costOfDelay": "./src/costOfDelay.ts",
+    "./appSecrets": "./src/appSecrets.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

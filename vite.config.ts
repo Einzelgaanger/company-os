@@ -39,5 +39,10 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       host: true,
     },
+    preview: {
+      host: true,
+      // Render (and similar) proxy on a public hostname; Vite 6 blocks unknown hosts by default.
+      allowedHosts: [".onrender.com", "localhost", "127.0.0.1"],
+    },
   };
 });

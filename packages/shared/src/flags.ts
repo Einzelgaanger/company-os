@@ -10,7 +10,7 @@ export type FeatureFlags = {
 
 export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   email_ingestion: false,
-  whatsapp_manual_approve: true,
+  whatsapp_manual_approve: false,
 };
 
 export function resolveFeatureFlags(

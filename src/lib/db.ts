@@ -12,6 +12,8 @@ import { apiConfigured } from "./api";
  */
 function resolveDb(): typeof mockDb {
   if (apiConfigured()) return apiDb as unknown as typeof mockDb;
+  // Supabase is the production data plane for ProDG pilot when configured.
+  if (!isMockMode) return supabaseDb as unknown as typeof mockDb;
 
   const allowMock =
     import.meta.env.DEV ||
@@ -24,11 +26,10 @@ function resolveDb(): typeof mockDb {
 
   if (import.meta.env.PROD && !allowMock) {
     throw new Error(
-      "[loop] Production build refuses the mock data plane. Set VITE_API_URL to the Fastify API (or VITE_ALLOW_MOCK=1 for a demo-only host).",
+      "[loop] Production build requires VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY, VITE_API_URL, or VITE_ALLOW_MOCK=1 for demo-only hosts.",
     );
   }
 
-  if (!isMockMode) return supabaseDb as unknown as typeof mockDb;
   return mockDb;
 }
 

@@ -3,7 +3,7 @@
 // commitments, honouring throttling rules.
 // deno-lint-ignore-file no-explicit-any
 import { adminClient, json, corsHeaders } from "../_shared/supabase.ts";
-import { sendWhatsApp, twilioConfigured } from "../_shared/twilio.ts";
+import { sendWhatsApp, whatsappConfigured } from "../_shared/whatsapp.ts";
 import { templates } from "../_shared/templates.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
   if (manual?.user_id && manual?.text) {
     const { data: user } = await db.from("users").select("*").eq("id", manual.user_id).single();
     if (!user) return json({ error: "user not found" }, 404);
-    const channel = twilioConfigured() && user.phone_verified_at ? "whatsapp" : "in_app";
+    const channel = whatsappConfigured() && user.phone_verified_at ? "whatsapp" : "in_app";
     const sid = channel === "whatsapp" ? await sendWhatsApp(user.phone_number, manual.text) : `INAPP-${crypto.randomUUID().slice(0, 8)}`;
     await db.from("checkins").insert({
       org_id: user.org_id,
@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
       due_date: c.due_date ?? "soon",
     });
 
-    const channel = twilioConfigured() && owner.phone_verified_at && owner.phone_number ? "whatsapp" : "in_app";
+    const channel = whatsappConfigured() && owner.phone_verified_at && owner.phone_number ? "whatsapp" : "in_app";
 
     try {
       const sid =

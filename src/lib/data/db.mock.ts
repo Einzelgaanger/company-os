@@ -35,6 +35,9 @@ import type {
   SurveyCycle,
   Tag,
   User,
+  TenantHoliday,
+  IngestionExclusion,
+  MessageApproval,
 } from "../types";
 import { clearanceFor, roleAtLeast, SENSITIVITY_RANK } from "../types";
 
@@ -956,6 +959,128 @@ export const mockDb = {
     });
     audit(actor.org_id, actor.id, "escalation.created", "escalation", esc.id);
     return ok(esc);
+  },
+
+  // --- Admin demo surfaces (mock plane) ------------------------------------
+
+  async listHolidays(orgId: string): Promise<TenantHoliday[]> {
+    return ok(store.all("holidays").filter((h) => h.org_id === orgId));
+  },
+
+  async addHoliday(orgId: string, body: { date: string; name: string }): Promise<TenantHoliday> {
+    const row: TenantHoliday = {
+      id: uuid(),
+      org_id: orgId,
+      date: body.date,
+      name: body.name,
+    };
+    store.set("holidays", [...store.all("holidays"), row]);
+    return ok(row);
+  },
+
+  async deleteHoliday(id: string): Promise<void> {
+    store.set(
+      "holidays",
+      store.all("holidays").filter((h) => h.id !== id),
+    );
+    return ok(undefined);
+  },
+
+  async listExclusions(orgId: string): Promise<IngestionExclusion[]> {
+    return ok(store.all("ingestion_exclusions").filter((e) => e.org_id === orgId));
+  },
+
+  async createExclusion(
+    orgId: string,
+    body: {
+      scope: "user" | "meeting" | "keyword" | "domain";
+      matchValue: string;
+      reason?: string;
+    },
+  ): Promise<IngestionExclusion> {
+    const row: IngestionExclusion = {
+      id: uuid(),
+      org_id: orgId,
+      scope: body.scope,
+      match_value: body.matchValue,
+      reason: body.reason ?? null,
+      created_at: nowIso(),
+    };
+    store.set("ingestion_exclusions", [row, ...store.all("ingestion_exclusions")]);
+    return ok(row);
+  },
+
+  async deleteExclusion(id: string): Promise<void> {
+    store.set(
+      "ingestion_exclusions",
+      store.all("ingestion_exclusions").filter((e) => e.id !== id),
+    );
+    return ok(undefined);
+  },
+
+  async getNudgeQuality(orgId: string): Promise<{
+    note: string;
+    autoSuspendThreshold: number;
+    triggers: Array<{
+      id: string;
+      name: string;
+      precision: number | null;
+      suspended: boolean;
+      sends7d: number;
+    }>;
+  }> {
+    const triggers = store
+      .all("nudge_triggers")
+      .filter((t) => t.org_id === orgId)
+      .map((t) => ({
+        id: t.id,
+        name: t.name,
+        precision: t.precision,
+        suspended: t.suspended,
+        sends7d: t.sends_7d,
+      }));
+    return ok({
+      note: "Demo precision from YES/NO nudge_feedback samples (mock plane).",
+      autoSuspendThreshold: 0.7,
+      triggers,
+    });
+  },
+
+  async setNudgeSuspended(id: string, suspended: boolean): Promise<void> {
+    store.set(
+      "nudge_triggers",
+      store.all("nudge_triggers").map((t) => (t.id === id ? { ...t, suspended } : t)),
+    );
+    return ok(undefined);
+  },
+
+  async listMessageApprovals(orgId: string): Promise<MessageApproval[]> {
+    return ok(store.all("message_approvals").filter((m) => m.org_id === orgId));
+  },
+
+  async queueMessage(
+    orgId: string,
+    body: { templateKey: string; preview: string; recipientUserId?: string | null },
+  ): Promise<MessageApproval> {
+    const row: MessageApproval = {
+      id: uuid(),
+      org_id: orgId,
+      recipient_user_id: body.recipientUserId ?? null,
+      template_key: body.templateKey,
+      preview: body.preview,
+      status: "pending",
+      created_at: nowIso(),
+    };
+    store.set("message_approvals", [row, ...store.all("message_approvals")]);
+    return ok(row);
+  },
+
+  async decideMessageApproval(id: string, approved: boolean): Promise<MessageApproval> {
+    const rows = store.all("message_approvals").map((m) =>
+      m.id === id ? { ...m, status: approved ? ("approved" as const) : ("rejected" as const) } : m,
+    );
+    store.set("message_approvals", rows);
+    return ok(rows.find((m) => m.id === id)!);
   },
 };
 

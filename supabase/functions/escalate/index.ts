@@ -4,7 +4,7 @@
 // admin/owner. Builds a frozen context snapshot and notifies via WhatsApp/in-app.
 // deno-lint-ignore-file no-explicit-any
 import { adminClient, json, corsHeaders, audit } from "../_shared/supabase.ts";
-import { sendWhatsApp, twilioConfigured } from "../_shared/twilio.ts";
+import { sendWhatsApp, whatsappConfigured } from "../_shared/whatsapp.ts";
 import { templates } from "../_shared/templates.ts";
 
 const SENS_RANK: Record<string, number> = { public: 0, internal: 1, confidential: 2, restricted: 3 };
@@ -112,7 +112,7 @@ async function escalateOne(db: any, commitment_id: string, reason: string): Prom
     ? await db.from("users").select("full_name").eq("id", commitment.requested_by_id).single()
     : { data: null };
 
-  if (twilioConfigured() && target_user?.phone_verified_at && target_user.phone_number) {
+  if (whatsappConfigured() && target_user?.phone_verified_at && target_user.phone_number) {
     await sendWhatsApp(
       target_user.phone_number,
       templates["W-ESCALATE"]({

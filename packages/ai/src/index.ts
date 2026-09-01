@@ -6,6 +6,7 @@ export type { ReaderCallInput, ReaderResult } from "./reader.js";
 
 export {
   resolveComplete,
+  resolveCompleteAsync,
   createOpenRouterComplete,
   stubComplete,
 } from "./complete.js";

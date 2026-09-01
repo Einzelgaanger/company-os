@@ -4,6 +4,8 @@
 // deno-lint-ignore-file no-explicit-any
 import { adminClient, json, corsHeaders } from "../_shared/supabase.ts";
 import { claude } from "../_shared/anthropic.ts";
+import { sendEmail } from "../_shared/email.ts";
+import { uploadReportPdf, renderMarkdownPdf } from "../_shared/s3.ts";
 
 function periodBounds(type: "daily" | "weekly") {
   const end = new Date();
@@ -77,8 +79,23 @@ async function generateForOrg(db: any, org: any, type: "daily" | "weekly") {
     .select("id")
     .single();
 
-  // In-app notifications for recipients (email/WhatsApp delivery handled by
-  // configured channels — wired to a mailer/Twilio in production).
+  let pdf_url: string | null = null;
+  let pdf_sha256: string | null = null;
+  try {
+    const pdfBytes = await renderMarkdownPdf(content_md);
+    const uploaded = await uploadReportPdf({
+      orgId: org.id,
+      reportId: report.id,
+      bytes: pdfBytes,
+    });
+    pdf_url = uploaded.url;
+    pdf_sha256 = uploaded.sha256;
+    await db.from("reports").update({ pdf_url, pdf_sha256 }).eq("id", report.id);
+  } catch {
+    /* PDF optional when storage bucket missing */
+  }
+
+  // In-app notifications + optional email delivery
   for (const uid of recipients) {
     await db.from("notifications").insert({
       org_id: org.id,
@@ -88,6 +105,18 @@ async function generateForOrg(db: any, org: any, type: "daily" | "weekly") {
       body: `Your ${type} summary for ${org.name} is ready.`,
       link: `/reports/${report.id}`,
     });
+    const { data: recipient } = await db.from("users").select("email, full_name").eq("id", uid).maybeSingle();
+    if (recipient?.email) {
+      try {
+        await sendEmail({
+          to: recipient.email,
+          subject: `Loop ${type} report — ${org.name}`,
+          html: `<p>Hi ${recipient.full_name ?? ""},</p><p>Your ${type} report is ready.</p><pre style="white-space:pre-wrap">${content_md.replace(/</g, "&lt;")}</pre>${pdf_url ? `<p><a href="${pdf_url}">Download PDF</a></p>` : ""}`,
+        });
+      } catch {
+        /* email optional */
+      }
+    }
   }
 
   return report.id;

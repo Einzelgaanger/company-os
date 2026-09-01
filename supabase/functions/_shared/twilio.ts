@@ -48,7 +48,8 @@ export async function sendWhatsApp(to: string, body: string): Promise<string> {
  * URL plus POST params sorted alphabetically, HMAC-SHA1 with the auth token.
  */
 export function validateTwilioSignature(url: string, params: Record<string, string>, signature: string): boolean {
-  const token = Deno.env.get("TWILIO_AUTH_TOKEN")!;
+  const token = Deno.env.get("TWILIO_AUTH_TOKEN")?.trim();
+  if (!token || !signature) return false;
   const sorted = Object.keys(params).sort();
   let data = url;
   for (const key of sorted) data += key + params[key];

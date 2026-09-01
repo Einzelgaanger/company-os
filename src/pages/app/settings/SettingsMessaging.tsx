@@ -22,8 +22,7 @@ const TEMPLATES = [
 
 /**
  * §9.3 Messaging — Meta tier, quality, caps, rates, templates, opt-in + approval queue.
- * The queue is backed by `message_approvals`; without the API it is session-only
- * and nothing is persisted in the browser.
+ * Queue is backed by API `message_approvals`, or the local mock store when offline.
  */
 export default function SettingsMessaging() {
   const { user } = useAuth();
@@ -67,11 +66,35 @@ export default function SettingsMessaging() {
   }, [user]);
 
   useEffect(() => {
-    if (!apiConfigured()) return;
-    void api
-      .listMessageApprovals()
-      .then((res) => setQueue(res.items.filter((i) => i.status === "pending")))
-      .catch(() => setQueue([]));
+    if (!user) return;
+    const mapApproval = (m: {
+      id: string;
+      org_id: string;
+      recipient_user_id: string | null;
+      template_key: string;
+      preview: string;
+      status: string;
+      created_at: string;
+    }): ApiMessageApproval => ({
+      id: m.id,
+      tenantId: m.org_id,
+      recipientUserId: m.recipient_user_id,
+      templateKey: m.template_key,
+      preview: m.preview,
+      status: m.status,
+      createdAt: m.created_at,
+    });
+
+    if (apiConfigured()) {
+      void api
+        .listMessageApprovals()
+        .then((res) => setQueue(res.items.filter((i) => i.status === "pending")))
+        .catch(() => setQueue([]));
+      return;
+    }
+    void db.listMessageApprovals(user.org_id).then((items) =>
+      setQueue(items.filter((i) => i.status === "pending").map(mapApproval)),
+    );
   }, [user]);
 
   const optOutWarn = (metrics?.opt_out_rate_7d ?? 0) >= 0.02;
@@ -84,13 +107,30 @@ export default function SettingsMessaging() {
     "Hi Kayode, checking in on *SharePoint migration* — it's due Fri. How's it going?";
 
   const queueSend = async () => {
-    if (!apiConfigured()) {
-      toast("Connect the API to queue a real send.", "error");
-      return;
-    }
+    if (!user) return;
     try {
-      const res = await api.queueMessage({ templateKey: "checkin_pre_due", preview });
-      setQueue((prev) => [res.approval, ...prev]);
+      if (apiConfigured()) {
+        const res = await api.queueMessage({ templateKey: "checkin_pre_due", preview });
+        setQueue((prev) => [res.approval, ...prev]);
+      } else {
+        const row = await db.queueMessage(user.org_id, {
+          templateKey: "checkin_pre_due",
+          preview,
+          recipientUserId: "u-kayode",
+        });
+        setQueue((prev) => [
+          {
+            id: row.id,
+            tenantId: row.org_id,
+            recipientUserId: row.recipient_user_id,
+            templateKey: row.template_key,
+            preview: row.preview,
+            status: row.status,
+            createdAt: row.created_at,
+          },
+          ...prev,
+        ]);
+      }
       toast("Outbound queued for approval", "success");
     } catch (err) {
       toast(err instanceof Error ? err.message : "Could not queue the send.", "error");
@@ -99,7 +139,8 @@ export default function SettingsMessaging() {
 
   const decide = async (id: string, approved: boolean) => {
     try {
-      await api.decideMessageApproval(id, approved);
+      if (apiConfigured()) await api.decideMessageApproval(id, approved);
+      else await db.decideMessageApproval(id, approved);
       setQueue((prev) => prev.filter((q) => q.id !== id));
       toast(approved ? "Approved — queued to send" : "Rejected — will not send", approved ? "success" : "default");
     } catch (err) {

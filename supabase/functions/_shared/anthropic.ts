@@ -1,35 +1,22 @@
 // LLM wrapper for commitment extraction, reply classification, and report themes.
-// Prefers Deno env (OPENROUTER_API_KEY / ANTHROPIC_API_KEY), then app_secrets table.
+// Prefers app_secrets table (Doppler-synced), then Deno env fallback.
 
-import { adminClient } from "./supabase.ts";
+import { getSecret } from "./secrets.ts";
 
 const OPENROUTER_MODEL_DEFAULT = "anthropic/claude-sonnet-4";
 const ANTHROPIC_MODEL_DEFAULT = "claude-3-5-sonnet-latest";
 
-async function secretFromDb(key: string): Promise<string | null> {
-  try {
-    const db = adminClient();
-    const { data } = await db.from("app_secrets").select("value").eq("key", key).maybeSingle();
-    return data?.value ?? null;
-  } catch {
-    return null;
-  }
-}
-
 export async function claude(system: string, user: string, maxTokens = 2000): Promise<string> {
-  const openRouterKey =
-    Deno.env.get("OPENROUTER_API_KEY") || (await secretFromDb("OPENROUTER_API_KEY"));
+  const openRouterKey = await getSecret("OPENROUTER_API_KEY");
   if (openRouterKey) {
     const model =
-      Deno.env.get("OPENROUTER_MODEL") ||
-      (await secretFromDb("OPENROUTER_MODEL")) ||
-      OPENROUTER_MODEL_DEFAULT;
+      (await getSecret("OPENROUTER_MODEL")) || OPENROUTER_MODEL_DEFAULT;
     return openRouter(openRouterKey, model, system, user, maxTokens);
   }
 
-  const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY") || (await secretFromDb("ANTHROPIC_API_KEY"));
-  if (!anthropicKey) throw new Error("OPENROUTER_API_KEY or ANTHROPIC_API_KEY must be set (env or app_secrets)");
-  const model = Deno.env.get("ANTHROPIC_MODEL") || ANTHROPIC_MODEL_DEFAULT;
+  const anthropicKey = await getSecret("ANTHROPIC_API_KEY");
+  if (!anthropicKey) throw new Error("OPENROUTER_API_KEY or ANTHROPIC_API_KEY must be set (app_secrets or env)");
+  const model = (await getSecret("ANTHROPIC_MODEL")) || ANTHROPIC_MODEL_DEFAULT;
   return anthropic(anthropicKey, model, system, user, maxTokens);
 }
 

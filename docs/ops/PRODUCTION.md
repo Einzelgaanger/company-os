@@ -42,13 +42,36 @@ npm run dev
 
 ## OpenRouter
 
-Key is stored in `.env`, Edge secrets, and `app_secrets`.  
-Listing models works (200); **chat completions fail with 401 User not found** — replace with a valid OpenRouter key that has chat credit:
+Keys are read **from `app_secrets` in Postgres first**, then Edge env (`OPENROUTER_*`).  
+Listing models works (200); if chat completions fail with **401**, replace the key:
 
 ```bash
 # update .env OPENROUTER_API_KEY=sk-or-v1-...
-node scripts/ops/set-openrouter-secret.mjs
-npx supabase secrets set --project-ref pkxnfkubgpbdbftvtgvf OPENROUTER_API_KEY=sk-or-v1-... OPENROUTER_MODEL=anthropic/claude-sonnet-4
+npm run ops:openrouter-secret
+```
+
+Edge functions (`extract-commitments`, `generate-report`, inbound classify) all use `_shared/secrets.ts` → `app_secrets`.
+
+## Production data plane (ProDG)
+
+Render SPA → **Supabase** (not mock):
+
+```env
+VITE_SUPABASE_URL=https://pkxnfkubgpbdbftvtgvf.supabase.co
+VITE_SUPABASE_ANON_KEY=...
+# Do NOT set VITE_ALLOW_MOCK
+```
+
+See `render.yaml` for Render static site env template.
+
+## New edge functions (2026-09-01)
+
+`launch-readiness`, `fathom-webhook`, `sync-calendar`, `workos-webhook`, `chat-webhook`
+
+Apply migration `0009_production_infra.sql`:
+
+```bash
+npm run ops:supabase-migrate
 ```
 
 ## Still optional

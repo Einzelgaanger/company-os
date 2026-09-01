@@ -1,0 +1,15 @@
+# ProDG production — Loop SPA on Render (Supabase data plane)
+services:
+  - type: web
+    name: loop-web
+    runtime: static
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+      - key: VITE_PUBLIC_SITE_URL
+        value: https://company-os-cce2.onrender.com
+      # Do NOT set VITE_ALLOW_MOCK in production — real Supabase data plane only.

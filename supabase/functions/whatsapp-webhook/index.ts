@@ -1,129 +1,109 @@
-// whatsapp-webhook (BUILD_SPEC 8.4)
-// Twilio inbound receiver. Validates signature, classifies the reply with
-// Claude, updates the linked commitment, and triggers escalation on blockers.
-// Idempotent on the Twilio Message SID.
+// whatsapp-webhook — Meta Cloud API + Twilio inbound receiver.
+// Meta: GET verify + JSON POST (X-Hub-Signature-256). Twilio: form POST (X-Twilio-Signature).
 // deno-lint-ignore-file no-explicit-any
-import { adminClient, json, corsHeaders } from "../_shared/supabase.ts";
-import { sendWhatsApp, validateTwilioSignature } from "../_shared/twilio.ts";
-import { claude, extractJson } from "../_shared/anthropic.ts";
-import { templates } from "../_shared/templates.ts";
-
-const CLARIFY_LIMIT = 1;
+import { json, corsHeaders } from "../_shared/supabase.ts";
+import { validateTwilioSignature } from "../_shared/twilio.ts";
+import {
+  metaWebhookConfigured,
+  verifyMetaWebhook,
+  validateMetaSignature,
+  parseMetaInbound,
+} from "../_shared/metaWhatsApp.ts";
+import { twilioConfigured } from "../_shared/twilio.ts";
+import { processInboundWhatsApp } from "../_shared/inboundReply.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const url = new URL(req.url);
+
+  // Meta webhook registration handshake
+  if (req.method === "GET") {
+    const verified = verifyMetaWebhook(url);
+    if (verified) return verified;
+    return json({ error: "invalid verify token" }, 403);
+  }
+
+  if (req.method !== "POST") {
+    return json({ error: "method not allowed" }, 405);
+  }
+
+  const contentType = req.headers.get("content-type") ?? "";
+  const isJson = contentType.includes("application/json");
+
+  // --- Meta Cloud API ---
+  if (isJson) {
+    if (!metaWebhookConfigured()) {
+      return json(
+        {
+          error: "webhook_misconfigured",
+          message: "Set WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_APP_SECRET on Edge",
+        },
+        503,
+      );
+    }
+    const rawBody = await req.text();
+    const sig = req.headers.get("x-hub-signature-256");
+    if (!validateMetaSignature(rawBody, sig)) {
+      return json({ error: "invalid signature" }, 403);
+    }
+
+    let payload: unknown;
+    try {
+      payload = JSON.parse(rawBody);
+    } catch {
+      return json({ error: "invalid json" }, 400);
+    }
+
+    const messages = parseMetaInbound(payload);
+    if (messages.length === 0) {
+      return json({ ok: true, ignored: "no text messages" });
+    }
+
+    const results = [];
+    for (const msg of messages) {
+      const result = await processInboundWhatsApp({
+        providerMessageId: msg.messageId,
+        fromRaw: msg.from,
+        bodyText: msg.bodyText,
+      });
+      results.push(result);
+    }
+    return json({ ok: true, processed: messages.length, results });
+  }
+
+  // --- Twilio (legacy) ---
+  if (!twilioConfigured()) {
+    return json(
+      {
+        error: "webhook_misconfigured",
+        message: "No WhatsApp provider configured (Meta or Twilio env vars)",
+      },
+      503,
+    );
+  }
 
   const form = await req.formData();
   const params: Record<string, string> = {};
   for (const [k, v] of form.entries()) params[k] = String(v);
 
   const signature = req.headers.get("x-twilio-signature") ?? "";
-  const url = Deno.env.get("PUBLIC_WEBHOOK_URL") ?? req.url;
-  if (!validateTwilioSignature(url, params, signature)) {
+  const webhookUrl = Deno.env.get("PUBLIC_WEBHOOK_URL") ?? req.url;
+  if (!validateTwilioSignature(webhookUrl, params, signature)) {
     return json({ error: "invalid signature" }, 403);
   }
 
-  const db = adminClient();
   const sid = params.MessageSid || params.SmsSid;
-  const from = (params.From || "").replace("whatsapp:", "");
+  const from = params.From || "";
   const bodyText = params.Body ?? "";
 
-  // Idempotency on Twilio SID.
-  const { data: dup } = await db.from("checkins").select("id").eq("twilio_sid", sid).maybeSingle();
-  if (dup) return json({ deduped: true });
-
-  const { data: user } = await db.from("users").select("*").eq("phone_number", from).maybeSingle();
-  if (!user) return json({ error: "unknown sender" }, 200);
-
-  // Most recent outbound check-in awaiting a reply (last 72h).
-  const since = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
-  const { data: lastOutbound } = await db
-    .from("checkins")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("direction", "outbound")
-    .gte("created_at", since)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const commitmentId = lastOutbound?.commitment_id ?? null;
-
-  // Classify with Claude (Section 9: no rigid keyword matching).
-  let parsed = { parsed_status: "unclear" as string, parsed_blocker: null as string | null };
-  try {
-    const out = await claude(
-      "You classify short work status replies. Return JSON only.",
-      `Classify this reply as one of on_track, blocked, done, unclear, and extract any blocker. ` +
-        `Return {"parsed_status": "...", "parsed_blocker": string|null}.\n\nReply: "${bodyText}"`
-    );
-    parsed = extractJson(out);
-  } catch {
-    parsed = { parsed_status: "unclear", parsed_blocker: null };
-  }
-
-  await db.from("checkins").insert({
-    org_id: user.org_id,
-    user_id: user.id,
-    commitment_id: commitmentId,
-    direction: "inbound",
-    message_type: lastOutbound?.message_type ?? "progress_ping",
-    message_text: bodyText,
-    parsed_status: parsed.parsed_status,
-    parsed_blocker: parsed.parsed_blocker,
-    twilio_sid: sid,
+  const result = await processInboundWhatsApp({
+    providerMessageId: sid,
+    fromRaw: from,
+    bodyText,
   });
 
-  if (commitmentId) {
-    const { data: commitment } = await db.from("commitments").select("*").eq("id", commitmentId).single();
-
-    if (parsed.parsed_status === "done") {
-      await db
-        .from("commitments")
-        .update({ status: "done", resolved_at: new Date().toISOString() })
-        .eq("id", commitmentId);
-      if (commitment?.requested_by_id) {
-        const { data: requester } = await db.from("users").select("*").eq("id", commitment.requested_by_id).single();
-        if (requester?.phone_verified_at) {
-          await sendWhatsApp(
-            requester.phone_number,
-            templates["W-CONFIRM"]({ commitment_title: commitment.title, resolution_summary: "marked done by the owner" })
-          );
-        }
-      }
-    } else if (parsed.parsed_status === "blocked") {
-      const base = Deno.env.get("SUPABASE_URL")!;
-      await fetch(`${base}/functions/v1/escalate`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ commitment_id: commitmentId, reason: parsed.parsed_blocker ?? "Owner reported a blocker." }),
-      });
-    } else if (parsed.parsed_status === "unclear") {
-      // Count prior clarifies to avoid infinite loops.
-      const { count } = await db
-        .from("checkins")
-        .select("id", { count: "exact", head: true })
-        .eq("commitment_id", commitmentId)
-        .eq("message_type", "confirmation");
-      if ((count ?? 0) < CLARIFY_LIMIT && commitment) {
-        const body = templates["W-CLARIFY"]({ commitment_title: commitment.title });
-        const outSid = await sendWhatsApp(from, body);
-        await db.from("checkins").insert({
-          org_id: user.org_id,
-          user_id: user.id,
-          commitment_id: commitmentId,
-          direction: "outbound",
-          message_type: "confirmation",
-          message_text: body,
-          twilio_sid: outSid,
-        });
-      }
-      // else: leave for manual review on the commitment page.
-    }
-  }
-
+  if (result.deduped) return json({ deduped: true });
+  if (result.error === "unknown sender") return json({ error: "unknown sender" }, 200);
   return json({ ok: true });
 });

@@ -6,6 +6,13 @@ import { workosConfigured } from "../lib/workos.js";
 import { ensureSeedUsers } from "../store/memory.js";
 import { readCompliance, writeCompliance } from "../store/legal.js";
 
+function metaWhatsAppConfigured(): boolean {
+  return Boolean(
+    process.env.WHATSAPP_ACCESS_TOKEN?.trim() &&
+      (process.env.META_WABA_ID?.trim() || process.env.WHATSAPP_WABA_ID?.trim()),
+  );
+}
+
 function twilioConfigured(): boolean {
   return Boolean(
     process.env.TWILIO_ACCOUNT_SID?.trim() &&
@@ -48,17 +55,27 @@ export async function launchRoutes(app: FastifyInstance) {
       },
       meta: {
         businessVerified: payload.meta_business_verified === true,
-        wabaIdConfigured: Boolean(process.env.META_WABA_ID?.trim()),
+        wabaIdConfigured: Boolean(
+          process.env.META_WABA_ID?.trim() || process.env.WHATSAPP_WABA_ID?.trim(),
+        ),
+        whatsappTokenConfigured: Boolean(process.env.WHATSAPP_ACCESS_TOKEN?.trim()),
         note: "Meta Business verification is external. Mark verified only after Meta confirms.",
       },
       messaging: {
         mode: messagingMode,
         twilioConfigured: twilioConfigured(),
-        liveReady: messagingMode === "live" && twilioConfigured(),
+        metaConfigured: metaWhatsAppConfigured(),
+        liveReady:
+          messagingMode === "live" &&
+          (metaWhatsAppConfigured() || twilioConfigured()),
         note:
-          messagingMode === "live" && !twilioConfigured()
-            ? "live mode is selected but Twilio env is incomplete — sends will fail loudly."
+          messagingMode === "live" && !metaWhatsAppConfigured() && !twilioConfigured()
+            ? "live mode selected but Meta/Twilio env is incomplete — sends will fail."
             : null,
+      },
+      ai: {
+        openRouterConfigured: Boolean(process.env.OPENROUTER_API_KEY?.trim()),
+        note: "API also reads OPENROUTER from app_secrets when SUPABASE_SERVICE_ROLE_KEY is set.",
       },
       oauth: {
         googleCalendar: google,

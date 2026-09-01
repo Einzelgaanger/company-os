@@ -478,6 +478,45 @@ export interface Invite {
   created_at: string;
 }
 
+/** Tenant public holiday (working-time maths). */
+export interface TenantHoliday {
+  id: string;
+  org_id: string;
+  date: string;
+  name: string;
+}
+
+/** Ingestion exclusion rule. */
+export interface IngestionExclusion {
+  id: string;
+  org_id: string;
+  scope: "user" | "meeting" | "keyword" | "domain";
+  match_value: string;
+  reason: string | null;
+  created_at: string;
+}
+
+/** Nudge precision / suspend state by trigger kind. */
+export interface NudgeTrigger {
+  id: string;
+  org_id: string;
+  name: string;
+  precision: number | null;
+  suspended: boolean;
+  sends_7d: number;
+}
+
+/** Pilot outbound WhatsApp approval queue row. */
+export interface MessageApproval {
+  id: string;
+  org_id: string;
+  recipient_user_id: string | null;
+  template_key: string;
+  preview: string;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+}
+
 // Role helpers ------------------------------------------------------------
 
 export const ROLE_RANK: Record<Role, number> = {

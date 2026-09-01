@@ -2,6 +2,7 @@ import {
   extractCommitmentsPipeline,
   type ExtractPipelineInput,
   type ExtractPipelineResult,
+  resolveCompleteAsync,
 } from "@loop/ai";
 import { linkProjectDeterministic, type LinkMeeting, type LinkProject } from "@loop/shared";
 import type { RosterUser } from "@loop/ai";
@@ -43,7 +44,7 @@ export async function processExtract(
   const pipeline: ExtractPipelineResult = await extractCommitmentsPipeline({
     transcript: job.transcriptExcerpt,
     roster: job.roster,
-    complete: job.complete,
+    complete: job.complete ?? (await resolveCompleteAsync()),
   });
 
   if (!pipeline.ok) {

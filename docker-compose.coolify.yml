@@ -1,0 +1,38 @@
+# Coolify / self-hosted — Loop SPA + optional local Postgres/Redis for monorepo dev
+# Production pilot: SPA only; backend stays on Supabase Edge (WhatsApp, cron, AI).
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+        VITE_PUBLIC_SITE_URL: ${VITE_PUBLIC_SITE_URL:-http://localhost:8080}
+        VITE_API_URL: ${VITE_API_URL:-}
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+  # Optional — only if running full monorepo stack on Coolify (not needed for Supabase pilot)
+  postgres:
+    profiles: ["full-stack"]
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: loop_owner
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-loop}
+      POSTGRES_DB: loop
+    volumes:
+      - loop_pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/01-roles.sql:/docker-entrypoint-initdb.d/01-roles.sql:ro
+
+  redis:
+    profiles: ["full-stack"]
+    image: redis:7-alpine
+    volumes:
+      - loop_redis:/data
+
+volumes:
+  loop_pgdata:
+  loop_redis:

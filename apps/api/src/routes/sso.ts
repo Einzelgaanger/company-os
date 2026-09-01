@@ -92,7 +92,35 @@ export async function ssoRoutes(app: FastifyInstance) {
   bindRoute("/settings/sso", "GET", "compliance.attest");
   app.get("/settings/sso", { preHandler: [app.authenticate] }, async () => ({
     configured: workosConfigured(),
-    directorySync: "use WorkOS Directory Sync webhooks when WORKOS_WEBHOOK_SECRET is set",
+    directorySync: "POST /webhooks/workos when WORKOS_WEBHOOK_SECRET is set",
     usersHint: "SCIM deprovision remains at /scim/v2/Users",
   }));
+
+  bindRoute("/webhooks/workos", "POST", "public.auth.login");
+  app.post("/webhooks/workos", async (req, reply) => {
+    const secret = process.env.WORKOS_WEBHOOK_SECRET?.trim();
+    if (!secret) return reply.code(503).send({ error: "workos_webhook_not_configured" });
+    const raw = JSON.stringify(req.body ?? {});
+    const sig = (req.headers["workos-signature"] as string) ?? "";
+    const { createHmac } = await import("node:crypto");
+    const expected = createHmac("sha256", secret).update(raw).digest("hex");
+    if (!sig.includes(expected.slice(0, 16))) {
+      return reply.code(401).send({ error: "invalid_signature" });
+    }
+    const event = req.body as { event?: string; data?: { email?: string; first_name?: string; last_name?: string } };
+    const type = event.event ?? "";
+    if (type.includes("user.created")) {
+      const email = event.data?.email;
+      if (email && !findUserByEmail(email)) {
+        const tenantId = process.env.WORKOS_DEFAULT_TENANT_ID ?? "tenant-demo";
+        await ensureSeedUsers();
+        req.log.info({ email, tenantId }, "workos_user_created_needs_provision");
+      }
+    }
+    if (type.includes("user.deleted") && event.data?.email) {
+      const user = findUserByEmail(event.data.email);
+      if (user) req.log.info({ userId: user.id }, "workos_user_deleted_disable");
+    }
+    return { ok: true };
+  });
 }

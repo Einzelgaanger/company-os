@@ -6,10 +6,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { extractTraceId, newTraceId } from "@loop/shared";
 import { parseOptInCommand, applyStopOptOut } from "@loop/messaging";
-import { verifyHmacSha256 } from "./verify.js";
+import { verifyHmacSha256, verifyTwilioSignature, parseWebhookParams } from "./verify.js";
 import { isOptedOut, recordOptOut } from "./optOutLedger.js";
 
-const PORT = Number(process.env.WEBHOOKS_PORT ?? 3002);
+const PORT = Number(process.env.PORT ?? process.env.WEBHOOKS_PORT ?? 3002);
 const HOST = process.env.WEBHOOKS_HOST ?? "0.0.0.0";
 const REDIS_URL = process.env.REDIS_URL ?? "redis://127.0.0.1:6379";
 
@@ -47,32 +47,57 @@ async function main() {
   const app = Fastify({ logger: true });
   await app.register(cors, { origin: false });
 
+  // Twilio posts application/x-www-form-urlencoded
+  app.addContentTypeParser(
+    "application/x-www-form-urlencoded",
+    { parseAs: "string" },
+    (_req, body, done) => {
+      const params: Record<string, string> = {};
+      for (const [k, v] of new URLSearchParams(body as string)) params[k] = v;
+      done(null, params);
+    },
+  );
+
   const connection = redisConnection();
   const ingestQueue = new Queue("ingest", { connection });
 
   app.get("/health", async () => ({ ok: true, service: "@loop/webhooks" }));
 
   app.post("/webhooks/whatsapp", async (request, reply) => {
-    const secret =
-      process.env.TWILIO_AUTH_TOKEN ?? process.env.WHATSAPP_WEBHOOK_SECRET;
-    const raw =
-      typeof request.body === "string"
-        ? request.body
-        : JSON.stringify(request.body ?? {});
-    const signature =
-      (request.headers["x-twilio-signature"] as string | undefined) ??
-      (request.headers["x-hub-signature-256"] as string | undefined);
+    const authToken = process.env.TWILIO_AUTH_TOKEN?.trim();
+    const params = parseWebhookParams(request.body);
+    const twilioSignature = request.headers["x-twilio-signature"] as string | undefined;
+    const hubSignature = request.headers["x-hub-signature-256"] as string | undefined;
 
-    const verified = verifyHmacSha256(raw, signature, secret);
+    let verified: { ok: boolean; reason?: string };
+    if (twilioSignature) {
+      const webhookUrl =
+        process.env.PUBLIC_WEBHOOK_URL?.trim() ||
+        `${request.protocol}://${request.headers.host}${request.url.split("?")[0]}`;
+      verified = verifyTwilioSignature(webhookUrl, params, twilioSignature, authToken);
+    } else if (hubSignature) {
+      const raw =
+        typeof request.body === "string"
+          ? request.body
+          : JSON.stringify(request.body ?? {});
+      verified = verifyHmacSha256(
+        raw,
+        hubSignature,
+        process.env.WHATSAPP_WEBHOOK_SECRET ?? authToken,
+      );
+    } else {
+      verified = { ok: false, reason: "invalid_signature" };
+    }
+
     if (!verified.ok) {
       if (verified.reason === "missing_secret") {
-        request.log.error("WHATSAPP webhook secret not configured");
+        request.log.error("TWILIO_AUTH_TOKEN not configured for WhatsApp webhook");
         return reply.code(503).send({ error: "webhook_misconfigured" });
       }
       return reply.code(401).send({ error: "invalid_signature" });
     }
 
-    const body = (request.body ?? {}) as Record<string, unknown>;
+    const body = params as Record<string, unknown>;
     const providerId =
       String(body.MessageSid ?? body.message_id ?? body.id ?? "") ||
       `wa-${Date.now()}`;

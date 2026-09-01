@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createHmac } from "node:crypto";
-import { verifyHmacSha256 } from "./verify.js";
+import { verifyHmacSha256, verifyTwilioSignature } from "./verify.js";
 
 describe("verifyHmacSha256", () => {
   it("accepts matching sha256 hex", () => {
@@ -20,5 +20,18 @@ describe("verifyHmacSha256", () => {
       ok: false,
       reason: "missing_secret",
     });
+  });
+});
+
+describe("verifyTwilioSignature", () => {
+  it("accepts Twilio-style X-Twilio-Signature", () => {
+    const url = "https://example.com/webhooks/whatsapp";
+    const params = { Body: "hello", From: "whatsapp:+254700000001", To: "whatsapp:+14155551234" };
+    const token = "twilio-auth-token";
+    const sorted = Object.keys(params).sort();
+    let data = url;
+    for (const key of sorted) data += key + params[key as keyof typeof params];
+    const sig = createHmac("sha1", token).update(data, "utf8").digest("base64");
+    expect(verifyTwilioSignature(url, params, sig, token)).toEqual({ ok: true });
   });
 });

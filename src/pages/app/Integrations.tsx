@@ -18,6 +18,7 @@ import { useToast } from "@/components/ui/toast";
 import { db } from "@/lib/db";
 import { isMockMode } from "@/lib/supabase";
 import { api, apiConfigured } from "@/lib/api";
+import { edgeFunctionsConfigured, oauthStartUrl } from "@/lib/launch";
 import { PROVIDERS, type ProviderMeta } from "@/lib/providers";
 import { roleAtLeast, type Connection } from "@/lib/types";
 import { timeAgo } from "@/lib/utils";
@@ -78,6 +79,10 @@ export default function Integrations() {
           "error",
         );
       }
+      return;
+    }
+    if (edgeFunctionsConfigured()) {
+      window.location.href = oauthStartUrl(meta.id, user.org_id, user.id);
       return;
     }
     if (!isMockMode) {
@@ -154,7 +159,7 @@ export default function Integrations() {
                       className={needsReconnect ? "bg-red hover:bg-red/90" : undefined}
                       onClick={() => void connect(meta)}
                     >
-                      {needsReconnect ? "Reconnect" : isMockMode && !apiConfigured() ? "Connect (demo)" : "Connect"}
+                      {needsReconnect ? "Reconnect" : isMockMode && !apiConfigured() && !edgeFunctionsConfigured() ? "Connect (demo)" : "Connect"}
                     </Button>
                   )}
                 </div>

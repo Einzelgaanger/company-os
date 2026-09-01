@@ -32,12 +32,18 @@ export default function SettingsOrganization() {
   }, [org]);
 
   useEffect(() => {
-    if (!apiConfigured()) return;
-    void api
-      .listHolidays()
-      .then((res) => setHolidays(res.items))
-      .catch(() => setHolidays([]));
-  }, []);
+    if (!org) return;
+    if (apiConfigured()) {
+      void api
+        .listHolidays()
+        .then((res) => setHolidays(res.items))
+        .catch(() => setHolidays([]));
+      return;
+    }
+    void db.listHolidays(org.id).then((items) =>
+      setHolidays(items.map((h) => ({ id: h.id, date: h.date, name: h.name }))),
+    );
+  }, [org]);
 
   if (!org) return null;
 
@@ -52,15 +58,16 @@ export default function SettingsOrganization() {
   }
 
   async function addHoliday() {
-    if (!holidayDate || !holidayName.trim()) return;
-    if (!apiConfigured()) {
-      toast("Connect VITE_API_URL to manage holidays.", "default");
-      return;
-    }
+    if (!holidayDate || !holidayName.trim() || !org) return;
     try {
-      await api.addHoliday({ date: holidayDate, name: holidayName.trim() });
-      const res = await api.listHolidays();
-      setHolidays(res.items);
+      if (apiConfigured()) {
+        await api.addHoliday({ date: holidayDate, name: holidayName.trim() });
+        const res = await api.listHolidays();
+        setHolidays(res.items);
+      } else {
+        const row = await db.addHoliday(org.id, { date: holidayDate, name: holidayName.trim() });
+        setHolidays((prev) => [...prev, { id: row.id, date: row.date, name: row.name }]);
+      }
       setHolidayDate("");
       setHolidayName("");
       toast("Holiday added.", "success");
@@ -70,9 +77,9 @@ export default function SettingsOrganization() {
   }
 
   async function removeHoliday(id: string) {
-    if (!apiConfigured()) return;
     try {
-      await api.deleteHoliday(id);
+      if (apiConfigured()) await api.deleteHoliday(id);
+      else await db.deleteHoliday(id);
       setHolidays((prev) => prev.filter((h) => h.id !== id));
       toast("Removed.", "success");
     } catch {
@@ -125,9 +132,7 @@ export default function SettingsOrganization() {
             Used by working-time maths (§4.4). Pilot tenants seed Kenya&apos;s public holidays.
           </p>
           {holidays.length === 0 ? (
-            <p className="text-sm text-slate">
-              {apiConfigured() ? "No holidays yet." : "Connect the API to manage tenant_holidays."}
-            </p>
+            <p className="text-sm text-slate">No holidays yet.</p>
           ) : (
             <ul className="divide-y divide-border text-sm">
               {holidays.map((h) => (
@@ -143,25 +148,23 @@ export default function SettingsOrganization() {
               ))}
             </ul>
           )}
-          {apiConfigured() ? (
-            <div className="flex flex-wrap gap-2">
-              <Input
-                type="date"
-                className="max-w-[160px]"
-                value={holidayDate}
-                onChange={(e) => setHolidayDate(e.target.value)}
-              />
-              <Input
-                className="max-w-xs"
-                placeholder="Holiday name"
-                value={holidayName}
-                onChange={(e) => setHolidayName(e.target.value)}
-              />
-              <Button type="button" onClick={() => void addHoliday()}>
-                Add holiday
-              </Button>
-            </div>
-          ) : null}
+          <div className="flex flex-wrap gap-2">
+            <Input
+              type="date"
+              className="max-w-[160px]"
+              value={holidayDate}
+              onChange={(e) => setHolidayDate(e.target.value)}
+            />
+            <Input
+              className="max-w-xs"
+              placeholder="Holiday name"
+              value={holidayName}
+              onChange={(e) => setHolidayName(e.target.value)}
+            />
+            <Button type="button" onClick={() => void addHoliday()}>
+              Add holiday
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

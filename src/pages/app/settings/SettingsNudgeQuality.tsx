@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { api, apiConfigured } from "@/lib/api";
+import { db } from "@/lib/db";
 
 type Trigger = {
   id: string;
@@ -14,6 +16,7 @@ type Trigger = {
 
 /** B5 — `/settings/nudge-quality` (§5.x / 08_PAGES). */
 export default function SettingsNudgeQuality() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [note, setNote] = useState("");
   const [threshold, setThreshold] = useState(0.7);
@@ -21,13 +24,16 @@ export default function SettingsNudgeQuality() {
   const [busy, setBusy] = useState<string | null>(null);
 
   async function load() {
-    if (!apiConfigured()) {
-      setNote("Connect VITE_API_URL to load nudge precision from the API.");
-      setTriggers([]);
-      return;
-    }
     try {
-      const res = await api.nudgeQuality();
+      if (apiConfigured()) {
+        const res = await api.nudgeQuality();
+        setNote(res.note);
+        setThreshold(res.autoSuspendThreshold);
+        setTriggers(res.triggers);
+        return;
+      }
+      if (!user) return;
+      const res = await db.getNudgeQuality(user.org_id);
       setNote(res.note);
       setThreshold(res.autoSuspendThreshold);
       setTriggers(res.triggers);
@@ -39,12 +45,13 @@ export default function SettingsNudgeQuality() {
   useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user?.org_id]);
 
   async function suspend(id: string) {
     setBusy(id);
     try {
-      await api.suspendNudge(id);
+      if (apiConfigured()) await api.suspendNudge(id);
+      else await db.setNudgeSuspended(id, true);
       await load();
       toast("Trigger suspended.", "success");
     } catch {
@@ -57,7 +64,8 @@ export default function SettingsNudgeQuality() {
   async function resume(id: string) {
     setBusy(id);
     try {
-      await api.resumeNudge(id);
+      if (apiConfigured()) await api.resumeNudge(id);
+      else await db.setNudgeSuspended(id, false);
       await load();
       toast("Trigger resumed.", "success");
     } catch {

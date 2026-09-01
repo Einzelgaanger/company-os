@@ -4,35 +4,65 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { api, apiConfigured } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import {
+  edgeFunctionsConfigured,
+  fetchLaunchStatus,
+  patchLaunchSettings,
+} from "@/lib/launch";
 
 /** ODPC / Meta / Twilio / OAuth / WorkOS readiness — never invents approvals. */
 export default function SettingsLaunch() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [data, setData] = useState<Record<string, unknown> | null>(null);
   const [odpcRef, setOdpcRef] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const useEdge = edgeFunctionsConfigured() && !apiConfigured();
+
   async function load() {
-    if (!apiConfigured()) {
-      setData(null);
+    if (!user) return;
+    if (apiConfigured()) {
+      try {
+        setData(await api.launchStatus());
+      } catch {
+        toast("Could not load launch status.", "error");
+      }
       return;
     }
-    try {
-      setData(await api.launchStatus());
-    } catch {
-      toast("Could not load launch status.", "error");
+    if (useEdge) {
+      try {
+        const status = await fetchLaunchStatus(user.org_id);
+        setData(status);
+      } catch {
+        toast("Could not load launch status.", "error");
+      }
+      return;
     }
+    setData(null);
   }
 
   useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user]);
+
+  async function patchLaunch(patch: Record<string, unknown>) {
+    if (!user) return;
+    if (apiConfigured()) {
+      await api.patchLaunch(patch);
+      return;
+    }
+    if (useEdge) {
+      await patchLaunchSettings(user.org_id, patch);
+    }
+  }
 
   async function saveOdpc() {
     setBusy(true);
     try {
-      await api.patchLaunch({ odpc_registration_ref: odpcRef });
+      await patchLaunch({ odpc_registration_ref: odpcRef });
       toast("ODPC reference saved.", "success");
       await load();
     } catch (e) {
@@ -42,22 +72,32 @@ export default function SettingsLaunch() {
     }
   }
 
-  if (!apiConfigured()) {
+  if (!apiConfigured() && !useEdge) {
     return (
       <div className="space-y-2">
-        <PageHeader title="Launch readiness" subtitle="Connect VITE_API_URL to see ODPC / Meta / Twilio status." />
+        <PageHeader
+          title="Launch readiness"
+          subtitle="Set VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY (or VITE_API_URL) to see ODPC / Meta status."
+        />
       </div>
     );
   }
 
   const odpc = data?.odpc as { status?: string; registrationRef?: string | null; note?: string } | undefined;
-  const meta = data?.meta as { businessVerified?: boolean; wabaIdConfigured?: boolean; note?: string } | undefined;
+  const meta = data?.meta as {
+    businessVerified?: boolean;
+    wabaIdConfigured?: boolean;
+    whatsappTokenConfigured?: boolean;
+    note?: string;
+  } | undefined;
   const messaging = data?.messaging as {
     mode?: string;
     twilioConfigured?: boolean;
+    metaConfigured?: boolean;
     liveReady?: boolean;
     note?: string | null;
   } | undefined;
+  const ai = data?.ai as { openRouterConfigured?: boolean; source?: string } | undefined;
   const oauth = data?.oauth as {
     googleCalendar?: { configured?: boolean; missing?: string[] };
     microsoftCalendar?: { configured?: boolean; missing?: string[] };
@@ -71,6 +111,23 @@ export default function SettingsLaunch() {
         title="Launch readiness"
         subtitle="Evidence status only — Loop never marks ODPC or Meta as approved for you."
       />
+
+      <section className="portal-section">
+        <header className="portal-section__head">
+          <div>
+            <h2 className="portal-section__title">AI (OpenRouter)</h2>
+            <p className="portal-section__desc">
+              Keys load from app_secrets in Postgres first, then Edge env.
+            </p>
+          </div>
+        </header>
+        <div className="portal-section__body--pad text-sm space-y-1">
+          <p>
+            OpenRouter: {ai?.openRouterConfigured ? "configured" : "missing"} · source:{" "}
+            {ai?.source ?? "—"}
+          </p>
+        </div>
+      </section>
 
       <section className="portal-section">
         <header className="portal-section__head">
@@ -106,13 +163,14 @@ export default function SettingsLaunch() {
         </header>
         <div className="portal-section__body--pad text-sm space-y-1">
           <p>Business verified (manual): {meta?.businessVerified ? "yes" : "no"}</p>
-          <p>META_WABA_ID in env: {meta?.wabaIdConfigured ? "set" : "missing"}</p>
+          <p>WABA configured: {meta?.wabaIdConfigured ? "yes" : "no"}</p>
+          <p>Access token: {meta?.whatsappTokenConfigured ? "yes" : "no"}</p>
           <Button
             size="sm"
             variant="outline"
             disabled={busy}
             onClick={() =>
-              void api.patchLaunch({ meta_business_verified: true }).then(load)
+              void patchLaunch({ meta_business_verified: true }).then(load)
             }
           >
             Mark Meta verified (after Meta confirms)
@@ -123,13 +181,14 @@ export default function SettingsLaunch() {
       <section className="portal-section">
         <header className="portal-section__head">
           <div>
-            <h2 className="portal-section__title">Messaging / Twilio</h2>
+            <h2 className="portal-section__title">Messaging</h2>
           </div>
         </header>
         <div className="portal-section__body--pad text-sm space-y-1">
           <p>
-            Mode: <span className="font-mono">{messaging?.mode}</span> · Twilio env:{" "}
-            {messaging?.twilioConfigured ? "ok" : "incomplete"} · Live ready:{" "}
+            Mode: <span className="font-mono">{messaging?.mode ?? "live"}</span> · Meta:{" "}
+            {messaging?.metaConfigured ? "ok" : "incomplete"} · Twilio:{" "}
+            {messaging?.twilioConfigured ? "ok" : "optional"} · Live ready:{" "}
             {messaging?.liveReady ? "yes" : "no"}
           </p>
           {messaging?.note ? <p className="text-amber">{messaging.note}</p> : null}
@@ -139,7 +198,7 @@ export default function SettingsLaunch() {
                 key={mode}
                 size="sm"
                 variant="outline"
-                onClick={() => void api.patchLaunch({ messaging_mode: mode }).then(load)}
+                onClick={() => void patchLaunch({ messaging_mode: mode }).then(load)}
               >
                 Use {mode}
               </Button>
@@ -156,7 +215,10 @@ export default function SettingsLaunch() {
         </header>
         <div className="portal-section__body--pad text-sm space-y-1">
           <p>
-            Google Calendar: {oauth?.googleCalendar?.configured ? "configured" : `missing ${(oauth?.googleCalendar?.missing ?? []).join(", ")}`}
+            Google Calendar:{" "}
+            {oauth?.googleCalendar?.configured
+              ? "configured"
+              : `missing ${(oauth?.googleCalendar?.missing ?? []).join(", ")}`}
           </p>
           <p>
             Microsoft Calendar:{" "}
@@ -164,9 +226,11 @@ export default function SettingsLaunch() {
               ? "configured"
               : `missing ${(oauth?.microsoftCalendar?.missing ?? []).join(", ")}`}
           </p>
-          <p>Token encryption: {oauth?.tokenEncryption ? "ok" : "set TOKEN_ENCRYPTION_KEY"}</p>
           <p>
-            WorkOS: {workos?.configured ? "configured" : `missing ${(workos?.missing ?? []).join(", ")}`}
+            WorkOS:{" "}
+            {workos?.configured
+              ? "configured"
+              : `missing ${(workos?.missing ?? []).join(", ")}`}
           </p>
         </div>
       </section>

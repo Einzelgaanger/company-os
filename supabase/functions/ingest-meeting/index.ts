@@ -6,6 +6,14 @@ import { adminClient, json, corsHeaders } from "../_shared/supabase.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const auth = req.headers.get("authorization") ?? "";
+  const internal = req.headers.get("x-loop-internal");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const authorized =
+    (auth === `Bearer ${serviceKey}` && serviceKey.length > 0) ||
+    internal === "fathom-webhook";
+  if (!authorized) return json({ error: "unauthorized" }, 401);
+
   try {
     const payload = await req.json();
     const {

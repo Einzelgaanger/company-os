@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { api, apiConfigured } from "@/lib/api";
+import { db } from "@/lib/db";
 
 type Rule = {
   id: string;
@@ -13,37 +15,42 @@ type Rule = {
   reason: string;
 };
 
-const DEFAULTS: Rule[] = [
-  { id: "1", type: "keyword", value: "salary", scope: "all", reason: "HR default" },
-  { id: "2", type: "keyword", value: "disciplinary", scope: "all", reason: "HR default" },
-  { id: "3", type: "meeting_title_pattern", value: "^1:1", scope: "meetings", reason: "Private 1:1s" },
-];
-
-/** §4.5 / §8.9 — ingestion exclusions persist via API when configured. */
+/** §4.5 / §8.9 — ingestion exclusions persist via API or mock store. */
 export default function SettingsDataGovernance() {
+  const { user } = useAuth();
   const { toast } = useToast();
-  const [rules, setRules] = useState<Rule[]>(DEFAULTS);
+  const [rules, setRules] = useState<Rule[]>([]);
   const [testInput, setTestInput] = useState("");
   const [scope, setScope] = useState<"user" | "meeting" | "keyword" | "domain">("keyword");
   const [matchValue, setMatchValue] = useState("");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
-  const [source, setSource] = useState<"api" | "defaults">("defaults");
+  const [source, setSource] = useState<"api" | "mock">("mock");
 
   async function load() {
-    if (!apiConfigured()) {
-      setRules(DEFAULTS);
-      setSource("defaults");
-      return;
-    }
     try {
-      const res = await api.listExclusions();
-      setSource("api");
+      if (apiConfigured()) {
+        const res = await api.listExclusions();
+        setSource("api");
+        setRules(
+          res.items.map((r) => ({
+            id: r.id,
+            type: r.scope,
+            value: r.matchValue,
+            scope: r.scope,
+            reason: r.reason ?? "",
+          })),
+        );
+        return;
+      }
+      if (!user) return;
+      const items = await db.listExclusions(user.org_id);
+      setSource("mock");
       setRules(
-        res.items.map((r) => ({
+        items.map((r) => ({
           id: r.id,
           type: r.scope,
-          value: r.matchValue,
+          value: r.match_value,
           scope: r.scope,
           reason: r.reason ?? "",
         })),
@@ -56,7 +63,7 @@ export default function SettingsDataGovernance() {
   useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user?.org_id]);
 
   const excluded30d = useMemo(
     () => [
@@ -87,18 +94,22 @@ export default function SettingsDataGovernance() {
   }
 
   async function addRule() {
-    if (!matchValue.trim()) return;
-    if (!apiConfigured()) {
-      toast("Connect VITE_API_URL to persist exclusions.", "default");
-      return;
-    }
+    if (!matchValue.trim() || !user) return;
     setBusy(true);
     try {
-      await api.createExclusion({
-        scope,
-        matchValue: matchValue.trim(),
-        reason: reason.trim() || undefined,
-      });
+      if (apiConfigured()) {
+        await api.createExclusion({
+          scope,
+          matchValue: matchValue.trim(),
+          reason: reason.trim() || undefined,
+        });
+      } else {
+        await db.createExclusion(user.org_id, {
+          scope,
+          matchValue: matchValue.trim(),
+          reason: reason.trim() || undefined,
+        });
+      }
       setMatchValue("");
       setReason("");
       toast("Exclusion saved.", "success");
@@ -111,10 +122,10 @@ export default function SettingsDataGovernance() {
   }
 
   async function removeRule(id: string) {
-    if (!apiConfigured()) return;
     setBusy(true);
     try {
-      await api.deleteExclusion(id);
+      if (apiConfigured()) await api.deleteExclusion(id);
+      else await db.deleteExclusion(id);
       toast("Removed.", "success");
       await load();
     } catch {
@@ -132,7 +143,9 @@ export default function SettingsDataGovernance() {
       />
       <div className="portal-callout">
         Filters fail closed. Derived commitments inherit source visibility (§4.5 Layer 2).
-        {source === "api" ? " Rules are stored in ingestion_exclusions." : " Showing built-in defaults until the API is connected."}
+        {source === "api"
+          ? " Rules are stored in ingestion_exclusions."
+          : " Rules are stored in the local demo store."}
       </div>
 
       <section className="portal-section">
@@ -169,67 +182,72 @@ export default function SettingsDataGovernance() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[11px] text-[#5A6B7D]">{r.reason}</span>
-                {source === "api" ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={busy}
-                    onClick={() => void removeRule(r.id)}
-                  >
-                    Remove
-                  </Button>
-                ) : null}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => void removeRule(r.id)}
+                >
+                  Remove
+                </Button>
               </div>
             </div>
           ))}
         </div>
-        {source === "api" ? (
-          <div className="portal-section__body--pad grid gap-2 sm:grid-cols-[auto_1fr_1fr_auto]">
-            <select
-              className="rounded-md border px-2 py-1.5 text-sm"
-              value={scope}
-              onChange={(e) => setScope(e.target.value as typeof scope)}
-            >
-              <option value="keyword">keyword</option>
-              <option value="meeting">meeting</option>
-              <option value="domain">domain</option>
-              <option value="user">user</option>
-            </select>
-            <Input
-              className="field-input"
-              value={matchValue}
-              onChange={(e) => setMatchValue(e.target.value)}
-              placeholder="Match value"
-            />
-            <Input
-              className="field-input"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Reason (optional)"
-            />
-            <Button type="button" disabled={busy || !matchValue.trim()} onClick={() => void addRule()}>
-              Add
-            </Button>
-          </div>
-        ) : null}
       </section>
 
       <section className="portal-section">
         <header className="portal-section__head">
           <div>
-            <h2 className="portal-section__title">Test a rule</h2>
-            <p className="portal-section__desc">Paste a subject or meeting title</p>
+            <h2 className="portal-section__title">Add exclusion</h2>
+            <p className="portal-section__desc">Keyword, meeting title, domain, or user id</p>
           </div>
         </header>
-        <div className="portal-section__body--pad flex gap-2">
+        <div className="portal-section__body--pad flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <select
+            className="h-9 rounded-md border border-[rgba(14,31,26,0.15)] bg-white px-2 text-sm"
+            value={scope}
+            onChange={(e) => setScope(e.target.value as typeof scope)}
+          >
+            <option value="keyword">keyword</option>
+            <option value="meeting">meeting</option>
+            <option value="domain">domain</option>
+            <option value="user">user</option>
+          </select>
           <Input
-            className="field-input"
+            className="max-w-xs"
+            placeholder="Match value"
+            value={matchValue}
+            onChange={(e) => setMatchValue(e.target.value)}
+          />
+          <Input
+            className="max-w-xs"
+            placeholder="Reason (optional)"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+          <Button type="button" disabled={busy} onClick={() => void addRule()}>
+            Add
+          </Button>
+        </div>
+      </section>
+
+      <section className="portal-section">
+        <header className="portal-section__head">
+          <div>
+            <h2 className="portal-section__title">Test a string</h2>
+            <p className="portal-section__desc">See whether content would be excluded</p>
+          </div>
+        </header>
+        <div className="portal-section__body--pad flex flex-wrap gap-2">
+          <Input
+            className="max-w-md"
+            placeholder="Sample title or body…"
             value={testInput}
             onChange={(e) => setTestInput(e.target.value)}
-            placeholder="e.g. Q2 salary review 1:1"
           />
-          <Button type="button" variant="secondary" onClick={testRule}>
+          <Button type="button" variant="outline" onClick={testRule}>
             Test
           </Button>
         </div>

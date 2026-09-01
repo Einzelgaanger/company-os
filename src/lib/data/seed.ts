@@ -22,8 +22,13 @@ import type {
   SurveyAnswer,
   SurveyCycle,
   Tag,
+  TenantHoliday,
+  IngestionExclusion,
+  NudgeTrigger,
+  MessageApproval,
   User,
 } from "../types";
+import { expandSeedHeavy } from "./seedHeavy";
 
 // Fixed IDs for readable demo data.
 const ORG = "org-prodg";
@@ -75,6 +80,10 @@ export interface SeedData {
   messaging_metrics: MessagingMetrics[];
   org_teams: OrgTeam[];
   auth_sessions: AuthSessionRow[];
+  holidays: TenantHoliday[];
+  ingestion_exclusions: IngestionExclusion[];
+  nudge_triggers: NudgeTrigger[];
+  message_approvals: MessageApproval[];
 }
 
 const TAG = {
@@ -914,7 +923,125 @@ export function buildSeed(): SeedData {
     },
   ];
 
-  return {
+  const holidays: TenantHoliday[] = [
+    { id: "hol-madaraka", org_id: ORG, date: "2026-06-01", name: "Madaraka Day" },
+    { id: "hol-huduma", org_id: ORG, date: "2026-10-10", name: "Huduma Day" },
+    { id: "hol-mashujaa", org_id: ORG, date: "2026-10-20", name: "Mashujaa Day" },
+    { id: "hol-jamhuri", org_id: ORG, date: "2026-12-12", name: "Jamhuri Day" },
+    { id: "hol-xmas", org_id: ORG, date: "2026-12-25", name: "Christmas Day" },
+    { id: "hol-boxing", org_id: ORG, date: "2026-12-26", name: "Boxing Day" },
+    { id: "hol-ny", org_id: ORG, date: "2027-01-01", name: "New Year's Day" },
+  ];
+
+  const ingestion_exclusions: IngestionExclusion[] = [
+    {
+      id: "ex-salary",
+      org_id: ORG,
+      scope: "keyword",
+      match_value: "salary",
+      reason: "HR default",
+      created_at: iso(-60),
+    },
+    {
+      id: "ex-disciplinary",
+      org_id: ORG,
+      scope: "keyword",
+      match_value: "disciplinary",
+      reason: "HR default",
+      created_at: iso(-60),
+    },
+    {
+      id: "ex-1on1",
+      org_id: ORG,
+      scope: "meeting",
+      match_value: "^1:1",
+      reason: "Private 1:1s",
+      created_at: iso(-45),
+    },
+    {
+      id: "ex-personal",
+      org_id: ORG,
+      scope: "domain",
+      match_value: "gmail.com",
+      reason: "Personal mailboxes",
+      created_at: iso(-30),
+    },
+  ];
+
+  const nudge_triggers: NudgeTrigger[] = [
+    {
+      id: "pre_due",
+      org_id: ORG,
+      name: "Pre-due check-in",
+      precision: 0.82,
+      suspended: false,
+      sends_7d: 38,
+    },
+    {
+      id: "overdue",
+      org_id: ORG,
+      name: "Overdue follow-up",
+      precision: 0.74,
+      suspended: false,
+      sends_7d: 21,
+    },
+    {
+      id: "waiting_who",
+      org_id: ORG,
+      name: "Clarify who holds it",
+      precision: 0.61,
+      suspended: false,
+      sends_7d: 14,
+    },
+    {
+      id: "escalation_nudge",
+      org_id: ORG,
+      name: "Escalation ping",
+      precision: 0.55,
+      suspended: true,
+      sends_7d: 9,
+    },
+    {
+      id: "daily_pulse",
+      org_id: ORG,
+      name: "Daily pulse",
+      precision: null,
+      suspended: false,
+      sends_7d: 4,
+    },
+  ];
+
+  const message_approvals: MessageApproval[] = [
+    {
+      id: "ma-1",
+      org_id: ORG,
+      recipient_user_id: U.kayode,
+      template_key: "checkin_evidence",
+      preview: "Hi Kayode, checking in on *SharePoint migration* — it's due Fri. How's it going?",
+      status: "pending",
+      created_at: iso(0, 8),
+    },
+    {
+      id: "ma-2",
+      org_id: ORG,
+      recipient_user_id: U.wanjiru,
+      template_key: "unblock_request",
+      preview: "Hi Wanjiru — Atlas SSO is waiting on WorkOS callback URLs. Can you unblock?",
+      status: "pending",
+      created_at: iso(0, 9),
+    },
+    {
+      id: "ma-3",
+      org_id: ORG,
+      recipient_user_id: U.brian,
+      template_key: "waiting_who",
+      preview: "Hi Brian — who currently holds the UAT credentials for VGG?",
+      status: "approved",
+      created_at: iso(-1, 14),
+    },
+  ];
+
+  return expandSeedHeavy({
     organizations,
     users,
     connections,
@@ -939,7 +1066,11 @@ export function buildSeed(): SeedData {
     messaging_metrics,
     org_teams,
     auth_sessions,
-  };
+    holidays,
+    ingestion_exclusions,
+    nudge_triggers,
+    message_approvals,
+  });
 }
 
 export const DEMO_USER_ID = U.alfred;

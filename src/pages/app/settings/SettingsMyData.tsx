@@ -8,6 +8,7 @@ import { t } from "@/lib/copy";
 import type { ApiNoticeAck } from "@/lib/api";
 import { fetchNoticeAck } from "@/lib/legalRecords";
 import type { Checkin, Commitment, Connection, SurveyAnswer } from "@/lib/types";
+import { DB_KEY } from "@/lib/data/store";
 
 /**
  * C-3 — What Loop knows about me. Full inventory + export + DSR + WhatsApp off.
@@ -41,7 +42,7 @@ export default function SettingsMyData() {
       setCommitments(cms.filter((c) => c.owner_id === user.id || c.requested_by_id === user.id));
       setMessages(checks.filter((c) => c.user_id === user.id));
       try {
-        const raw = localStorage.getItem("loop.db.v4");
+        const raw = localStorage.getItem(DB_KEY);
         const data = raw ? (JSON.parse(raw) as { survey_answers?: SurveyAnswer[] }) : null;
         setSurveys((data?.survey_answers ?? []).filter((a) => a.user_id === user.id));
       } catch {
@@ -86,11 +87,11 @@ export default function SettingsMyData() {
 
   async function deleteSurveyResponses() {
     try {
-      const raw = localStorage.getItem("loop.db.v4");
+      const raw = localStorage.getItem(DB_KEY);
       if (!raw) return;
       const data = JSON.parse(raw) as { survey_answers?: SurveyAnswer[] };
       data.survey_answers = (data.survey_answers ?? []).filter((a) => a.user_id !== user!.id);
-      localStorage.setItem("loop.db.v4", JSON.stringify(data));
+      localStorage.setItem(DB_KEY, JSON.stringify(data));
       setSurveys([]);
       toast("Survey responses deleted from local store.", "success");
     } catch {
