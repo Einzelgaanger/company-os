@@ -52,17 +52,21 @@ npm run ops:openrouter-secret
 
 Edge functions (`extract-commitments`, `generate-report`, inbound classify) all use `_shared/secrets.ts` → `app_secrets`.
 
-## Production data plane (ProDG)
+## Production hosting (ProDG) — Render + Supabase only
 
-Render SPA → **Supabase** (not mock):
+| Layer | Host |
+|-------|------|
+| SPA | **Render** — https://company-os-cce2.onrender.com |
+| Auth / DB / WhatsApp / AI / cron | **Supabase** — `pkxnfkubgpbdbftvtgvf` |
+
+Coolify is **deferred**. Full steps: [`docs/ops/RENDER.md`](./RENDER.md).
 
 ```env
 VITE_SUPABASE_URL=https://pkxnfkubgpbdbftvtgvf.supabase.co
 VITE_SUPABASE_ANON_KEY=...
-# Do NOT set VITE_ALLOW_MOCK
+VITE_PUBLIC_SITE_URL=https://company-os-cce2.onrender.com
+# Do NOT set VITE_ALLOW_MOCK or VITE_API_URL
 ```
-
-See `render.yaml` for Render static site env template.
 
 ## New edge functions (2026-09-01)
 

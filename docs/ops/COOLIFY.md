@@ -1,8 +1,11 @@
 # Coolify deployment — Loop (Company OS)
 
+> **Deferred.** Production hosting is **Render + Supabase**. See [`RENDER.md`](./RENDER.md).
+> Keep this file only if ProDG revisits Coolify later.
+
 ## GitHub
 
-https://github.com/Einzelgaanger/company-os
+https://github.com/PRODG-XYZ/company-os
 
 ## Architecture on Coolify
 
