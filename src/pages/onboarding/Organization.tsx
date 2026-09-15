@@ -30,12 +30,12 @@ export default function OnbOrganization() {
   }
 
   return (
-    <OnboardingLayout step={0} title="Create your organization" description="This is the workspace Loop watches over.">
+    <OnboardingLayout step={0} title="Create your organization" description="This is the workspace Company OS watches over.">
       <form onSubmit={submit} className="space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="orgname">Organization name</Label>
           <Input id="orgname" value={name} onChange={(e) => setName(e.target.value)} required placeholder="ProDG Studios" />
-          {name && <p className="font-mono text-xs text-slate">loop.app/{slugify(name)}</p>}
+          {name && <p className="font-mono text-xs text-slate">companyos.app/{slugify(name)}</p>}
         </div>
         <Button type="submit" disabled={busy || !name.trim()}>
           {busy ? "Creating…" : "Continue"}

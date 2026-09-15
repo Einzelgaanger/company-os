@@ -48,7 +48,7 @@ export default function SettingsProfile() {
       <Card>
         <CardHeader>
           <CardTitle>Profile</CardTitle>
-          <CardDescription>Your personal details and how Loop reaches you.</CardDescription>
+          <CardDescription>Your personal details and how Company OS reaches you.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1.5">
@@ -77,8 +77,15 @@ export default function SettingsProfile() {
               )}
             </div>
             <p className="text-xs text-slate">
-              Loop verifies numbers by sending a WhatsApp code when messaging is live for your organization.
+              Company OS verifies you via Telegram (or WhatsApp fallback) when messaging is live.
+              Link Telegram by messaging the bot: <span className="font-mono">LINK +yourphone</span>.
             </p>
+            {(user.telegram_linked_at || user.telegram_chat_id) && (
+              <p className="text-xs text-green">
+                Telegram linked
+                {user.telegram_username ? ` (@${user.telegram_username})` : ""}.
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -90,8 +97,8 @@ export default function SettingsProfile() {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm font-medium text-ink">WhatsApp check-ins</div>
-              <div className="text-sm text-slate">Let Loop message you to track your commitments.</div>
+              <div className="text-sm font-medium text-ink">Check-in messages</div>
+              <div className="text-sm text-slate">Let Company OS message you on Telegram to track commitments.</div>
             </div>
             <Switch checked={whatsapp} onCheckedChange={setWhatsapp} />
           </div>
@@ -104,7 +111,7 @@ export default function SettingsProfile() {
           </div>
           {!whatsapp && (
             <p className="rounded-md border border-amber/30 bg-amber/5 p-3 text-sm text-amber">
-              With check-ins off, Loop can't track your commitments.
+              With check-ins off, Company OS can&apos;t track your commitments.
             </p>
           )}
         </CardContent>

@@ -39,6 +39,8 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<void>;
   /** DEV/test only — production builds must use signIn with password. */
   signInDemo: () => Promise<void>;
+  /** Redirects to Google via Supabase Auth (configure provider in Supabase dashboard). */
+  signInWithGoogle: () => Promise<void>;
   signUp: (input: SignUpInput) => Promise<void>;
   signOut: () => void;
   refresh: () => Promise<void>;
@@ -219,6 +221,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signIn("alfred@prodg.studio", DEMO_PASSWORD);
   }, [signIn]);
 
+  const signInWithGoogle = useCallback(async () => {
+    if (isMockMode || !supabase) {
+      throw new Error("Google sign-in needs Supabase. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
+    }
+    const redirectTo = `${window.location.origin}/auth/callback`;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo,
+        queryParams: { access_type: "offline", prompt: "select_account" },
+      },
+    });
+    if (error) throw new Error(error.message);
+  }, []);
+
   const signUp = useCallback(
     async ({ email, password, fullName, inviteToken }: SignUpInput) => {
       if (isMockMode) {
@@ -358,6 +375,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isOnboarded,
     signIn,
     signInDemo,
+    signInWithGoogle,
     signUp,
     signOut,
     refresh,

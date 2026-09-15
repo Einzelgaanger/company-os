@@ -47,7 +47,7 @@ export const COORDINATION_COPY: Record<CoordinationMode, CoordinationModeCopy> =
   mutual_adjustment: {
     label: "Peer coordination",
     description:
-      "People sort things out directly with whoever is involved. Loop speeds that up — it finds who to ask, and asks for you.",
+      "People sort things out directly with whoever is involved. Company OS speeds that up — it finds who to ask, and asks for you.",
     typicalOrganization: "Agencies, consultancies, studios, startups, product and R&D teams",
     changes: {
       checkins: "Light and frequent — every 3 working days on anything open, at most twice a week per item.",
@@ -60,7 +60,7 @@ export const COORDINATION_COPY: Record<CoordinationMode, CoordinationModeCopy> =
   direct_supervision: {
     label: "One decision-maker",
     description:
-      "One person directs the work and makes the calls. Loop keeps them unblocked and surfaces only what actually needs them.",
+      "One person directs the work and makes the calls. Company OS keeps them unblocked and surfaces only what actually needs them.",
     typicalOrganization: "Owner-led small businesses, founding teams, single-partner practices",
     changes: {
       checkins: "Only when the principal is the blocker or the decision. Never periodic.",
@@ -73,7 +73,7 @@ export const COORDINATION_COPY: Record<CoordinationMode, CoordinationModeCopy> =
   standardized_process: {
     label: "Defined process",
     description:
-      "Work follows defined procedures. Loop detects deviation from the process and shows where it stalls — it never asks for a periodic status.",
+      "Work follows defined procedures. Company OS detects deviation from the process and shows where it stalls — it never asks for a periodic status.",
     typicalOrganization: "Operations, back office, manufacturing, claims, logistics, shared services",
     changes: {
       checkins: "Exception-only. Asked when a step runs past its expected time, and not otherwise.",
@@ -86,7 +86,7 @@ export const COORDINATION_COPY: Record<CoordinationMode, CoordinationModeCopy> =
   standardized_outputs: {
     label: "Measured deliverables",
     description:
-      "Each unit runs itself and is measured on what it delivers. Loop rolls up output variance per division without touching how a division works.",
+      "Each unit runs itself and is measured on what it delivers. Company OS rolls up output variance per division without touching how a division works.",
     typicalOrganization: "Multi-division companies, franchise groups, holding structures",
     changes: {
       checkins: "At deliverable boundaries only, at most once a week per item.",
@@ -99,11 +99,11 @@ export const COORDINATION_COPY: Record<CoordinationMode, CoordinationModeCopy> =
   standardized_skills: {
     label: "Professional judgement",
     description:
-      "Qualified professionals decide how their own work is done. Loop tracks only what is owed across a boundary — to a client, another team, a court, a regulator.",
+      "Qualified professionals decide how their own work is done. Company OS tracks only what is owed across a boundary — to a client, another team, a court, a regulator.",
     typicalOrganization: "Law, medicine, audit, engineering practices, universities",
     changes: {
       checkins:
-        "Only on commitments owed outside the practice, at most once a week. Loop never asks a professional about the conduct of their own work.",
+        "Only on commitments owed outside the practice, at most once a week. Company OS never asks a professional about the conduct of their own work.",
       aging: "Lenient — amber at 5 working days, red at 10.",
       escalation:
         "Once, when an item passes its committed date, and always to a coordinator. Never to anyone who could be read as supervising professional judgement.",

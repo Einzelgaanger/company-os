@@ -38,7 +38,7 @@ export function RequireOnboarding({ children }: { children: ReactNode }) {
       <div className="flex h-screen flex-col items-center justify-center gap-3 bg-bg px-6 text-center">
         <Logo />
         <p className="max-w-md text-sm font-medium text-ink">
-          Your organization admin must complete the compliance attestation before Loop can process work data.
+          Your organization admin must complete the compliance attestation before Company OS can process work data.
         </p>
       </div>
     );

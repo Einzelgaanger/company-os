@@ -62,7 +62,7 @@ export default function Projects() {
     <div className="portal-page animate-fade-in">
       <PageHeader
         title="Projects"
-        description="Health at a glance across everything Loop is watching."
+        description="Health at a glance across everything Company OS is watching."
         actions={
           canCreate ? (
             <Button onClick={() => navigate("/projects/new")} className="w-full sm:w-auto">

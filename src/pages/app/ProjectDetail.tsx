@@ -296,7 +296,7 @@ export default function ProjectDetail() {
           {meetings.length === 0 ? (
             <EmptyState
               title="No meetings linked yet."
-              description="Loop links meetings automatically when it detects a match."
+              description="Company OS links meetings automatically when it detects a match."
             />
           ) : (
             <Card>
@@ -373,7 +373,7 @@ export default function ProjectDetail() {
                   Low confidence — many items lack recent updates. Treat % as approximate.
                 </p>
               ) : null}
-              <p className="text-[#5A6B7D]">
+              <p className="text-[#5B6560]">
                 {milestones.filter((m) => m.status === "done").length} of {milestones.length}{" "}
                 milestones done.
               </p>

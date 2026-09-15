@@ -83,7 +83,7 @@ export default function OnbCoordination() {
     <OnboardingLayout
       step={1}
       title="How your team coordinates"
-      description="Three questions. They set how often Loop checks in, how quickly it escalates, and the words it uses."
+      description="Three questions. They set how often Company OS checks in, how quickly it escalates, and the words it uses."
     >
       <div className="space-y-6 text-sm">
         <Question label="When someone on your team needs a decision, what usually happens?">
@@ -115,7 +115,7 @@ export default function OnbCoordination() {
         </Question>
 
         <Question label="Are most of your team qualified professionals who decide how their own work gets done?">
-          <p className="pb-1 text-[13px] font-medium text-[#5A6B7D]">
+          <p className="pb-1 text-[13px] font-medium text-[#5B6560]">
             Lawyers, doctors, engineers, accountants, architects.
           </p>
           <Choice
@@ -137,14 +137,14 @@ export default function OnbCoordination() {
         </Question>
 
         {mode && copy && (
-          <div className="rounded-xl border border-[rgba(14,31,26,0.1)] bg-[#F6F8F7] p-4">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-[#5A6B7D]">
+          <div className="rounded-xl border border-[rgba(14,31,26,0.1)] bg-[#F5F5F3] p-4">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-[#5B6560]">
               {override ? "You chose" : "Sounds like"}
             </div>
             <div className="mt-1 text-base font-bold text-[#0E1F1A]">{copy.label}</div>
             <p className="mt-1 font-medium leading-relaxed text-[#0E1F1A]">{copy.description}</p>
             {!override && inference && (
-              <p className="mt-2 text-[13px] font-medium text-[#5A6B7D]">{inference.rationale}</p>
+              <p className="mt-2 text-[13px] font-medium text-[#5B6560]">{inference.rationale}</p>
             )}
             <button
               type="button"
@@ -174,7 +174,7 @@ export default function OnbCoordination() {
                 )}
               >
                 <div className="font-semibold text-[#0E1F1A]">{COORDINATION_COPY[m].label}</div>
-                <div className="text-[13px] font-medium text-[#5A6B7D]">
+                <div className="text-[13px] font-medium text-[#5B6560]">
                   {COORDINATION_COPY[m].typicalOrganization}
                 </div>
               </button>
@@ -182,7 +182,7 @@ export default function OnbCoordination() {
           </div>
         )}
 
-        <p className="text-[11px] font-medium text-[#5A6B7D]">
+        <p className="text-[11px] font-medium text-[#5B6560]">
           You can change this later at <strong>Settings → Coordination</strong>.
         </p>
 
@@ -231,7 +231,7 @@ function Choice({
       <span
         className={cn(
           "h-4 w-4 shrink-0 rounded-full border-2",
-          selected ? "border-[#0E1F1A] bg-[#D3F36B]" : "border-[rgba(14,31,26,0.25)]",
+          selected ? "border-forest bg-mint" : "border-[rgba(14,31,26,0.25)]",
         )}
       />
       <span>{label}</span>

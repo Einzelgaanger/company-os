@@ -18,7 +18,7 @@ export function EmptyState({
       {illustration && <div className="flex justify-center text-forest/40">{illustration}</div>}
       <div className="space-y-1">
         <h3 className="text-sm font-bold text-forest">{title}</h3>
-        {description && <p className="mx-auto max-w-md text-[11px] font-medium text-[#5A6B7D]">{description}</p>}
+        {description && <p className="mx-auto max-w-md text-[11px] font-medium text-[#5B6560]">{description}</p>}
       </div>
       {action}
     </div>
@@ -30,7 +30,7 @@ export function ErrorState({ onRetry }: { onRetry?: () => void }) {
     <div className="portal-empty space-y-3">
       <div className="space-y-1">
         <h3 className="text-sm font-bold text-forest">Something went wrong</h3>
-        <p className="text-[11px] font-medium text-[#5A6B7D]">Something went wrong loading this. Try again.</p>
+        <p className="text-[11px] font-medium text-[#5B6560]">Something went wrong loading this. Try again.</p>
       </div>
       {onRetry && (
         <Button variant="outline" onClick={onRetry}>

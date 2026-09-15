@@ -1,12 +1,13 @@
-// Loop autonomous engine (client-side).
+// Company OS autonomous engine (client-side).
 //
 // This mirrors the logic of the Supabase Edge Functions (send-checkin,
-// whatsapp-webhook, escalate) so the running app demonstrably "runs itself":
+// telegram-webhook / whatsapp-webhook, escalate) so the running app demonstrably "runs itself":
 // it checks in on owners, nudges when they go quiet, escalates what stalls,
 // and shares context that respects data-governance clearance.
 
 import { store } from "./store";
 import { nowIso, uuid } from "./utils";
+import { messagingLinked } from "./messaging";
 import { clearanceFor, SENSITIVITY_LABEL, SENSITIVITY_RANK } from "./types";
 import {
   buildDigestBuckets,
@@ -27,6 +28,16 @@ import type {
   Sensitivity,
   User,
 } from "./types";
+
+function preferredChannel(owner: User): "telegram" | "whatsapp" | "in_app" {
+  if (owner.telegram_linked_at || owner.telegram_chat_id) return "telegram";
+  if (owner.phone_verified_at) return "whatsapp";
+  return "in_app";
+}
+
+function outboundSid(owner: User): string | null {
+  return messagingLinked(owner) ? `SM-auto-${uuid().slice(0, 8)}` : null;
+}
 
 export interface EngineConfig {
   checkinStaleHours: number;
@@ -154,16 +165,16 @@ export function checkinSweep(org: Organization, users: User[], cfg = configFor(o
       user_id: owner.id,
       commitment_id: c.id,
       direction: "outbound",
-      channel: owner.phone_verified_at ? "whatsapp" : "in_app",
+      channel: preferredChannel(owner),
       message_type: "progress_ping",
       message_text: progressPing(owner, c),
       parsed_status: null,
       parsed_blocker: null,
-      twilio_sid: owner.phone_verified_at ? `SM-auto-${uuid().slice(0, 8)}` : null,
+      twilio_sid: outboundSid(owner),
       created_at: nowIso(),
     });
     patchCommitment(c.id, { last_checkin_at: nowIso() });
-    pushNotification(org.id, owner.id, "system", "Loop checked in", `Quick status needed on "${c.title}".`, "/my-work");
+    pushNotification(org.id, owner.id, "system", "Company OS checked in", `Quick status needed on "${c.title}".`, "/my-work");
     pushAudit(org.id, "engine.checkin", c.id, { auto: true });
     count++;
   }
@@ -188,15 +199,15 @@ export function nudgeSweep(org: Organization, users: User[], cfg = configFor(org
       user_id: owner.id,
       commitment_id: c.id,
       direction: "outbound",
-      channel: owner.phone_verified_at ? "whatsapp" : "in_app",
+      channel: preferredChannel(owner),
       message_type: "direct_followup",
       message_text: nudgeMessage(c),
       parsed_status: null,
       parsed_blocker: null,
-      twilio_sid: owner.phone_verified_at ? `SM-auto-${uuid().slice(0, 8)}` : null,
+      twilio_sid: outboundSid(owner),
       created_at: nowIso(),
     });
-    pushNotification(org.id, owner.id, "system", "Reminder from Loop", `Still need a status on "${c.title}".`, "/my-work");
+    pushNotification(org.id, owner.id, "system", "Reminder from Company OS", `Still need a status on "${c.title}".`, "/my-work");
     pushAudit(org.id, "engine.nudge", c.id, { auto: true });
     count++;
   }
@@ -332,12 +343,12 @@ export function digestSweep(org: Organization, users: User[], cfg = configFor(or
       user_id: owner.id,
       commitment_id: null,
       direction: "outbound",
-      channel: owner.phone_verified_at ? "whatsapp" : "in_app",
+      channel: preferredChannel(owner),
       message_type: "daily_pulse",
       message_text: text,
       parsed_status: null,
       parsed_blocker: null,
-      twilio_sid: owner.phone_verified_at ? `SM-digest-${uuid().slice(0, 8)}` : null,
+      twilio_sid: outboundSid(owner),
       created_at: nowIso(),
     });
     pushNotification(org.id, owner.id, "system", "Morning digest", text.slice(0, 180), "/commitments");
@@ -400,7 +411,7 @@ export async function recordInboundResponse(
       user_id: owner.id,
       commitment_id: commitment.id,
       direction: "inbound",
-      channel: owner.phone_verified_at ? "whatsapp" : "in_app",
+      channel: preferredChannel(owner),
       message_type: "confirmation",
       message_text: text.trim(),
       parsed_status: status,
@@ -431,7 +442,7 @@ export async function recordInboundResponse(
     user_id: owner.id,
     commitment_id: commitment.id,
     direction: "inbound",
-    channel: owner.phone_verified_at ? "whatsapp" : "in_app",
+    channel: preferredChannel(owner),
     message_type: "confirmation",
     message_text: text.trim(),
     parsed_status: status,

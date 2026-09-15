@@ -1,12 +1,15 @@
-# Supabase local/project config (subset relevant to Loop).
+﻿# Supabase local/project config (subset relevant to Company OS).
 
 project_id = "loop"
 
 [functions.ingest-meeting]
 verify_jwt = false          # authenticated via webhook secret / service role
 
+[functions.telegram-webhook]
+verify_jwt = false          # Telegram Bot API webhook (optional secret header)
+
 [functions.whatsapp-webhook]
-verify_jwt = false          # authenticated via X-Twilio-Signature
+verify_jwt = false          # authenticated via X-Twilio-Signature / Meta signature
 
 [functions.extract-commitments]
 verify_jwt = true           # internal (service role)
@@ -21,6 +24,9 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.verify-otp]
+verify_jwt = true
+
+[functions.launch-readiness]
 verify_jwt = true
 
 [functions.oauth]

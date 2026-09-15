@@ -173,7 +173,7 @@ export default function Integrations() {
 
   return (
     <div className="portal-page animate-fade-in">
-      <PageHeader title="Integrations" description="Loop reads from these sources. Read-only access only." />
+      <PageHeader title="Integrations" description="Company OS reads from these sources. Read-only access only." />
 
       {loading ? (
         <TableSkeleton />
@@ -199,7 +199,7 @@ export default function Integrations() {
           <DialogHeader>
             <DialogTitle>Disconnect {disconnectTarget?.meta.name}?</DialogTitle>
             <DialogDescription>
-              Loop will stop reading new data from this source. Existing tracked commitments won't be affected.
+              Company OS will stop reading new data from this source. Existing tracked commitments won't be affected.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

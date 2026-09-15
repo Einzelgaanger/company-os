@@ -1,0 +1,12 @@
+{
+  "selectors": [
+    ".mk-brand",
+    ".btn-lime",
+    "text-[#D3F36B]",
+    "text-lime",
+    "BRAND.slogan",
+    "text-[#D3F36B]",
+    "AuthLayout"
+  ],
+  "note": "Lime as text is only valid on dark forest surfaces. Expand deliberately."
+}

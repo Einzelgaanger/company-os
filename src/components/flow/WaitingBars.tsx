@@ -36,7 +36,7 @@ export function WaitingBars({
               disabled={!onSelect}
               className={cn(
                 "grid w-full grid-cols-[minmax(6rem,10rem)_1fr_auto] items-center gap-2 rounded px-1 py-1 text-left",
-                onSelect && "hover:bg-[#F7FAF6]",
+                onSelect && "hover:bg-[#F8F8F7]",
                 selected && "bg-[#F4FBE3]",
               )}
             >
@@ -49,7 +49,7 @@ export function WaitingBars({
                   style={{ width: `${pct}%` }}
                 />
               </span>
-              <span className="whitespace-nowrap font-mono text-[11px] text-[#5A6B7D]">
+              <span className="whitespace-nowrap font-mono text-[11px] text-[#5B6560]">
                 {group.workingDays.toFixed(1)}d · {group.itemCount}
               </span>
             </button>

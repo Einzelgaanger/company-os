@@ -1,10 +1,7 @@
 import { cn } from "@/lib/utils";
 
 /**
- * Loop mark — continuity open-ring + lime “next action” node (top-right).
- * Product glyph only. Not IOUX’s U. Shell: forest tile rx≈10 + lime accent.
- *
- * One sentence: “An open loop that still has a next beat.”
+ * Company OS mark — open C ring on forest plate + lime status node.
  */
 export function BrandMark({ className, title }: { className?: string; title?: string }) {
   return (
@@ -16,45 +13,44 @@ export function BrandMark({ className, title }: { className?: string; title?: st
     >
       {title ? <title>{title}</title> : null}
       <rect width="40" height="40" rx="10" fill="#0E1F1A" />
-      <LoopGlyph />
+      <CompanyOsGlyph />
     </svg>
   );
 }
 
-/** Glyph only — when a forest `.brand-tile` / CSS plate already paints the background. */
 export function NavBrandMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 40 40" className={cn("h-7 w-7 shrink-0", className)} aria-hidden>
-      <LoopGlyph />
+      <CompanyOsGlyph />
     </svg>
   );
 }
 
-function LoopGlyph() {
+function CompanyOsGlyph() {
   return (
     <>
-      {/* Open continuity ring — gap at top-right */}
+      {/* Open C — company operating system */}
       <path
-        d="M29.2 14.2A9.2 9.2 0 1 0 20.2 29.4"
+        d="M28.5 13.2A9.2 9.2 0 1 0 28.5 26.8"
         fill="none"
-        stroke="#F3FAF5"
-        strokeWidth="3.4"
+        stroke="#F4F5F3"
+        strokeWidth="3.6"
         strokeLinecap="round"
       />
-      {/* Inner whisper arc — denser ops feel at larger sizes */}
+      {/* Inner whisper arc */}
       <path
-        d="M26.4 16.4A6.2 6.2 0 1 0 20.2 26.4"
+        d="M26.2 15.4A6.2 6.2 0 1 0 26.2 24.6"
         fill="none"
-        stroke="#F3FAF5"
-        strokeWidth="1.35"
+        stroke="#F4F5F3"
+        strokeWidth="1.4"
         strokeLinecap="round"
-        opacity="0.45"
+        opacity="0.4"
       />
-      {/* Next-action node — rhymes with CTA lime node, not IOUX U */}
-      <circle cx="29.4" cy="12.6" r="3.45" fill="#D3F36B" />
+      {/* OS live node */}
+      <rect x="26.8" y="17.1" width="5.6" height="5.6" rx="1.5" fill="#D3F36B" />
     </>
   );
 }
 
-/** @deprecated Prefer BrandMark — alias for existing imports */
+/** @deprecated Prefer BrandMark */
 export const LoopMark = BrandMark;

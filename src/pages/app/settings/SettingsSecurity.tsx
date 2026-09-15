@@ -252,7 +252,7 @@ export default function SettingsSecurity() {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-slate">
-              Downloads every record Loop holds for this organization as JSON: people, projects, items,
+              Downloads every record Company OS holds for this organization as JSON: people, projects, items,
               escalations, check-ins, connections, the audit log, and the DSR queue.
             </p>
             <Button variant="outline" disabled={exporting} onClick={() => void exportOrgData()}>

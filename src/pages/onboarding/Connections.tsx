@@ -38,7 +38,7 @@ export default function OnbConnections() {
     <OnboardingLayout
       step={3}
       title="Connect your tools"
-      description="Loop reads from these sources to detect commitments. Read-only access only."
+      description="Company OS reads from these sources to detect commitments. Read-only access only."
       footer={
         <Button variant="ghost" onClick={next}>
           Skip for now

@@ -13,12 +13,12 @@ const buttonVariants = cva(
           "rounded-2xl bg-[#0E1F1A] px-5 py-2.5 text-white hover:bg-[#1A3A2E] hover:shadow-md",
         destructive: "rounded-2xl bg-destructive px-5 py-2.5 text-white hover:bg-destructive/90",
         outline:
-          "rounded-2xl border border-[rgba(14,31,26,0.1)] bg-[#F7FAF6] text-[#0E1F1A] hover:bg-[#F4FBE3]",
+          "rounded-2xl border border-[rgba(14,31,26,0.1)] bg-[#F8F8F7] text-[#0E1F1A] hover:bg-[#F4FBE3]",
         secondary:
-          "rounded-2xl border border-[rgba(14,31,26,0.1)] bg-[#F7FAF6] text-[#0E1F1A] hover:bg-[#F4FBE3]",
-        ghost: "rounded-2xl text-[#0E1F1A] hover:bg-[#F7FAF6]",
+          "rounded-2xl border border-[rgba(14,31,26,0.1)] bg-[#F8F8F7] text-[#0E1F1A] hover:bg-[#F4FBE3]",
+        ghost: "rounded-2xl text-[#0E1F1A] hover:bg-[#F8F8F7]",
         link: "rounded-md text-[#0E1F1A] underline-offset-4 hover:underline",
-        chip: "rounded-md bg-[#D3F36B] px-2.5 py-1 text-xs font-bold text-[#0E1F1A] hover:bg-[#C5E85A]",
+        chip: "rounded-md bg-lime px-2.5 py-1 text-xs font-bold text-forest hover:bg-lime-bright",
       },
       size: {
         default: "min-h-[40px]",

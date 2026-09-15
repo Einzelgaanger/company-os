@@ -76,7 +76,7 @@ export default function Surveys() {
     <div className="portal-page animate-fade-in">
       <PageHeader
         title="Surveys"
-        description="Anonymous theme summaries only when at least 5 people respond. Loop never shows individual sentiment."
+        description="Anonymous theme summaries only when at least 5 people respond. Company OS never shows individual sentiment."
         actions={
           <Button asChild size="sm" variant="outline">
             <Link to="/surveys/current">Current survey</Link>

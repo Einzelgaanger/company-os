@@ -32,8 +32,8 @@ async function openRouter(
     headers: {
       Authorization: `Bearer ${key}`,
       "content-type": "application/json",
-      "HTTP-Referer": Deno.env.get("PUBLIC_APP_URL") ?? "https://loop.prodg.studio",
-      "X-Title": "Loop",
+      "HTTP-Referer": Deno.env.get("PUBLIC_APP_URL") ?? "https://companyos.jabali.studio",
+      "X-Title": "Company OS",
     },
     body: JSON.stringify({
       model,

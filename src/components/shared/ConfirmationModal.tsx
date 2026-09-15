@@ -56,11 +56,11 @@ export function ConfirmationModal({
               {title}
             </h2>
             {description && (
-              <p className="mt-1 text-[13px] font-medium text-[#5A6B7D]">{description}</p>
+              <p className="mt-1 text-[13px] font-medium text-[#5B6560]">{description}</p>
             )}
           </div>
           <button type="button" onClick={onCancel} className="touch-target flex items-center justify-center" aria-label="Close">
-            <X className="h-4 w-4 text-[#5A6B7D]" />
+            <X className="h-4 w-4 text-[#5B6560]" />
           </button>
         </div>
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

@@ -39,7 +39,7 @@ function ProgressRing({ step }: { step: number }) {
       </svg>
       <div className="text-sm">
         <div className="font-semibold text-[#0E1F1A]">{STEPS[step]}</div>
-        <div className="text-[11px] font-medium text-[#5A6B7D]">
+        <div className="text-[11px] font-medium text-[#5B6560]">
           Step {step + 1} of {total}
         </div>
       </div>
@@ -61,7 +61,7 @@ export function OnboardingLayout({
   footer?: ReactNode;
 }) {
   return (
-    <div className="min-h-[100dvh] bg-[#EEF2EE]">
+    <div className="min-h-[100dvh] bg-[#EFEFEE]">
       <div className="flex items-center justify-between p-6">
         <Logo />
       </div>
@@ -82,7 +82,7 @@ export function OnboardingLayout({
           <div className="portal-section">
             <div className="portal-section__body--pad sm:!p-6">
               <h1 className="text-xl font-bold tracking-tight text-[#0E1F1A]">{title}</h1>
-              {description && <p className="mt-1 text-[13px] font-medium text-[#5A6B7D]">{description}</p>}
+              {description && <p className="mt-1 text-[13px] font-medium text-[#5B6560]">{description}</p>}
               <div className="mt-5">{children}</div>
             </div>
           </div>

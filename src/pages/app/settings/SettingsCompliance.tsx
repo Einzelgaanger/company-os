@@ -49,7 +49,7 @@ export default function SettingsCompliance() {
       />
       <div className="portal-callout">
         <code className="font-mono text-xs">high_risk_use_prohibited = true</code> — cannot be disabled in the UI.
-        Loop coordinates work items; it does not evaluate people.
+        Company OS coordinates work items; it does not evaluate people.
       </div>
       <section className="portal-section">
         <header className="portal-section__head">
@@ -62,28 +62,28 @@ export default function SettingsCompliance() {
           {record?.attestedAt ? (
             <>
               <p>
-                <span className="text-[10px] font-semibold uppercase text-[#5A6B7D]">Attested at </span>
+                <span className="text-[10px] font-semibold uppercase text-[#5B6560]">Attested at </span>
                 {new Date(record.attestedAt).toLocaleString()}
               </p>
               <p>
-                <span className="text-[10px] font-semibold uppercase text-[#5A6B7D]">Lawful basis </span>
+                <span className="text-[10px] font-semibold uppercase text-[#5B6560]">Lawful basis </span>
                 {record.lawfulBasis}
               </p>
               <p>
-                <span className="text-[10px] font-semibold uppercase text-[#5A6B7D]">DPO </span>
+                <span className="text-[10px] font-semibold uppercase text-[#5B6560]">DPO </span>
                 {String(payload.dpoEmail ?? "—")}
               </p>
               <p>
-                <span className="text-[10px] font-semibold uppercase text-[#5A6B7D]">DPIA </span>
+                <span className="text-[10px] font-semibold uppercase text-[#5B6560]">DPIA </span>
                 {payload.dpiaCompleted ? "Completed" : "Not completed"}
               </p>
               <p>
-                <span className="text-[10px] font-semibold uppercase text-[#5A6B7D]">Works council </span>
+                <span className="text-[10px] font-semibold uppercase text-[#5B6560]">Works council </span>
                 {payload.worksCouncilRequired && !payload.worksCouncilConsulted
                   ? "Pending"
                   : "Consulted / not required"}
               </p>
-              <p className="text-[11px] text-[#5A6B7D]">
+              <p className="text-[11px] text-[#5B6560]">
                 Templates:{" "}
                 <a className="underline" href="/docs/compliance/dpia-template.md" target="_blank" rel="noreferrer">
                   DPIA
@@ -96,7 +96,7 @@ export default function SettingsCompliance() {
               </p>
             </>
           ) : (
-            <p className="text-[11px] font-medium text-[#5A6B7D]">
+            <p className="text-[11px] font-medium text-[#5B6560]">
               No attestation on file yet. Complete org onboarding compliance gate.
             </p>
           )}
@@ -111,7 +111,7 @@ export default function SettingsCompliance() {
           </div>
         </header>
         <div className="portal-section__body--pad space-y-3">
-          <p className="text-sm text-[#5A6B7D]">
+          <p className="text-sm text-[#5B6560]">
             Publishing a new notice clears acknowledgements so every user must re-ack before using the app.
           </p>
           <Button

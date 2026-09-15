@@ -69,10 +69,10 @@ function TooltipCard({ active, payload }: { active?: boolean; payload?: Array<{ 
       <div className="max-w-[16rem] truncate text-xs font-semibold text-[#0E1F1A]">
         {point.title}
       </div>
-      <div className="mt-0.5 font-mono text-[11px] text-[#5A6B7D]">
+      <div className="mt-0.5 font-mono text-[11px] text-[#5B6560]">
         {point.queueAgeDays.toFixed(1)} working days in queue
       </div>
-      <div className="text-[11px] text-[#5A6B7D]">
+      <div className="text-[11px] text-[#5B6560]">
         {COST_OF_DELAY_LABEL[point.costOfDelayBand]} · {FLOW_STATE_LABEL[point.flowState]}
         {point.projectName ? ` · ${point.projectName}` : ""}
       </div>
@@ -116,13 +116,13 @@ export function AgingScatter({
               type="number"
               dataKey="x"
               domain={[0, Math.ceil(maxAge * 1.1)]}
-              tick={{ fontSize: 11, fill: "#5A6B7D", fontFamily: "IBM Plex Mono" }}
+              tick={{ fontSize: 11, fill: "#5B6560", fontFamily: "IBM Plex Mono" }}
               stroke="rgba(14,31,26,0.2)"
               label={{
                 value: "Working days in queue",
                 position: "insideBottom",
                 offset: -14,
-                style: { fontSize: 11, fill: "#5A6B7D" },
+                style: { fontSize: 11, fill: "#5B6560" },
               }}
             />
             <YAxis
@@ -131,7 +131,7 @@ export function AgingScatter({
               domain={[0.5, 4.5]}
               ticks={[1, 2, 3, 4]}
               width={68}
-              tick={{ fontSize: 11, fill: "#5A6B7D" }}
+              tick={{ fontSize: 11, fill: "#5B6560" }}
               stroke="rgba(14,31,26,0.2)"
               tickFormatter={(value: number) =>
                 COST_OF_DELAY_LABEL[
@@ -143,9 +143,9 @@ export function AgingScatter({
               <>
                 <ReferenceLine
                   x={percentiles.p50}
-                  stroke="#5A6B7D"
+                  stroke="#5B6560"
                   strokeDasharray="4 4"
-                  label={{ value: "p50", position: "top", style: { fontSize: 10, fill: "#5A6B7D" } }}
+                  label={{ value: "p50", position: "top", style: { fontSize: 10, fill: "#5B6560" } }}
                 />
                 <ReferenceLine
                   x={percentiles.p85}
@@ -174,7 +174,7 @@ export function AgingScatter({
               verticalAlign="top"
               height={24}
               iconSize={9}
-              wrapperStyle={{ fontSize: 11, color: "#5A6B7D" }}
+              wrapperStyle={{ fontSize: 11, color: "#5B6560" }}
             />
             {series.map((s) => (
               <Scatter
@@ -195,7 +195,7 @@ export function AgingScatter({
         </ResponsiveContainer>
       </div>
 
-      <p className="text-[11px] font-medium text-[#5A6B7D]">
+      <p className="text-[11px] font-medium text-[#5B6560]">
         Each dot is one open item, placed by how long it has been in the queue. Anything right of
         the p85 line is older than most work ever gets — start there.
         {percentiles
@@ -208,11 +208,11 @@ export function AgingScatter({
         open={tableOpen}
         onToggle={(e) => setTableOpen((e.currentTarget as HTMLDetailsElement).open)}
       >
-        <summary className="flex cursor-pointer items-center gap-1 text-[11px] font-semibold text-[#5A6B7D]">
+        <summary className="flex cursor-pointer items-center gap-1 text-[11px] font-semibold text-[#5B6560]">
           <ChevronDown className="h-3 w-3" /> Show the figures
         </summary>
         <table className="mt-2 w-full text-left text-[11px]">
-          <thead className="text-[#5A6B7D]">
+          <thead className="text-[#5B6560]">
             <tr>
               <th className="py-1 pr-2 font-semibold">Item</th>
               <th className="py-1 pr-2 font-semibold">Cost of delay</th>

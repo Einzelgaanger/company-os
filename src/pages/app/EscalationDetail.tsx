@@ -68,7 +68,7 @@ export default function EscalationDetail() {
   async function resolve() {
     if (!user || !escalation || !note.trim()) return;
     await db.resolveEscalation(user, escalation.id, note.trim());
-    toast("Marked resolved. The requester has been notified in Loop.", "success");
+    toast("Marked resolved. The requester has been notified in Company OS.", "success");
     setNote("");
     load();
   }
@@ -140,7 +140,7 @@ export default function EscalationDetail() {
             snap.checkins.map((c) => (
               <div key={c.id} className="text-sm">
                 <div className="flex items-center justify-between text-xs text-slate">
-                  <span>{c.direction === "outbound" ? "Loop →" : "← Reply"}</span>
+                  <span>{c.direction === "outbound" ? "Company OS →" : "← Reply"}</span>
                   <span className="font-mono">{formatDateTime(c.created_at)}</span>
                 </div>
                 <p className="text-ink">{c.message_text}</p>

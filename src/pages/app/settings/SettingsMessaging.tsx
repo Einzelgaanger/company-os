@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { db } from "@/lib/db";
+import { messagingLinked } from "@/lib/messaging";
 import { api, apiConfigured, type ApiMessageApproval } from "@/lib/api";
 import type { MessagingMetrics } from "@/lib/types";
 
@@ -52,9 +53,9 @@ export default function SettingsMessaging() {
         if (!u.notification_prefs.whatsapp_checkins) {
           optedOut++;
           rows.push({ name: u.full_name, status: "opted out" });
-        } else if (!u.phone_verified_at) {
+        } else if (!messagingLinked(u)) {
           notVerified++;
-          rows.push({ name: u.full_name, status: "not verified" });
+          rows.push({ name: u.full_name, status: "not linked" });
         } else {
           optedIn++;
           rows.push({ name: u.full_name, status: "opted in" });
@@ -154,7 +155,7 @@ export default function SettingsMessaging() {
     <div className="space-y-6">
       <PageHeader
         title="Messaging"
-        description="WhatsApp quality, caps, templates, and pilot approval queue."
+        description="Telegram (primary), WhatsApp quality/caps, templates, and pilot approval queue."
       />
 
       {metrics ? (
@@ -180,12 +181,12 @@ export default function SettingsMessaging() {
           />
         </section>
       ) : (
-        <p className="text-sm text-[#5A6B7D]">No messaging metrics seeded for this org.</p>
+        <p className="text-sm text-[#5B6560]">No messaging metrics seeded for this org.</p>
       )}
 
       <section className="rounded-lg border border-[rgba(14,31,26,0.1)] bg-white p-4 text-sm">
         <h2 className="mb-2 font-bold text-[#0E1F1A]">Throttle</h2>
-        <p className="text-[#5A6B7D]">
+        <p className="text-[#5B6560]">
           {autoThrottle
             ? `Auto-throttled because ${
                 metrics?.quality_rating === "red"
@@ -195,8 +196,8 @@ export default function SettingsMessaging() {
                     : blockWarn
                       ? "7-day block rate ≥ 3%"
                       : "send volume is near the daily cap"
-              }. Loop spaces outbound check-ins until marks recover.`
-            : "Loop spaces outbound check-ins and stops when approaching Meta quality or send-cap marks. Manual approve stays on during the pilot so nothing leaves without an operator click."}
+              }. Company OS spaces outbound check-ins until marks recover.`
+            : "Company OS spaces outbound check-ins and stops when approaching Meta quality or send-cap marks. Manual approve stays on during the pilot so nothing leaves without an operator click."}
         </p>
         <div className="mt-2 flex flex-wrap gap-2">
           <Badge variant="outline">Manual approve: on</Badge>
@@ -212,7 +213,7 @@ export default function SettingsMessaging() {
           <span>Not verified: {optInBreakdown.notVerified}</span>
           <span>Opted out: {optInBreakdown.optedOut}</span>
         </div>
-        <ul className="max-h-40 space-y-1 overflow-y-auto text-xs text-[#5A6B7D]">
+        <ul className="max-h-40 space-y-1 overflow-y-auto text-xs text-[#5B6560]">
           {people.map((p) => (
             <li key={p.name} className="flex justify-between gap-2">
               <span className="text-[#0E1F1A]">{p.name}</span>
@@ -231,7 +232,7 @@ export default function SettingsMessaging() {
               className="flex flex-wrap items-center justify-between gap-2 border-b border-[rgba(14,31,26,0.06)] py-1.5 last:border-0"
             >
               <code className="font-mono text-[11px]">{t.key}</code>
-              <span className="text-[#5A6B7D]">{t.purpose}</span>
+              <span className="text-[#5B6560]">{t.purpose}</span>
               <Badge variant="outline">{t.metaStatus}</Badge>
             </li>
           ))}
@@ -246,7 +247,7 @@ export default function SettingsMessaging() {
           </Button>
         </div>
         {empty ? (
-          <p className="text-sm text-[#5A6B7D]">No outbound messages waiting for approval.</p>
+          <p className="text-sm text-[#5B6560]">No outbound messages waiting for approval.</p>
         ) : (
           <ul className="space-y-3">
             {queue.map((item) => (
@@ -302,9 +303,9 @@ function Metric({
         warn ? "border-amber-400 bg-amber-50" : "border-[rgba(14,31,26,0.1)] bg-white"
       }`}
     >
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-[#5A6B7D]">{label}</div>
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-[#5B6560]">{label}</div>
       <div className="mt-1 text-lg font-bold text-[#0E1F1A]">{value}</div>
-      {mark ? <div className="text-[10px] text-[#5A6B7D]">{mark}</div> : null}
+      {mark ? <div className="text-[10px] text-[#5B6560]">{mark}</div> : null}
     </div>
   );
 }

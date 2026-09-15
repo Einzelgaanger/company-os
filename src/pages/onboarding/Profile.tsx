@@ -39,7 +39,7 @@ export default function OnbProfile() {
   }
 
   return (
-    <OnboardingLayout step={2} title="Your profile" description="Loop reaches you on WhatsApp for check-ins.">
+    <OnboardingLayout step={2} title="Your profile" description="Company OS reaches you on Telegram for check-ins.">
       <form onSubmit={submit} className="space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="fullname">Full name</Label>

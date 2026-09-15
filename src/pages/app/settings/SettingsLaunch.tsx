@@ -11,7 +11,7 @@ import {
   patchLaunchSettings,
 } from "@/lib/launch";
 
-/** ODPC / Meta / Twilio / OAuth / WorkOS readiness — never invents approvals. */
+/** ODPC / Telegram / Meta / OAuth / WorkOS readiness — never invents approvals. */
 export default function SettingsLaunch() {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -77,7 +77,7 @@ export default function SettingsLaunch() {
       <div className="space-y-2">
         <PageHeader
           title="Launch readiness"
-          subtitle="Set VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY (or VITE_API_URL) to see ODPC / Meta status."
+          subtitle="Set VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY (or VITE_API_URL) to see ODPC / messaging status."
         />
       </div>
     );
@@ -90,10 +90,13 @@ export default function SettingsLaunch() {
     whatsappTokenConfigured?: boolean;
     note?: string;
   } | undefined;
+  const telegram = data?.telegram as { botConfigured?: boolean; note?: string } | undefined;
   const messaging = data?.messaging as {
     mode?: string;
+    primary?: string;
     twilioConfigured?: boolean;
     metaConfigured?: boolean;
+    telegramConfigured?: boolean;
     liveReady?: boolean;
     note?: string | null;
   } | undefined;
@@ -109,7 +112,7 @@ export default function SettingsLaunch() {
     <div className="space-y-4">
       <PageHeader
         title="Launch readiness"
-        subtitle="Evidence status only — Loop never marks ODPC or Meta as approved for you."
+        subtitle="Evidence status only — Company OS never marks ODPC or Meta as approved for you."
       />
 
       <section className="portal-section">
@@ -157,7 +160,22 @@ export default function SettingsLaunch() {
       <section className="portal-section">
         <header className="portal-section__head">
           <div>
-            <h2 className="portal-section__title">Meta WhatsApp</h2>
+            <h2 className="portal-section__title">Telegram (primary)</h2>
+            <p className="portal-section__desc">{telegram?.note}</p>
+          </div>
+        </header>
+        <div className="portal-section__body--pad text-sm space-y-1">
+          <p>Bot token: {telegram?.botConfigured ? "configured" : "missing"}</p>
+          <p className="text-[#5B6560]">
+            Users link with <span className="font-mono">LINK +phone</span> in the bot chat. See docs/ops/TELEGRAM.md.
+          </p>
+        </div>
+      </section>
+
+      <section className="portal-section">
+        <header className="portal-section__head">
+          <div>
+            <h2 className="portal-section__title">Meta WhatsApp (fallback)</h2>
             <p className="portal-section__desc">{meta?.note}</p>
           </div>
         </header>
@@ -186,8 +204,10 @@ export default function SettingsLaunch() {
         </header>
         <div className="portal-section__body--pad text-sm space-y-1">
           <p>
-            Mode: <span className="font-mono">{messaging?.mode ?? "live"}</span> · Meta:{" "}
-            {messaging?.metaConfigured ? "ok" : "incomplete"} · Twilio:{" "}
+            Mode: <span className="font-mono">{messaging?.mode ?? "live"}</span> · Primary:{" "}
+            <span className="font-mono">{messaging?.primary ?? "—"}</span> · Telegram:{" "}
+            {messaging?.telegramConfigured ? "ok" : "missing"} · Meta:{" "}
+            {messaging?.metaConfigured ? "ok" : "optional"} · Twilio:{" "}
             {messaging?.twilioConfigured ? "ok" : "optional"} · Live ready:{" "}
             {messaging?.liveReady ? "yes" : "no"}
           </p>

@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { db } from "@/lib/db";
+import { messagingLinked } from "@/lib/messaging";
 import type { User } from "@/lib/types";
 
 export function SendCheckinDialog({
@@ -71,7 +72,7 @@ export function SendCheckinDialog({
         <DialogHeader>
           <DialogTitle>Send a check-in now</DialogTitle>
           <DialogDescription>
-            Loop will message this person on WhatsApp out of the normal cycle.
+            Company OS will message this person on Telegram out of the normal cycle.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -86,7 +87,7 @@ export function SendCheckinDialog({
                   {eligible.map((u) => (
                     <SelectItem key={u.id} value={u.id}>
                       {u.full_name}
-                      {!u.phone_verified_at ? " (WhatsApp not verified)" : ""}
+                      {!messagingLinked(u) ? " (Telegram not linked)" : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>

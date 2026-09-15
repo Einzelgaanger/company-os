@@ -42,7 +42,14 @@ async function request<T>(
   headers.set("Content-Type", "application/json");
   const token = opts.token === "" ? null : (opts.token ?? getAccessToken());
   if (token) headers.set("Authorization", `Bearer ${token}`);
-  const res = await fetch(`${BASE}${path}`, { ...opts, headers });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, { ...opts, headers });
+  } catch {
+    throw new Error(
+      `Cannot reach the API at ${BASE}. Start Docker (npm run db:up) and the API (npm run dev:api).`,
+    );
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error((body as { error?: string }).error ?? res.statusText);

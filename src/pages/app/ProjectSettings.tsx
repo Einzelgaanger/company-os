@@ -87,7 +87,7 @@ export default function ProjectSettings() {
 
       <section className="space-y-3 rounded-lg border border-[rgba(14,31,26,0.1)] bg-white p-4">
         <h2 className="text-sm font-bold text-[#0E1F1A]">Ownership & status</h2>
-        <label className="block text-xs font-medium text-[#5A6B7D]">
+        <label className="block text-xs font-medium text-[#5B6560]">
           Owner
           <select
             className="mt-1 w-full rounded-md border border-[rgba(14,31,26,0.15)] bg-white px-2 py-2 text-sm"
@@ -102,7 +102,7 @@ export default function ProjectSettings() {
             ))}
           </select>
         </label>
-        <label className="block text-xs font-medium text-[#5A6B7D]">
+        <label className="block text-xs font-medium text-[#5B6560]">
           Status
           <select
             className="mt-1 w-full rounded-md border border-[rgba(14,31,26,0.15)] bg-white px-2 py-2 text-sm"

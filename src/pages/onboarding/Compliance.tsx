@@ -62,7 +62,7 @@ export default function OnbCompliance() {
     <OnboardingLayout
       step={1}
       title="Compliance gate"
-      description="Required before Loop can process employee data. This attestation is retained as evidence."
+      description="Required before Company OS can process employee data. This attestation is retained as evidence."
     >
       <form onSubmit={submit} className="space-y-4 text-sm">
         <label className="flex gap-3">
@@ -88,12 +88,12 @@ export default function OnbCompliance() {
         </label>
         <label className="flex gap-3">
           <Checkbox checked={notice} onCheckedChange={(v) => setNotice(!!v)} />
-          <span>Employees will be <strong>informed</strong> about what Loop does before their data is processed.</span>
+          <span>Employees will be <strong>informed</strong> about what Company OS does before their data is processed.</span>
         </label>
         <label className="flex gap-3">
           <Checkbox checked={noHighRisk} onCheckedChange={(v) => setNoHighRisk(!!v)} />
           <span>
-            I acknowledge that <strong>Loop must not be used</strong> as the basis for promotion, discipline, or
+            I acknowledge that <strong>Company OS must not be used</strong> as the basis for promotion, discipline, or
             termination decisions (EU AI Act high-risk deployer obligations).
           </span>
         </label>
@@ -109,7 +109,7 @@ export default function OnbCompliance() {
             className="field-input"
           />
         </div>
-        <p className="text-[11px] font-medium text-[#5A6B7D]">
+        <p className="text-[11px] font-medium text-[#5B6560]">
           <code className="font-mono">high_risk_use_prohibited</code> remains true and cannot be disabled in the UI
           (C-1).
         </p>

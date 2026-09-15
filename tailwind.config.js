@@ -9,6 +9,13 @@ export default {
       screens: { "2xl": "1400px" },
     },
     extend: {
+      fontFamily: {
+        display: ["var(--font-display)"],
+        sans: ["var(--font-sans)"],
+        mono: ["var(--font-mono)"],
+        marketing: ["var(--font-display)"],
+        body: ["var(--font-sans)"],
+      },
       colors: {
         forest: "#0E1F1A",
         "forest-deep": "#0A1712",
@@ -16,32 +23,30 @@ export default {
         "forest-soft": "#173028",
         lime: "#D3F36B",
         "lime-bright": "#C8F14A",
+        /** Soft lime wash — identity selected/hover, not a page neutral. */
         mint: "#F4FBE3",
-        gold: "#F0C419",
-        "gold-wash": "#FFF8E0",
-        ambient: "#EEF2EE",
-        soft: "#F7FAF6",
+        "accent-wash": "#F4FBE3",
+        ambient: "#EFEFEE",
+        soft: "#F8F8F7",
+        hairline: "#E5E5E2",
         ink: "#0E1F1A",
-        slate: "#5A6B7D",
+        slate: "#5B6560",
         teal: "#0E1F1A",
-        amber: "#8A6A00",
         red: "#C23B2E",
         green: "#1A3A2E",
-        bg: "#EEF2EE",
+        bg: "#F5F5F3",
         surface: "#FFFFFF",
         border: "rgba(14, 31, 26, 0.1)",
         input: "rgba(14, 31, 26, 0.1)",
-        ring: "var(--brand-accent)", // §7.11 — focus rings, lime's functional job
-        background: "#EEF2EE",
+        ring: "var(--brand-accent)",
+        background: "#F5F5F3",
         foreground: "#0E1F1A",
-        // §7.3: primary is brand-primary (forest). Lime is decorative only and
-        // can never be a CTA surface — it is ~1.5:1 on white.
         primary: {
           DEFAULT: "var(--brand-primary)",
           foreground: "#FFFFFF",
         },
         secondary: {
-          DEFAULT: "#F7FAF6",
+          DEFAULT: "#F8F8F7",
           foreground: "#0E1F1A",
         },
         destructive: {
@@ -49,8 +54,8 @@ export default {
           foreground: "#FFFFFF",
         },
         muted: {
-          DEFAULT: "#F7FAF6",
-          foreground: "#5A6B7D",
+          DEFAULT: "#F8F8F7",
+          foreground: "#5B6560",
         },
         accent: {
           DEFAULT: "var(--brand-accent)",
@@ -64,24 +69,16 @@ export default {
           DEFAULT: "#FFFFFF",
           foreground: "#0E1F1A",
         },
-        // §7.3 brand set — identity and interaction only, never a status
         brand: {
           ink: "var(--brand-ink)",
           primary: "var(--brand-primary)",
           accent: "var(--brand-accent)",
           muted: "var(--brand-muted)",
-          clinic: "#D3F36B",
-          mint: "#F4FBE3",
-          blue: "#0E1F1A",
-          "blue-soft": "#E8F0EA",
-          credit: "#F0C419",
-          "credit-soft": "#FFF8E0",
-          lime: "#D3F36B",
-          gold: "#F0C419",
-          forest: "#0E1F1A",
+          mint: "var(--brand-accent-wash)",
+          "accent-wash": "var(--brand-accent-wash)",
+          lime: "var(--brand-accent)",
+          forest: "var(--brand-ink)",
         },
-        // §7.3 status set — flow states only, disjoint from brand. `DEFAULT` is
-        // the chart/dot mark, `ink` clears AA on `tint`, `tint` is the chip.
         status: {
           moving: {
             DEFAULT: "var(--status-moving)",
@@ -114,22 +111,11 @@ export default {
             tint: "var(--status-done-tint)",
           },
         },
-        // §7.3 fever zones
         fever: {
           ok: "var(--fever-ok)",
           watch: "var(--fever-watch)",
           act: "var(--fever-act)",
         },
-      },
-      // §7.5 — three families, each with a job. The fourth was dropped: it
-      // overlapped Plus Jakarta Sans and earned nothing but load time, so
-      // `marketing` is now an alias of the display family.
-      fontFamily: {
-        display: ['"Plus Jakarta Sans"', "ui-sans-serif", "system-ui", "sans-serif"],
-        sans: ['"Plus Jakarta Sans"', "ui-sans-serif", "system-ui", "sans-serif"],
-        mono: ['"IBM Plex Mono"', "ui-monospace", "monospace"],
-        marketing: ['"Plus Jakarta Sans"', "ui-sans-serif", "system-ui", "sans-serif"],
-        body: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
       },
       borderRadius: {
         lg: "0.625rem",

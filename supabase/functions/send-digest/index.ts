@@ -1,7 +1,8 @@
-// send-digest — morning commitment digest (DANI pattern, Loop-native)
-// Groups overdue / due today / upcoming / no-due per owner; in-app + optional WhatsApp.
+// send-digest — morning commitment digest (Company OS)
+// Groups overdue / due today / upcoming / no-due per owner; in-app + Telegram/WhatsApp via sendOutbound.
 // deno-lint-ignore-file no-explicit-any
 import { adminClient, json, corsHeaders } from "../_shared/supabase.ts";
+import { sendOutbound } from "../_shared/whatsapp.ts";
 
 function todayStr(tzOffsetMin = 0): string {
   const d = new Date(Date.now() + tzOffsetMin * 60_000);
@@ -56,7 +57,7 @@ Deno.serve(async (req) => {
         const noDue = items.filter((c) => !c.due_date);
         if (!(overdue.length || dueToday.length || upcoming.length || noDue.length)) continue;
 
-        const lines = [`Good morning ${String(user.full_name).split(" ")[0]} — your Loop digest:`];
+        const lines = [`Good morning ${String(user.full_name).split(" ")[0]} — your Company OS digest:`];
         const push = (label: string, list: any[]) => {
           if (!list.length) return;
           lines.push(`\n${label}`);
@@ -68,6 +69,7 @@ Deno.serve(async (req) => {
         push("No due date", noDue);
 
         const body = lines.join("\n");
+        const { sid, channel } = await sendOutbound(user, body);
         await db.from("notifications").insert({
           org_id: org.id,
           user_id: user.id,
@@ -81,11 +83,12 @@ Deno.serve(async (req) => {
           user_id: user.id,
           commitment_id: null,
           direction: "outbound",
-          channel: user.phone_verified_at ? "whatsapp" : "in_app",
+          channel,
           message_type: "daily_pulse",
           message_text: body,
           parsed_status: null,
           parsed_blocker: null,
+          twilio_sid: sid,
         });
         sent++;
       }

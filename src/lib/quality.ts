@@ -119,7 +119,7 @@ export function formatDigestMessage(ownerName: string, buckets: DigestBucket): s
     buckets.overdue.length + buckets.dueToday.length + buckets.upcoming.length + buckets.noDue.length;
   if (total === 0) return null;
 
-  const lines: string[] = [`Good morning ${ownerName.split(" ")[0]} — your Loop digest:`];
+  const lines: string[] = [`Good morning ${ownerName.split(" ")[0]} — your Company OS digest:`];
   const section = (label: string, list: Commitment[]) => {
     if (!list.length) return;
     lines.push(`\n${label}`);

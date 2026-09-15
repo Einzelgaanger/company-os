@@ -139,7 +139,7 @@ export default function SettingsDataGovernance() {
     <div className="space-y-4">
       <PageHeader
         title="Data governance"
-        subtitle="What Loop must never read — evaluated before any content is fetched."
+        subtitle="What Company OS must never read — evaluated before any content is fetched."
       />
       <div className="portal-callout">
         Filters fail closed. Derived commitments inherit source visibility (§4.5 Layer 2).
@@ -157,8 +157,8 @@ export default function SettingsDataGovernance() {
         </header>
         <div className="portal-section__body--pad grid gap-2 sm:grid-cols-4">
           {excluded30d.map((row) => (
-            <div key={row.type} className="rounded-md border border-[#0E1F1A]/6 bg-[#f7faf6] p-2">
-              <div className="text-[10px] font-semibold uppercase text-[#5A6B7D]">{row.type}</div>
+            <div key={row.type} className="rounded-md border border-[#0E1F1A]/6 bg-[#F8F8F7] p-2">
+              <div className="text-[10px] font-semibold uppercase text-[#5B6560]">{row.type}</div>
               <div className="text-lg font-bold text-[#0E1F1A]">{row.count}</div>
             </div>
           ))}
@@ -176,12 +176,12 @@ export default function SettingsDataGovernance() {
           {rules.map((r) => (
             <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
               <div>
-                <span className="font-mono text-xs font-semibold uppercase text-[#5A6B7D]">{r.type}</span>
+                <span className="font-mono text-xs font-semibold uppercase text-[#5B6560]">{r.type}</span>
                 <span className="ml-2 font-medium text-[#0E1F1A]">{r.value}</span>
-                <span className="ml-2 text-[11px] text-[#5A6B7D]">scope: {r.scope}</span>
+                <span className="ml-2 text-[11px] text-[#5B6560]">scope: {r.scope}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] text-[#5A6B7D]">{r.reason}</span>
+                <span className="text-[11px] text-[#5B6560]">{r.reason}</span>
                 <Button
                   type="button"
                   size="sm"

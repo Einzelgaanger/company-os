@@ -223,7 +223,7 @@ export default function Waiting() {
           onChange={(v) => patch({ group: v })}
         />
 
-        <label className="flex items-center gap-1.5 text-[11px] font-semibold text-[#5A6B7D]">
+        <label className="flex items-center gap-1.5 text-[11px] font-semibold text-[#5B6560]">
           Sort
           <select
             value={sort}
@@ -239,7 +239,7 @@ export default function Waiting() {
         </label>
 
         <div className="flex flex-wrap items-center gap-1">
-          <span className="text-[11px] font-semibold text-[#5A6B7D]">Type</span>
+          <span className="text-[11px] font-semibold text-[#5B6560]">Type</span>
           {WAITING_KINDS.map((kind) => {
             const on = types.includes(kind);
             return (
@@ -252,7 +252,7 @@ export default function Waiting() {
                   "rounded-md border px-2 py-1 text-[11px] font-semibold transition-colors",
                   on
                     ? "border-[#0E1F1A] bg-[#0E1F1A] text-white"
-                    : "border-[rgba(14,31,26,0.12)] bg-white text-[#5A6B7D] hover:bg-[#F7FAF6]",
+                    : "border-[rgba(14,31,26,0.12)] bg-white text-[#5B6560] hover:bg-[#F8F8F7]",
                 )}
               >
                 {WAITING_KIND_LABEL[kind]}
@@ -263,7 +263,7 @@ export default function Waiting() {
             <button
               type="button"
               onClick={() => patch({ types: null })}
-              className="px-1 text-[11px] font-semibold text-[#5A6B7D] underline"
+              className="px-1 text-[11px] font-semibold text-[#5B6560] underline"
             >
               Clear
             </button>
@@ -271,7 +271,7 @@ export default function Waiting() {
         </div>
 
         {types.length > 0 && (
-          <span className="ml-auto font-mono text-[11px] text-[#5A6B7D]">
+          <span className="ml-auto font-mono text-[11px] text-[#5B6560]">
             {rows.length} of {register.totals.itemCount} shown · {shownTeamDays.toFixed(1)}d
           </span>
         )}
@@ -307,7 +307,7 @@ export default function Waiting() {
       )}
 
       {rows.length === 0 ? (
-        <p className="portal-section px-3 py-8 text-center text-[11px] font-medium text-[#5A6B7D]">
+        <p className="portal-section px-3 py-8 text-center text-[11px] font-medium text-[#5B6560]">
           No waiting items of that type. {register.totals.itemCount} are waiting for other reasons.
         </p>
       ) : (
@@ -335,13 +335,13 @@ export default function Waiting() {
                 >
                   <span className="flex min-w-0 items-center gap-1.5">
                     {open ? (
-                      <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#5A6B7D]" />
+                      <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#5B6560]" />
                     ) : (
-                      <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#5A6B7D]" />
+                      <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#5B6560]" />
                     )}
                     <span className="truncate text-sm font-bold text-forest">{bucket.label}</span>
                   </span>
-                  <span className="shrink-0 font-mono text-[11px] text-[#5A6B7D]">
+                  <span className="shrink-0 font-mono text-[11px] text-[#5B6560]">
                     {bucket.rows.length} {bucket.rows.length === 1 ? "item" : "items"} ·{" "}
                     {bucket.workingDays.toFixed(1)} working days
                   </span>
@@ -361,7 +361,7 @@ export default function Waiting() {
                           >
                             {row.title}
                           </Link>
-                          <div className="text-[11px] font-medium text-[#5A6B7D]">
+                          <div className="text-[11px] font-medium text-[#5B6560]">
                             {group === "holder"
                               ? (row.projectName ?? "No project")
                               : `on ${row.holderLabel}`}
@@ -416,8 +416,8 @@ function Segmented<T extends string>({
           aria-pressed={value === option.value}
           onClick={() => onChange(option.value)}
           className={cn(
-            "rounded-md px-2.5 py-1 text-[11px] font-semibold text-[#5A6B7D] transition-colors",
-            value === option.value ? "bg-[#0E1F1A] text-white" : "hover:bg-[#F7FAF6]",
+            "rounded-md px-2.5 py-1 text-[11px] font-semibold text-[#5B6560] transition-colors",
+            value === option.value ? "bg-[#0E1F1A] text-white" : "hover:bg-[#F8F8F7]",
           )}
         >
           {option.label}

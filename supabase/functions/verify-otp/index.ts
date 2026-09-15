@@ -1,7 +1,7 @@
-// verify-otp — WhatsApp phone verification with DB-backed hashed codes.
+// verify-otp — channel verification (Telegram preferred, WhatsApp fallback).
 // deno-lint-ignore-file no-explicit-any
 import { adminClient, json, corsHeaders } from "../_shared/supabase.ts";
-import { sendWhatsApp } from "../_shared/whatsapp.ts";
+import { sendOutbound } from "../_shared/whatsapp.ts";
 import { templates } from "../_shared/templates.ts";
 import { sha256Hex, timingSafeEqual } from "../_shared/crypto.ts";
 
@@ -18,7 +18,10 @@ Deno.serve(async (req) => {
   const { action, user_id, code } = await req.json();
 
   const { data: user } = await db.from("users").select("*").eq("id", user_id).single();
-  if (!user?.phone_number) return json({ error: "no phone on file" }, 400);
+  if (!user) return json({ error: "user not found" }, 404);
+  if (!user.telegram_chat_id && !user.phone_number) {
+    return json({ error: "no telegram or phone on file — link Telegram with LINK +phone first" }, 400);
+  }
 
   if (action === "send") {
     const otp = String(Math.floor(100000 + Math.random() * 900000));
@@ -28,8 +31,8 @@ Deno.serve(async (req) => {
       { user_id, code_hash, expires_at, attempts: 0, created_at: new Date().toISOString() },
       { onConflict: "user_id" },
     );
-    await sendWhatsApp(user.phone_number, templates["W-OTP"]({ code: otp }));
-    return json({ sent: true });
+    const { channel } = await sendOutbound(user, templates["W-OTP"]({ code: otp }));
+    return json({ sent: true, channel });
   }
 
   if (action === "verify") {

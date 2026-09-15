@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 const STEPS = ["Detect", "Track", "Check", "Nudge", "Escalate", "Report"];
 
 /**
- * Six-beat Loop ring — forest/lime grammar. Dashboard empty + onboarding only.
+ * Six-beat Company OS cycle — forest/lime grammar. Dashboard empty + onboarding only.
  */
 export function LoopMotif({
   size = 220,
@@ -23,7 +23,7 @@ export function LoopMotif({
       viewBox={`0 0 ${size} ${size}`}
       className={cn("select-none", className)}
       role="img"
-      aria-label="Loop: Detect, Track, Check, Nudge, Escalate, Report"
+      aria-label="Company OS: Detect, Track, Check, Nudge, Escalate, Report"
     >
       <circle cx={center} cy={center} r={radius} fill="none" stroke="rgba(14,31,26,0.12)" strokeWidth={2} />
       {STEPS.map((label, i) => {
@@ -39,9 +39,9 @@ export function LoopMotif({
               y={y - 14}
               textAnchor="middle"
               fontSize={11}
-              fontFamily='"Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif'
+              fontFamily="Instrument Sans, ui-sans-serif, system-ui, sans-serif"
               fontWeight={600}
-              fill={active ? "#0E1F1A" : "#5A6B7D"}
+              fill={active ? "#0E1F1A" : "#5B6560"}
             >
               {label}
             </text>

@@ -73,7 +73,7 @@ export function AutonomyPill() {
           "flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-semibold outline-none transition-colors",
           enabled
             ? "border-lime/50 bg-mint text-forest hover:bg-lime/30"
-            : "border-[rgba(14,31,26,0.1)] bg-soft text-[#5A6B7D] hover:bg-mint",
+            : "border-[rgba(14,31,26,0.1)] bg-soft text-[#5B6560] hover:bg-mint",
         )}
         title="Autonomy (server)"
       >
@@ -87,7 +87,7 @@ export function AutonomyPill() {
             <span
               className={cn(
                 "relative inline-flex h-2 w-2 rounded-full",
-                enabled ? "bg-lime" : "bg-[#5A6B7D]",
+                enabled ? "bg-lime" : "bg-[#5B6560]",
               )}
             />
           </span>
@@ -99,12 +99,12 @@ export function AutonomyPill() {
           <div className="flex items-center gap-2 text-forest">
             <Activity className="h-4 w-4 text-forest" /> Server autonomy
           </div>
-          <p className="mt-1 text-xs font-normal text-[#5A6B7D]">
+          <p className="mt-1 text-xs font-normal text-[#5B6560]">
             Sweeps run on the scheduler. This control does not execute work in the browser.
           </p>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <div className="px-2 py-1.5 text-xs text-[#5A6B7D]">
+        <div className="px-2 py-1.5 text-xs text-[#5B6560]">
           {info.lastRunAt ? (
             <div className="mb-1 font-medium text-forest">
               Last run {timeAgo(info.lastRunAt)}

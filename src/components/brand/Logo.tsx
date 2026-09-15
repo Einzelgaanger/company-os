@@ -17,11 +17,14 @@ export function Logo({
       {showWord && (
         <span
           className={cn(
-            "font-display text-[22px] font-bold tracking-[-0.03em]",
-            inverted ? "text-white" : "text-forest"
+            "font-display text-[20px] font-bold tracking-[-0.03em] sm:text-[22px]",
+            inverted ? "text-white" : "text-forest",
           )}
         >
-          {BRAND.name}
+          <span>{BRAND.shortName}</span>
+          <span className={cn("ml-1 font-semibold", inverted ? "text-white/70" : "text-forest/55")}>
+            OS
+          </span>
         </span>
       )}
     </span>

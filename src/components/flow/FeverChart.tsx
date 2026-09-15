@@ -28,11 +28,11 @@ export function FeverChart({
         ? "var(--fever-watch)"
         : zone === "red"
           ? "var(--fever-act)"
-          : "#5A6B7D";
+          : "#5B6560";
 
   return (
     <div className={cn("space-y-2", className)}>
-      <div className="relative aspect-[4/3] w-full max-w-sm rounded-md border border-[rgba(14,31,26,0.12)] bg-[#f7faf6]">
+      <div className="relative aspect-[4/3] w-full max-w-sm rounded-md border border-[rgba(14,31,26,0.12)] bg-[#F8F8F7]">
         <svg viewBox="0 0 100 100" className="h-full w-full" aria-hidden>
           <polygon points="0,100 100,100 100,0" fill="var(--fever-ok)" opacity="0.12" />
           <polygon points="0,100 66,100 100,50 100,0 0,0" fill="var(--fever-watch)" opacity="0.1" />
@@ -47,10 +47,10 @@ export function FeverChart({
             strokeWidth="0.8"
           />
         </svg>
-        <div className="pointer-events-none absolute bottom-1 left-2 text-[9px] font-medium uppercase tracking-wide text-[#5A6B7D]">
+        <div className="pointer-events-none absolute bottom-1 left-2 text-[9px] font-medium uppercase tracking-wide text-[#5B6560]">
           Chain complete →
         </div>
-        <div className="pointer-events-none absolute left-1 top-2 origin-left -rotate-90 text-[9px] font-medium uppercase tracking-wide text-[#5A6B7D]">
+        <div className="pointer-events-none absolute left-1 top-2 origin-left -rotate-90 text-[9px] font-medium uppercase tracking-wide text-[#5B6560]">
           Buffer spent →
         </div>
       </div>

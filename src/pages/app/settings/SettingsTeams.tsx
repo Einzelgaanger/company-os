@@ -62,7 +62,7 @@ export default function SettingsTeams() {
           >
             <div>
               <div className="font-semibold text-[#0E1F1A]">{t.name}</div>
-              <div className="text-[11px] text-[#5A6B7D]">
+              <div className="text-[11px] text-[#5B6560]">
                 Lead: {nameOf(t.lead_id)} · {t.member_ids.length} members
               </div>
             </div>

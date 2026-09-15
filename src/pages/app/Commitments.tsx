@@ -180,9 +180,9 @@ export default function Commitments() {
       ) : filtered.length === 0 ? (
         <EmptyState
           title="Nothing owed right now"
-          description="Loop will populate this automatically from your meetings and messages."
+          description="Company OS will populate this automatically from your meetings and messages."
           illustration={
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-[#D3F36B]/25 text-[#0E1F1A]">
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-lime/25 text-forest">
               <ListChecks className="h-5 w-5" strokeWidth={1.75} />
             </span>
           }

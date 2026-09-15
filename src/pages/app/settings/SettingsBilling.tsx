@@ -29,7 +29,7 @@ export default function SettingsBilling() {
           You're on the pilot plan. Billing is managed manually during the pilot phase.
         </p>
         <Button variant="outline" asChild>
-          <a href="mailto:hello@loop.app?subject=Loop plan change">Contact us to change plan</a>
+          <a href="mailto:hello@companyos.app?subject=Company OS plan change">Contact us to change plan</a>
         </Button>
       </CardContent>
     </Card>

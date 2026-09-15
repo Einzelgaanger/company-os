@@ -10,6 +10,7 @@ import { TableSkeleton, ErrorState } from "@/components/states";
 import { SendCheckinDialog } from "@/components/SendCheckinDialog";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/db";
+import { messagingLinked, messagingLinkLabel } from "@/lib/messaging";
 import { roleAtLeast, type Checkin, type Commitment, type User } from "@/lib/types";
 import { formatDate, formatDateTime, initials } from "@/lib/utils";
 
@@ -93,13 +94,13 @@ export default function TeamMember() {
             <div className="text-sm text-slate">{member.email}</div>
           </div>
           <div className="text-sm">
-            {member.phone_verified_at ? (
+            {messagingLinked(member) ? (
               <span className="inline-flex items-center gap-1 text-green">
-                <CheckCircle2 className="h-4 w-4" /> WhatsApp verified
+                <CheckCircle2 className="h-4 w-4" /> {messagingLinkLabel(member)}
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 text-amber">
-                <XCircle className="h-4 w-4" /> WhatsApp not verified
+                <XCircle className="h-4 w-4" /> Messaging not linked
               </span>
             )}
           </div>
@@ -107,7 +108,7 @@ export default function TeamMember() {
       </Card>
 
       {trend.total > 0 && (
-        <p className="text-sm text-[#5A6B7D]">
+        <p className="text-sm text-[#5B6560]">
           Responded to {trend.answered} of {trend.total} check-ins in the last batch — a coordination fact, not an
           evaluation (C-1).
         </p>
@@ -156,7 +157,7 @@ export default function TeamMember() {
             checkins.map((c) => (
               <div key={c.id} className="text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-slate">{c.direction === "outbound" ? "Loop →" : "← Reply"}</span>
+                  <span className="text-slate">{c.direction === "outbound" ? "Company OS →" : "← Reply"}</span>
                   <span className="font-mono text-xs text-slate">{formatDateTime(c.created_at)}</span>
                 </div>
                 <p className="text-ink">{c.message_text}</p>

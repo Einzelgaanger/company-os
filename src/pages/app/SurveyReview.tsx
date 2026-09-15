@@ -69,7 +69,7 @@ export default function SurveyReview() {
         {cycle.questions.map((q) => (
           <li key={q.id} className="rounded-lg border border-[rgba(14,31,26,0.1)] bg-white p-4">
             <p className="mb-2 text-sm font-medium text-[#0E1F1A]">{q.text}</p>
-            <p className="mb-3 text-[11px] text-[#5A6B7D]">
+            <p className="mb-3 text-[11px] text-[#5B6560]">
               {q.kind} ·{" "}
               {q.approved === true ? "approved" : q.approved === false ? "rejected" : "pending"}
             </p>

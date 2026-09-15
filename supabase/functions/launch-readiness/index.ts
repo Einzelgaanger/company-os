@@ -26,6 +26,7 @@ Deno.serve(async (req) => {
       (await getSecret("META_WABA_ID")) || (await getSecret("WHATSAPP_WABA_ID")),
     );
     const whatsappToken = Boolean(await getSecret("WHATSAPP_ACCESS_TOKEN"));
+    const telegramToken = Boolean(await getSecret("TELEGRAM_BOT_TOKEN"));
 
     return json({
       odpc: {
@@ -39,15 +40,21 @@ Deno.serve(async (req) => {
         whatsappTokenConfigured: whatsappToken,
         note: "Mark verified only after Meta Business confirms.",
       },
+      telegram: {
+        botConfigured: telegramToken,
+        note: "Primary messaging channel when TELEGRAM_BOT_TOKEN is set. Users link via: LINK +254...",
+      },
       messaging: {
         mode: settings.messaging_mode ?? "live",
+        primary: telegramToken ? "telegram" : whatsappToken ? "whatsapp" : "in_app",
         metaConfigured: whatsappToken && metaWaba,
+        telegramConfigured: telegramToken,
         twilioConfigured: envConfigured([
           "TWILIO_ACCOUNT_SID",
           "TWILIO_AUTH_TOKEN",
           "TWILIO_WHATSAPP_NUMBER",
         ]).configured,
-        liveReady: whatsappToken && metaWaba,
+        liveReady: telegramToken || (whatsappToken && metaWaba),
       },
       ai: {
         openRouterConfigured: openRouter,

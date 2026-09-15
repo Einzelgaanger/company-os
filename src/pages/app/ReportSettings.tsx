@@ -103,7 +103,13 @@ export default function ReportSettings() {
           {(["email", "in_app", "whatsapp"] as const).map((ch) => (
             <label key={ch} className="flex items-center gap-3 text-sm">
               <Checkbox checked={channels[ch]} onCheckedChange={(v) => setChannels((c) => ({ ...c, [ch]: Boolean(v) }))} />
-              <span className="text-ink capitalize">{ch === "in_app" ? "In-app" : ch === "whatsapp" ? "WhatsApp digest" : "Email"}</span>
+              <span className="text-ink capitalize">
+                {ch === "in_app"
+                  ? "In-app"
+                  : ch === "whatsapp"
+                    ? "Messaging digest (Telegram / WhatsApp)"
+                    : "Email"}
+              </span>
             </label>
           ))}
         </CardContent>

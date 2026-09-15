@@ -469,7 +469,7 @@ export const supabaseDb = {
       org_id: actor.org_id,
       user_id: targetUserId,
       kind: "system",
-      title: "Loop checked in",
+      title: "Company OS checked in",
       body: text,
       link: "/my-work",
     });

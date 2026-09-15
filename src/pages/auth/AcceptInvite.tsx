@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { Mail, User } from "lucide-react";
 import { AuthLayout } from "@/components/layout/AuthLayout";
+import { AuthCard } from "@/components/auth/AuthCard";
+import { AuthField } from "@/components/auth/AuthField";
+import { PasswordStrengthField } from "@/components/auth/PasswordStrength";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
+import { checkPassword } from "@/lib/passwordStrength";
 import { store } from "@/lib/store";
 
 export default function AcceptInvite() {
@@ -33,6 +37,10 @@ export default function AcceptInvite() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!checkPassword(password).strong) {
+      toast("Choose a strong password before joining.", "error");
+      return;
+    }
     try {
       await signUp({ email, password, fullName, inviteToken: token });
       navigate("/onboarding/profile");
@@ -41,55 +49,51 @@ export default function AcceptInvite() {
     }
   }
 
+  const strong = checkPassword(password).strong;
+
   return (
     <AuthLayout>
-      <div className="auth-card space-y-5">
-        {valid === false ? (
-          <>
-            <div>
-              <h2 className="text-lg font-bold tracking-tight text-[#0E1F1A]">Invite not found</h2>
-              <p className="mt-0.5 text-[11px] font-medium text-[#5A6B7D]">
-                This invite link is invalid or has already been used.
-              </p>
-            </div>
-            <Link to="/login" className="text-sm font-semibold text-[#0E1F1A] hover:underline">
+      {valid === false ? (
+        <AuthCard
+          title="Invite not found"
+          description="This invite link is invalid or has already been used."
+          footer={
+            <Link to="/login" className="font-semibold text-[#0E1F1A] hover:underline">
               Go to sign in
             </Link>
-          </>
-        ) : (
-          <>
-            <div>
-              <h2 className="text-lg font-bold tracking-tight text-[#0E1F1A]">Join {orgName} on Loop</h2>
-              <p className="mt-0.5 text-[11px] font-medium text-[#5A6B7D]">
-                You've been invited. Set a password to activate your account.
-              </p>
-            </div>
-            <form onSubmit={submit} className="space-y-3">
-              <div>
-                <label htmlFor="name" className="field-label">
-                  Full name
-                </label>
-                <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} required className="input-glass" />
-              </div>
-              <div>
-                <label htmlFor="email" className="field-label">
-                  Email
-                </label>
-                <Input id="email" type="email" value={email} readOnly className="input-glass opacity-70" />
-              </div>
-              <div>
-                <label htmlFor="password" className="field-label">
-                  Password
-                </label>
-                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} className="input-glass" />
-              </div>
-              <Button type="submit" className="h-11 w-full min-h-[44px]">
-                Accept invite
-              </Button>
-            </form>
-          </>
-        )}
-      </div>
+          }
+        >
+          <p className="text-sm text-[#5B6560]">Ask your admin to send a new invite.</p>
+        </AuthCard>
+      ) : (
+        <AuthCard
+          title={`Join ${orgName ?? "your team"} on Company OS`}
+          description="You've been invited. Set a strong password to activate your account."
+        >
+          <form onSubmit={submit} className="space-y-3">
+            <AuthField
+              id="name"
+              label="Full name"
+              icon={<User className="h-4 w-4" />}
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              required
+            />
+            <AuthField
+              id="email"
+              label="Email"
+              icon={<Mail className="h-4 w-4" />}
+              type="email"
+              value={email}
+              readOnly
+            />
+            <PasswordStrengthField value={password} onChange={setPassword} />
+            <Button type="submit" className="h-11 w-full min-h-[44px]" disabled={!strong}>
+              Accept invite
+            </Button>
+          </form>
+        </AuthCard>
+      )}
     </AuthLayout>
   );
 }

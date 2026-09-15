@@ -81,7 +81,7 @@ export default function Escalations() {
               "min-h-[36px] shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold capitalize transition-colors",
               filter === c
                 ? "border-[#0E1F1A] bg-[#F4FBE3] text-[#0E1F1A]"
-                : "border-[rgba(14,31,26,0.1)] text-[#5A6B7D] hover:bg-[#F7FAF6]"
+                : "border-[rgba(14,31,26,0.1)] text-[#5B6560] hover:bg-[#F8F8F7]"
             )}
           >
             {c}
@@ -139,7 +139,7 @@ export default function Escalations() {
           ]}
         />
       )}
-      <Button variant="link" className="text-[#5A6B7D]" onClick={() => navigate("/settings/ownership-map")}>
+      <Button variant="link" className="text-[#5B6560]" onClick={() => navigate("/settings/ownership-map")}>
         Configure escalation routing →
       </Button>
     </div>

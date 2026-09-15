@@ -15,5 +15,5 @@ services:
       - key: VITE_SUPABASE_ANON_KEY
         sync: false
       - key: VITE_PUBLIC_SITE_URL
-        value: https://company-os-cce2.onrender.com
+        value: https://companyos.jabali.studio
       # Never set VITE_ALLOW_MOCK or VITE_API_URL on this service.

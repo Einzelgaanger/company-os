@@ -57,7 +57,7 @@ export function WaitingTime({
         {formatWorkingDays(workingDays)}
       </div>
       {holderLabel && (
-        <div className="text-[11px] font-medium text-[#5A6B7D]">on {holderLabel}</div>
+        <div className="text-[11px] font-medium text-[#5B6560]">on {holderLabel}</div>
       )}
     </div>
   );

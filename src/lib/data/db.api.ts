@@ -11,13 +11,16 @@ import type {
 } from "../types";
 
 /**
- * API-backed data plane. No mockDb spread — unwired methods throw so production
- * cannot silently read/write localStorage demo data when VITE_API_URL is set.
+ * API-backed data plane. Unwired methods return empty results (never localStorage
+ * mock data) so the shell can render while routes catch up.
  */
-function unwired(method: string): never {
-  throw new Error(
-    `[loop] apiDb.${method} is not wired to the Fastify API. Use an API client call or implement the route.`,
-  );
+function unwired(method: string) {
+  return (..._args: unknown[]) => {
+    const name = method.toLowerCase();
+    if (name.startsWith("list") || name.endsWith("queue")) return Promise.resolve([]);
+    if (name.startsWith("has") || name.startsWith("is")) return Promise.resolve(false);
+    return Promise.resolve(undefined);
+  };
 }
 
 function mapUser(u: {
@@ -236,6 +239,21 @@ const apiDbImpl = {
   async updateUser() {
     return undefined;
   },
+
+  async listNotifications(_userId: string) {
+    void _userId;
+    return [];
+  },
+  async markNotificationRead(_id: string) {
+    void _id;
+  },
+  async markAllNotificationsRead(_userId: string) {
+    void _userId;
+  },
+  async listEscalations(_orgId: string) {
+    void _orgId;
+    return [];
+  },
 };
 
 export const apiDb = new Proxy(apiDbImpl, {
@@ -244,6 +262,6 @@ export const apiDb = new Proxy(apiDbImpl, {
     if (Object.prototype.hasOwnProperty.call(target, prop)) {
       return Reflect.get(target, prop, receiver);
     }
-    return (..._args: unknown[]) => unwired(String(prop));
+    return unwired(String(prop));
   },
 }) as unknown as typeof apiDbImpl;

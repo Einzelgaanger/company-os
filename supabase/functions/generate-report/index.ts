@@ -110,7 +110,7 @@ async function generateForOrg(db: any, org: any, type: "daily" | "weekly") {
       try {
         await sendEmail({
           to: recipient.email,
-          subject: `Loop ${type} report — ${org.name}`,
+          subject: `Company OS ${type} report — ${org.name}`,
           html: `<p>Hi ${recipient.full_name ?? ""},</p><p>Your ${type} report is ready.</p><pre style="white-space:pre-wrap">${content_md.replace(/</g, "&lt;")}</pre>${pdf_url ? `<p><a href="${pdf_url}">Download PDF</a></p>` : ""}`,
         });
       } catch {

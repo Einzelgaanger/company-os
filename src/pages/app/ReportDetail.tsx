@@ -134,7 +134,7 @@ export default function ReportDetail() {
       <Card>
         <CardContent className="p-6">
           <Markdown source={report.content_md} />
-          <p className="mt-8 border-t border-[rgba(14,31,26,0.1)] pt-4 text-[11px] font-medium leading-relaxed text-[#5A6B7D]">
+          <p className="mt-8 border-t border-[rgba(14,31,26,0.1)] pt-4 text-[11px] font-medium leading-relaxed text-[#5B6560]">
             This report describes the status of work items and projects. It is not a measure of individual performance
             and must not be used as the basis for promotion, discipline, or termination decisions.
           </p>

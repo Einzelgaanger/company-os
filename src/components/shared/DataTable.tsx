@@ -27,7 +27,7 @@ export function DataTable<T extends { id: string }>({
   if (rows.length === 0) {
     return (
       <div className="surface-card">
-        <div className="px-4 py-10 text-center text-[11px] font-medium text-[#5A6B7D]">
+        <div className="px-4 py-10 text-center text-[11px] font-medium text-[#5B6560]">
           {empty ?? "Nothing to show."}
         </div>
       </div>
@@ -46,14 +46,14 @@ export function DataTable<T extends { id: string }>({
             key={row.id}
             type="button"
             onClick={() => onRowClick?.(row)}
-            className={cn("w-full px-3 py-3 text-left", onRowClick && "hover:bg-[#F7FAF6]")}
+            className={cn("w-full px-3 py-3 text-left", onRowClick && "hover:bg-[#F8F8F7]")}
           >
             <div className="text-sm font-medium text-[#0E1F1A]">{primary.cell(row)}</div>
             {rest.length > 0 && (
               <div className="mt-2 grid grid-cols-2 gap-2">
                 {rest.map((col) => (
                   <div key={col.key}>
-                    <div className="text-[10px] font-semibold uppercase tracking-wide text-[#5A6B7D]">
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-[#5B6560]">
                       {col.header}
                     </div>
                     <div className="text-[12px] font-medium text-[#0E1F1A]">{col.cell(row)}</div>

@@ -47,14 +47,14 @@ export default function Notifications() {
     <div className="portal-page animate-fade-in">
       <PageHeader
         title="Notifications"
-        description="Everything Loop has surfaced to you."
+        description="Everything Company OS has surfaced to you."
         actions={items.some((n) => !n.read_at) ? <Button variant="outline" onClick={markAll}>Mark all read</Button> : undefined}
       />
 
       {loading ? (
         <TableSkeleton />
       ) : items.length === 0 ? (
-        <EmptyState title="You're all caught up" description="Loop will let you know when something needs you." />
+        <EmptyState title="You're all caught up" description="Company OS will let you know when something needs you." />
       ) : (
         <Card>
           <CardContent className="p-0">

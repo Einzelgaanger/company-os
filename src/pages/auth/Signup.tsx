@@ -1,11 +1,16 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Mail, User } from "lucide-react";
 import { AuthLayout } from "@/components/layout/AuthLayout";
+import { AuthCard } from "@/components/auth/AuthCard";
+import { AuthField } from "@/components/auth/AuthField";
+import { AuthDivider, GoogleOAuthButton } from "@/components/auth/GoogleOAuthButton";
+import { PasswordStrengthField } from "@/components/auth/PasswordStrength";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { BRAND } from "@/lib/brand";
+import { checkPassword } from "@/lib/passwordStrength";
 
 export default function Signup() {
   const { signUp } = useAuth();
@@ -16,9 +21,14 @@ export default function Signup() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const strong = checkPassword(password).strong;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!checkPassword(password).strong) {
+      setError("Choose a strong password before creating the account.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -35,46 +45,59 @@ export default function Signup() {
 
   return (
     <AuthLayout>
-      <div className="auth-card space-y-5">
-        <div>
-          <h2 className="text-lg font-bold tracking-tight text-[#0E1F1A]">Create your account</h2>
-          <p className="mt-0.5 text-[11px] font-medium text-[#5A6B7D]">
-            Set up {BRAND.name} for your team in a few minutes.
+      <AuthCard
+        title="Create your account"
+        description={`Set up ${BRAND.name} for your team in a few minutes.`}
+        footer={
+          <p>
+            Already have an account?{" "}
+            <Link to="/login" className="font-semibold text-[#0E1F1A] hover:underline">
+              Sign in
+            </Link>
           </p>
-        </div>
+        }
+      >
+        <GoogleOAuthButton label="Continue with Google" />
+        <AuthDivider />
 
         <form onSubmit={submit} className="space-y-3">
-          <div>
-            <label htmlFor="name" className="field-label">
-              Full name
-            </label>
-            <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} required autoComplete="name" className="input-glass" />
-          </div>
-          <div>
-            <label htmlFor="email" className="field-label">
-              Email
-            </label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" className="input-glass" />
-          </div>
-          <div>
-            <label htmlFor="password" className="field-label">
-              Password
-            </label>
-            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} autoComplete="new-password" className="input-glass" />
-          </div>
+          <AuthField
+            id="name"
+            label="Full name"
+            icon={<User className="h-4 w-4" />}
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            required
+            autoComplete="name"
+          />
+          <AuthField
+            id="email"
+            label="Email"
+            icon={<Mail className="h-4 w-4" />}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
+          />
+          <PasswordStrengthField value={password} onChange={setPassword} />
           {error && <p className="text-xs font-medium text-red-700">{error}</p>}
-          <Button type="submit" className="h-11 w-full min-h-[44px]" disabled={busy}>
+          <Button type="submit" className="h-11 w-full min-h-[44px]" disabled={busy || !strong}>
             {busy ? "Creating account…" : "Create account"}
           </Button>
+          <p className="text-center text-[11px] leading-snug text-muted-foreground">
+            By creating an account you agree to the{" "}
+            <Link to="/terms-of-service" className="font-semibold text-[#0E1F1A] hover:underline">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link to="/privacy-policy" className="font-semibold text-[#0E1F1A] hover:underline">
+              Privacy Policy
+            </Link>
+            .
+          </p>
         </form>
-
-        <p className="text-center text-sm text-[#5A6B7D]">
-          Already have an account?{" "}
-          <Link to="/login" className="font-semibold text-[#0E1F1A] hover:underline">
-            Sign in
-          </Link>
-        </p>
-      </div>
+      </AuthCard>
     </AuthLayout>
   );
 }

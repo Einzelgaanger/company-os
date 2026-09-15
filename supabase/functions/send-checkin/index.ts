@@ -1,9 +1,9 @@
 // send-checkin (BUILD_SPEC 8.3)
-// Cron-triggered (hourly) or manual. Sends WhatsApp follow-ups for due/stale
+// Cron-triggered (hourly) or manual. Sends Telegram/WhatsApp follow-ups for due/stale
 // commitments, honouring throttling rules.
 // deno-lint-ignore-file no-explicit-any
 import { adminClient, json, corsHeaders } from "../_shared/supabase.ts";
-import { sendWhatsApp, whatsappConfigured } from "../_shared/whatsapp.ts";
+import { sendOutbound } from "../_shared/whatsapp.ts";
 import { templates } from "../_shared/templates.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -23,8 +23,7 @@ Deno.serve(async (req) => {
   if (manual?.user_id && manual?.text) {
     const { data: user } = await db.from("users").select("*").eq("id", manual.user_id).single();
     if (!user) return json({ error: "user not found" }, 404);
-    const channel = whatsappConfigured() && user.phone_verified_at ? "whatsapp" : "in_app";
-    const sid = channel === "whatsapp" ? await sendWhatsApp(user.phone_number, manual.text) : `INAPP-${crypto.randomUUID().slice(0, 8)}`;
+    const { sid, channel } = await sendOutbound(user, manual.text);
     await db.from("checkins").insert({
       org_id: user.org_id,
       user_id: user.id,
@@ -42,7 +41,7 @@ Deno.serve(async (req) => {
       org_id: user.org_id,
       user_id: user.id,
       kind: "system",
-      title: "Loop checked in",
+      title: "Company OS checked in",
       body: manual.text,
       link: "/inbox",
     });
@@ -68,7 +67,6 @@ Deno.serve(async (req) => {
     const stale = !c.last_checkin_at || Date.now() - new Date(c.last_checkin_at).getTime() > 2 * DAY_MS;
     if (!overdue && !stale) continue;
 
-    // Throttle: max 1 per person per commitment / 24h, max 4 per person / day.
     if ((perPersonToday.get(owner.id) ?? 0) >= 4) continue;
     if (c.last_checkin_at && Date.now() - new Date(c.last_checkin_at).getTime() < DAY_MS) continue;
 
@@ -79,13 +77,8 @@ Deno.serve(async (req) => {
       due_date: c.due_date ?? "soon",
     });
 
-    const channel = whatsappConfigured() && owner.phone_verified_at && owner.phone_number ? "whatsapp" : "in_app";
-
     try {
-      const sid =
-        channel === "whatsapp"
-          ? await sendWhatsApp(owner.phone_number, body)
-          : `INAPP-${crypto.randomUUID().slice(0, 8)}`;
+      const { sid, channel } = await sendOutbound(owner, body);
       await db.from("checkins").insert({
         org_id: c.org_id,
         user_id: owner.id,
@@ -101,7 +94,7 @@ Deno.serve(async (req) => {
         org_id: c.org_id,
         user_id: owner.id,
         kind: "system",
-        title: "Loop checked in",
+        title: "Company OS checked in",
         body: `Status needed on "${c.title}".`,
         link: "/inbox",
       });

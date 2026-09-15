@@ -859,7 +859,7 @@ export function buildSeed(): SeedData {
       org_id: ORG,
       user_id: U.amina,
       type: "access",
-      detail: "Please export everything Loop holds about me.",
+      detail: "Please export everything Company OS holds about me.",
       status: "open",
       created_at: iso(-2),
       due_at: iso(28),

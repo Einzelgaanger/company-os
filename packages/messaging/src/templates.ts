@@ -18,7 +18,7 @@ export const MESSAGE_TEMPLATE_SEEDS: MessageTemplateSeed[] = [
     purpose: "Onboarding verification",
     category: "utility",
     language: "en",
-    body: "Your Loop verification code is {{1}}. It expires in 10 minutes.",
+    body: "Your Company OS verification code is {{1}}. It expires in 10 minutes.",
     variableCount: 1,
   },
   {
@@ -98,7 +98,7 @@ export const MESSAGE_TEMPLATE_SEEDS: MessageTemplateSeed[] = [
     purpose: "HELP command",
     category: "utility",
     language: "en",
-    body: "Loop commands: DONE, WAITING, STILL WORKING, STOP (opt out), HELP. For *{{1}}* reply one status word.",
+    body: "Company OS commands: DONE, WAITING, STILL WORKING, STOP (opt out), HELP. For *{{1}}* reply one status word.",
     variableCount: 1,
   },
   {
@@ -122,7 +122,7 @@ export const MESSAGE_TEMPLATE_SEEDS: MessageTemplateSeed[] = [
     purpose: "Confirming opt-out",
     category: "utility",
     language: "en",
-    body: "You're unsubscribed from Loop WhatsApp messages. Reply START in settings or message START to re-subscribe.",
+    body: "You're unsubscribed from Company OS check-in messages. Reply START in settings or message START to re-subscribe.",
     variableCount: 0,
   },
 ];

@@ -61,7 +61,7 @@ export default function Reports() {
     <div className="portal-page animate-fade-in">
       <PageHeader
         title="Reports"
-        description="Every summary Loop has generated for your team."
+        description="Every summary Company OS has generated for your team."
         actions={
           roleAtLeast(user.role, "admin") ? (
             <Button variant="outline" onClick={() => navigate("/reports/settings")}>
@@ -76,7 +76,7 @@ export default function Reports() {
       ) : error ? (
         <ErrorState onRetry={load} />
       ) : reports.length === 0 ? (
-        <EmptyState title="No reports yet" description="Loop generates these on your configured cadence." />
+        <EmptyState title="No reports yet" description="Company OS generates these on your configured cadence." />
       ) : (
         <div className="space-y-6">
           {grouped.map(([month, items]) => (

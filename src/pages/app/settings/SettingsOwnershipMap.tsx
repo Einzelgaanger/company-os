@@ -125,7 +125,7 @@ export default function SettingsOwnershipMap() {
   return (
     <>
       <p className="text-sm text-slate">
-        Keywords, scope, and SLA tell Loop who to route escalations to. Use Test routing to verify.
+        Keywords, scope, and SLA tell Company OS who to route escalations to. Use Test routing to verify.
       </p>
 
       {entries.length === 0 ? (

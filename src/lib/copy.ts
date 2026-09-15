@@ -2,24 +2,24 @@
 
 export const COPY = {
   "C-DASH-EMPTY":
-    "Nothing to show yet. Connect your meeting tool and Loop will start tracking commitments automatically.",
+    "Nothing to show yet. Connect your meeting tool and Company OS will start tracking commitments automatically.",
   "C-ERR-GENERIC": "Something went wrong loading this. Try again.",
   "C-COMMIT-EMPTY":
-    "Nothing owed right now. Loop adds items here automatically from your meetings.",
+    "Nothing owed right now. Company OS adds items here automatically from your meetings.",
   "C-ESC-EMPTY": "Nothing escalated. Everything's moving on its own.",
-  "C-REVIEW-EMPTY": "Nothing needs review. Loop is confident about everything it's found.",
+  "C-REVIEW-EMPTY": "Nothing needs review. Company OS is confident about everything it's found.",
   "C-OWNMAP-EMPTY":
-    "Add at least one category so Loop knows who to route blockers to. Until then, escalations go to the requester's manager.",
+    "Add at least one category so Company OS knows who to route blockers to. Until then, escalations go to the requester's manager.",
   "C-SURVEY-SUPPRESSED":
     "Not enough responses to report on this cycle without identifying individuals.",
   "C-LASTOWNER":
     "This is the only Owner on the account. Assign another Owner before changing this role.",
   "C-DISCONNECT":
-    "Disconnect {provider}? Loop will stop reading new data from this source. Items already tracked stay.",
+    "Disconnect {provider}? Company OS will stop reading new data from this source. Items already tracked stay.",
   "C-WHATSAPP-OFF":
-    "Check-ins are off for you. Loop won't message you, and your work items stay visible here.",
+    "Check-ins are off for you. Company OS won't message you, and your work items stay visible here.",
   "C-CONN-BROKEN":
-    "{provider} needs reconnecting. Loop hasn't been able to read new data since {when}.",
+    "{provider} needs reconnecting. Company OS hasn't been able to read new data since {when}.",
 } as const;
 
 export type CopyKey = keyof typeof COPY;

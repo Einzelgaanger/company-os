@@ -72,9 +72,9 @@ export default function SettingsCoordination() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-slate">
-            How your organization coordinates work. This drives how often Loop checks in, when it escalates and to
-            whom, how quickly an item turns amber, and the words it uses — everywhere, including WhatsApp messages
-            and the weekly report.
+            How your organization coordinates work. This drives how often Company OS checks in, when it escalates and to
+            whom, how quickly an item turns amber, and the words it uses — everywhere, including Telegram
+            messages (and WhatsApp fallback) and the weekly report.
           </p>
           <p className="text-xs text-slate">
             Currently <strong className="text-ink">{currentCopy.label}</strong>
@@ -166,7 +166,7 @@ export default function SettingsCoordination() {
           </div>
           {selected === "standardized_skills" && (
             <p className="text-xs text-slate">
-              In this mode Loop never asks a professional about the conduct of their own work, tracks only
+              In this mode Company OS never asks a professional about the conduct of their own work, tracks only
               commitments owed to another party, and never routes an escalation to anyone who could be read as
               supervising professional judgement.
             </p>

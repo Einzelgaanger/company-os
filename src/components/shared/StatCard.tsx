@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
  * brand colour to mean "at risk".
  */
 const BAR: Record<string, string> = {
-  lime: "bg-[#D3F36B]",
+  lime: "bg-lime",
   forest: "bg-brand-ink",
   moving: "bg-status-moving",
   ready: "bg-status-ready",
@@ -71,10 +71,10 @@ export function StatCard({
       <span className={cn("stat-card__bar", BAR[accent] ?? BAR.lime)} />
       <div className="flex items-start justify-between gap-2 pl-1.5">
         <div className="min-w-0">
-          <div className="text-[11px] font-semibold text-[#5A6B7D]">{label}</div>
+          <div className="text-[11px] font-semibold text-[#5B6560]">{label}</div>
           <div className="mt-0.5 text-lg font-extrabold tracking-tight text-[#0E1F1A] sm:text-xl">{value}</div>
           {detail && (
-            <div className="mt-0.5 truncate text-[11px] font-medium text-[#5A6B7D]">{detail}</div>
+            <div className="mt-0.5 truncate text-[11px] font-medium text-[#5B6560]">{detail}</div>
           )}
         </div>
         {Icon && (

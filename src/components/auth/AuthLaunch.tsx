@@ -28,13 +28,13 @@ export function AuthLaunch({ onDone }: { onDone: () => void }) {
   return (
     <div
       className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden"
-      style={{ background: "#050a08" }}
+      style={{ background: "#0A1712" }}
       role="status"
       aria-live="polite"
     >
       <div className="auth-launch__rocket relative flex flex-col items-center">
         <Rocket
-          className="h-16 w-16 text-[#D3F36B] auth-launch__ship"
+          className="h-16 w-16 text-lime auth-launch__ship"
           strokeWidth={1.75}
           style={{
             transform: "rotate(-45deg)",
@@ -71,7 +71,7 @@ export function AuthLaunch({ onDone }: { onDone: () => void }) {
           height: 28px;
           margin-top: -4px;
           border-radius: 0 0 999px 999px;
-          background: linear-gradient(180deg, #fff, #f0c419 40%, #ff6b2c);
+          background: linear-gradient(180deg, #ffffff, #c8f14a 45%, #1a3a2e);
           animation: authFlame 0.2s ease-in-out infinite, authRise 2s 1.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
         }
         .auth-launch__smoke {

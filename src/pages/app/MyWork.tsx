@@ -14,6 +14,7 @@ import { recordInboundResponse } from "@/lib/engine";
 import { fetchWaiting } from "@/lib/flowData";
 import { bandOf, flowStateOf, isOpenState, type WaitingRow } from "@/lib/flow";
 import { timeAgo } from "@/lib/utils";
+import { channelDisplayName } from "@/lib/messaging";
 import type { Checkin, Commitment } from "@/lib/types";
 
 /**
@@ -140,7 +141,7 @@ export default function MyWork() {
     <div className="portal-page animate-fade-in">
       <PageHeader
         title="My work"
-        description="Your items and your check-ins. Reply here and Loop updates everything else."
+        description="Your items and your check-ins. Reply here and Company OS updates everything else."
       />
 
       {loading ? (
@@ -152,7 +153,7 @@ export default function MyWork() {
         <EmptyState
           illustration={<CheckCircle2 className="h-8 w-8 text-forest" />}
           title="Nothing needs you right now."
-          description="Loop will reach out when something needs a status."
+          description="Company OS will reach out when something needs a status."
         />
       ) : (
         <>
@@ -178,9 +179,9 @@ export default function MyWork() {
                           <div className="text-sm font-medium text-forest">
                             {p.message.message_text}
                           </div>
-                          <div className="mt-1 text-[11px] font-medium text-[#5A6B7D]">
+                          <div className="mt-1 text-[11px] font-medium text-[#5B6560]">
                             {timeAgo(p.message.created_at)} · via{" "}
-                            {p.message.channel === "whatsapp" ? "WhatsApp" : "in-app"} ·{" "}
+                            {channelDisplayName(p.message.channel)} ·{" "}
                             <Link
                               to={`/commitments/${p.commitment.id}`}
                               className="font-semibold text-forest underline"
@@ -293,7 +294,7 @@ export default function MyWork() {
                       >
                         {row.title}
                       </Link>
-                      <div className="text-[11px] font-medium text-[#5A6B7D]">
+                      <div className="text-[11px] font-medium text-[#5B6560]">
                         on {row.holderLabel}
                         {row.projectName ? ` · ${row.projectName}` : ""}
                       </div>
@@ -318,7 +319,7 @@ export default function MyWork() {
               </header>
               <div className="divide-y divide-[rgba(14,31,26,0.06)]">
                 {moving.length === 0 ? (
-                  <p className="px-3 py-6 text-center text-[11px] font-medium text-[#5A6B7D]">
+                  <p className="px-3 py-6 text-center text-[11px] font-medium text-[#5B6560]">
                     Nothing active right now.
                   </p>
                 ) : (
@@ -352,7 +353,7 @@ export default function MyWork() {
               </header>
               <div className="divide-y divide-[rgba(14,31,26,0.06)]">
                 {recentlyClosed.length === 0 ? (
-                  <p className="px-3 py-6 text-center text-[11px] font-medium text-[#5A6B7D]">
+                  <p className="px-3 py-6 text-center text-[11px] font-medium text-[#5B6560]">
                     Nothing closed in the last two weeks.
                   </p>
                 ) : (
@@ -365,7 +366,7 @@ export default function MyWork() {
                       <span className="min-w-0 flex-1 truncate text-sm font-medium text-forest">
                         {c.title}
                       </span>
-                      <span className="shrink-0 font-mono text-[10px] text-[#5A6B7D]">
+                      <span className="shrink-0 font-mono text-[10px] text-[#5B6560]">
                         {c.resolved_at ? timeAgo(c.resolved_at) : ""}
                       </span>
                     </Link>

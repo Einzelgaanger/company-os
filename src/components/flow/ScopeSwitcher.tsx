@@ -31,8 +31,8 @@ export function ScopeSwitcher({
           aria-pressed={scope === option}
           onClick={() => onChange(option)}
           className={cn(
-            "rounded-md px-2.5 py-1 text-[11px] font-semibold text-[#5A6B7D] transition-colors",
-            scope === option ? "bg-[#0E1F1A] text-white" : "hover:bg-[#F7FAF6]",
+            "rounded-md px-2.5 py-1 text-[11px] font-semibold text-[#5B6560] transition-colors",
+            scope === option ? "bg-[#0E1F1A] text-white" : "hover:bg-[#F8F8F7]",
           )}
         >
           {SCOPE_LABEL[option]}

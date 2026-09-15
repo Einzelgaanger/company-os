@@ -19,12 +19,14 @@ import type { FlowState } from "./flow";
 export const BRAND = {
   ink: "#0E1F1A",
   primary: "#0E1F1A",
-  /** Lime. Decorative only — logo, marketing, illustration, focus ring. */
+  /** Lime — marketing/auth CTA fill + logo node; never app control fill; never text on light. */
   accent: "#D3F36B",
-  muted: "#5B6B66",
+  accentWash: "#F4FBE3",
+  muted: "#5B6560",
   surface: "#FFFFFF",
-  bg: "#F6F8F7",
-  border: "#E2E8E5",
+  surfaceRaised: "#F8F8F7",
+  bg: "#F5F5F3",
+  border: "#E5E5E2",
 } as const;
 
 export type StatusToken = "moving" | "ready" | "waiting" | "review" | "attention" | "done";
@@ -35,7 +37,7 @@ export type StatusToken = "moving" | "ready" | "waiting" | "review" | "attention
  */
 export const STATUS: Record<StatusToken, { mark: string; ink: string; tint: string }> = {
   moving: { mark: "#2D7A9E", ink: "#1F5A75", tint: "#EAF2F7" },
-  ready: { mark: "#7C8B99", ink: "#4A5560", tint: "#F0F2F4" },
+  ready: { mark: "#7B837E", ink: "#4C524E", tint: "#F1F2F0" },
   waiting: { mark: "#C77D18", ink: "#8A5410", tint: "#FBF1E2" },
   review: { mark: "#5B7C99", ink: "#3F5A73", tint: "#EDF1F6" },
   attention: { mark: "#B3402B", ink: "#8C2F1F", tint: "#FAEDEA" },

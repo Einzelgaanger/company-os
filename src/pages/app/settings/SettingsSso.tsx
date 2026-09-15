@@ -32,7 +32,7 @@ export default function SettingsSso() {
     <div className="space-y-4">
       <PageHeader
         title="SSO (WorkOS)"
-        subtitle="Buy-not-build identity. Configure env credentials; Loop never fakes SSO success."
+        subtitle="Buy-not-build identity. Configure env credentials; Company OS never fakes SSO success."
       />
       {!apiConfigured() ? (
         <p className="text-sm text-slate">Connect VITE_API_URL to manage SSO.</p>

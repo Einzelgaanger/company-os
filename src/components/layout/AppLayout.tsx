@@ -28,6 +28,7 @@ import { BrandMark } from "@/components/brand/LoopMark";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/db";
 import { connectionHealthLocal } from "@/lib/connectionHealth";
+import { messagingLinked } from "@/lib/messaging";
 import { roleAtLeast, type Role } from "@/lib/types";
 import { cn, initials } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
@@ -58,8 +59,8 @@ const NAV: NavItem[] = [
   { to: "/settings/profile", label: "Settings", icon: Settings },
 ];
 
-const BANNER_KEY = "loop.banner.whatsapp.dismissed";
-const CONN_BANNER_KEY = "loop.banner.connection.dismissed";
+const BANNER_KEY = "companyos.banner.telegram.dismissed";
+const CONN_BANNER_KEY = "companyos.banner.connection.dismissed";
 
 export function AppLayout() {
   const { user, org, signOut } = useAuth();
@@ -79,15 +80,21 @@ export function AppLayout() {
 
   useEffect(() => {
     if (!user) return;
-    void db.listNotifications(user.id).then((ns) => setUnread(ns.filter((n) => !n.read_at).length));
+    void db
+      .listNotifications(user.id)
+      .then((ns) => setUnread(ns.filter((n) => !n.read_at).length))
+      .catch(() => setUnread(0));
   }, [user, location.pathname]);
 
   useEffect(() => {
     if (!user?.org_id) return;
-    void db.listConnections(user.org_id).then((conns) => {
-      const bad = conns.find((c) => connectionHealthLocal(c.status, c.last_synced_at).alert);
-      setConnAlert(bad ? { provider: bad.provider } : null);
-    });
+    void db
+      .listConnections(user.org_id)
+      .then((conns) => {
+        const bad = conns.find((c) => connectionHealthLocal(c.status, c.last_synced_at).alert);
+        setConnAlert(bad ? { provider: bad.provider } : null);
+      })
+      .catch(() => setConnAlert(null));
   }, [user, location.pathname]);
 
   useEffect(() => {
@@ -114,12 +121,12 @@ export function AppLayout() {
 
   if (!user) return null;
 
-  const showWhatsappBanner = !user.phone_verified_at && !bannerDismissed;
+  const showTelegramBanner = !messagingLinked(user) && !bannerDismissed;
   const showConnBanner = Boolean(connAlert) && !connBannerDismissed;
 
   function NavList({ dense = false }: { dense?: boolean }) {
     return (
-      <nav className={cn("flex-1 space-y-0.5 overflow-y-auto px-2 py-2", dense && "px-1")}>
+      <nav className={cn("flex-1 space-y-0.5 overflow-hidden px-2 py-2", dense && "px-1")}>
         {items.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
@@ -139,7 +146,7 @@ export function AppLayout() {
 
   return (
       <div className="portal-shell">
-        {/* §12.6: ambient shell → solid #eef2ee veil → photo @ 0.12 on top */}
+        {/* §12.6: ambient shell → solid #EFEFEE veil → photo @ 0.12 on top */}
         <div className="portal-backdrop" aria-hidden>
           <div className="portal-backdrop__veil" />
           <img src={BRAND.portalBackdrop} alt="" className="portal-backdrop__photo" aria-hidden />
@@ -174,7 +181,7 @@ export function AppLayout() {
               >
                 <Bell className="h-4 w-4" strokeWidth={1.75} />
                 {unread > 0 && (
-                  <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-[#F0C419]" />
+                  <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-status-waiting" />
                 )}
               </Link>
               <button
@@ -259,36 +266,36 @@ export function AppLayout() {
             >
               <Bell className="h-5 w-5" />
               {unread > 0 && (
-                <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#F0C419]" />
+                <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-status-waiting" />
               )}
             </Link>
           </header>
 
           <header className="hidden h-14 items-center justify-between border-b border-[rgba(14,31,26,0.06)] bg-white px-4 lg:flex">
-            <div className="text-sm font-semibold text-[#5A6B7D]">{org?.name ?? BRAND.name}</div>
+            <div className="text-sm font-semibold text-[#5B6560]">{org?.name ?? BRAND.name}</div>
             <div className="flex items-center gap-2">
               <AutonomyPill />
               <Link
                 to="/notifications"
-                className="relative rounded-lg p-2 text-[#5A6B7D] hover:bg-[#F7FAF6] hover:text-[#0E1F1A]"
+                className="relative rounded-lg p-2 text-[#5B6560] hover:bg-[#F8F8F7] hover:text-[#0E1F1A]"
                 aria-label="Notifications"
               >
                 <Bell className="h-5 w-5" />
                 {unread > 0 && (
-                  <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#F0C419]" />
+                  <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-status-waiting" />
                 )}
               </Link>
               <button
                 type="button"
                 onClick={() => navigate("/settings/profile")}
-                className="flex items-center gap-2 rounded-xl bg-[#F7FAF6] px-2 py-1.5 text-left hover:bg-[#F4FBE3]"
+                className="flex items-center gap-2 rounded-xl bg-[#F8F8F7] px-2 py-1.5 text-left hover:bg-[#F4FBE3]"
               >
                 <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#D3F36B] text-[11px] font-bold text-[#0E1F1A]">
                   {initials(user.full_name)}
                 </div>
                 <div className="hidden xl:block">
                   <div className="text-xs font-semibold text-[#0E1F1A]">{user.full_name}</div>
-                  <div className="text-[10px] text-[#5A6B7D]">{user.email}</div>
+                  <div className="text-[10px] text-[#5B6560]">{user.email}</div>
                 </div>
               </button>
             </div>
@@ -316,12 +323,12 @@ export function AppLayout() {
             </div>
           )}
 
-          {showWhatsappBanner && (
-            <div className="flex items-center justify-between gap-3 border-b border-[rgba(240,196,25,0.4)] bg-[#FFF8E0] px-4 py-2 text-xs font-medium text-[#8A6A00]">
+          {showTelegramBanner && (
+            <div className="flex items-center justify-between gap-3 border-b border-status-waiting/40 bg-status-waiting-tint px-4 py-2 text-xs font-medium text-status-waiting-ink">
               <span>
-                Verify WhatsApp so Loop can track your commitments.{" "}
+                Verify Telegram so Company OS can track your commitments.{" "}
                 <Link to="/settings/profile" className="font-bold underline">
-                  Verify now
+                  Link in Profile
                 </Link>
               </span>
               <button
@@ -331,7 +338,7 @@ export function AppLayout() {
                   setBannerDismissed(true);
                 }}
                 aria-label="Dismiss"
-                className="text-[#8A6A00]/70 hover:text-[#8A6A00]"
+                className="text-status-waiting-ink/70 hover:text-status-waiting-ink"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -353,7 +360,7 @@ export function AppLayout() {
                 to={to}
                 className={({ isActive }) =>
                   cn(
-                    "flex min-h-[52px] flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-[#5A6B7D] active:scale-95",
+                    "flex min-h-[52px] flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-[#5B6560] active:scale-95",
                     isActive && "text-[#0E1F1A]"
                   )
                 }
@@ -371,7 +378,7 @@ export function AppLayout() {
             <button
               type="button"
               onClick={() => setMoreOpen((v) => !v)}
-              className="flex min-h-[52px] flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-[#5A6B7D] active:scale-95"
+              className="flex min-h-[52px] flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-[#5B6560] active:scale-95"
             >
               <span className={cn("rounded-lg p-1", moreOpen && "bg-[rgba(211,243,107,0.25)]")}>
                 <MoreHorizontal className="h-4 w-4" />
@@ -387,7 +394,7 @@ export function AppLayout() {
                   <Link
                     key={to}
                     to={to}
-                    className="flex flex-col items-center gap-1 rounded-lg bg-[#F7FAF6] px-2 py-3 text-[11px] font-semibold text-[#0E1F1A]"
+                    className="flex flex-col items-center gap-1 rounded-lg bg-[#F8F8F7] px-2 py-3 text-[11px] font-semibold text-[#0E1F1A]"
                   >
                     <Icon className="h-4 w-4" strokeWidth={1.75} />
                     {label}

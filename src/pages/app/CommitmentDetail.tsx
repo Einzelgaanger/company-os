@@ -530,7 +530,7 @@ export default function CommitmentDetail() {
                       )}
                     >
                       <div className="mb-1 flex items-center gap-2 text-xs text-slate">
-                        <span className="font-medium">{outbound ? "Loop" : userMap.get(c.user_id)?.full_name ?? "Reply"}</span>
+                        <span className="font-medium">{outbound ? "Company OS" : userMap.get(c.user_id)?.full_name ?? "Reply"}</span>
                         <span className="font-mono">{formatDateTime(c.created_at)}</span>
                       </div>
                       <p>{c.message_text}</p>

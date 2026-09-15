@@ -3,12 +3,12 @@ import { cn } from "@/lib/utils";
 export type StatusTone = "ok" | "pending" | "danger" | "neutral" | "info" | "pipeline";
 
 const TONE: Record<StatusTone, string> = {
-  ok: "bg-[#F4FBE3] text-[#1A3A2E]",
-  pending: "bg-[#FFF8E0] text-[#8A6A00]",
-  danger: "bg-red-50 text-red-700",
-  neutral: "bg-[#F7FAF6] text-[#5A6B7D]",
-  info: "bg-blue-50 text-blue-700",
-  pipeline: "bg-[#E8F0EA] text-[#0E1F1A]",
+  ok: "bg-mint text-forest-hover",
+  pending: "bg-status-waiting-tint text-status-waiting-ink",
+  danger: "bg-status-attention-tint text-status-attention-ink",
+  neutral: "bg-soft text-slate",
+  info: "bg-status-moving-tint text-status-moving-ink",
+  pipeline: "bg-soft text-forest",
 };
 
 /** Soft pastel mono uppercase badge — §9.2 */

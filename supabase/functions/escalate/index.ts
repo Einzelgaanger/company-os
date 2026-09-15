@@ -1,10 +1,10 @@
 // escalate (BUILD_SPEC 8.5)
-// Called by whatsapp-webhook on a blocker, or by the scheduled sweep. Routes
+// Called by telegram-webhook / whatsapp-webhook on a blocker, or by the scheduled sweep. Routes
 // via the ownership map, falling back to the requester's manager, then any
-// admin/owner. Builds a frozen context snapshot and notifies via WhatsApp/in-app.
+// admin/owner. Builds a frozen context snapshot and notifies via Telegram/WhatsApp/in-app.
 // deno-lint-ignore-file no-explicit-any
 import { adminClient, json, corsHeaders, audit } from "../_shared/supabase.ts";
-import { sendWhatsApp, whatsappConfigured } from "../_shared/whatsapp.ts";
+import { sendOutbound } from "../_shared/whatsapp.ts";
 import { templates } from "../_shared/templates.ts";
 
 const SENS_RANK: Record<string, number> = { public: 0, internal: 1, confidential: 2, restricted: 3 };
@@ -112,9 +112,9 @@ async function escalateOne(db: any, commitment_id: string, reason: string): Prom
     ? await db.from("users").select("full_name").eq("id", commitment.requested_by_id).single()
     : { data: null };
 
-  if (whatsappConfigured() && target_user?.phone_verified_at && target_user.phone_number) {
-    await sendWhatsApp(
-      target_user.phone_number,
+  if (target_user) {
+    await sendOutbound(
+      target_user,
       templates["W-ESCALATE"]({
         escalated_to_name: target_user.full_name.split(" ")[0],
         commitment_title: commitment.title,
@@ -122,7 +122,7 @@ async function escalateOne(db: any, commitment_id: string, reason: string): Prom
         due_date: commitment.due_date ?? "soon",
         owner_name: owner?.full_name ?? commitment.owner_external_name ?? "the owner",
         blocker_text: reason,
-      })
+      }),
     );
   }
 

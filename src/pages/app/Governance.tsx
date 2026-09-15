@@ -106,7 +106,7 @@ export default function Governance() {
     <div className="portal-page animate-fade-in">
       <PageHeader
         title="Data governance"
-        description="Classification, tagging, and access — so sensitive data is handled correctly everywhere Loop touches it."
+        description="Classification, tagging, and access — so sensitive data is handled correctly everywhere Company OS touches it."
       />
 
       <Tabs defaultValue="overview">

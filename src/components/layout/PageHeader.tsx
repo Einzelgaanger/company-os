@@ -19,7 +19,7 @@ export function PageHeader({
       <div className="min-w-0 flex-1">
         <div className="flex items-start gap-2.5">
           {/* Lime tick: 4×16 capsule */}
-          <span className="mt-1.5 h-4 w-1 shrink-0 rounded-full bg-[#D3F36B]" aria-hidden />
+          <span className="mt-1.5 h-4 w-1 shrink-0 rounded-full bg-lime" aria-hidden />
           <h1
             className="font-display min-w-0 text-base font-bold leading-tight tracking-tight text-white sm:text-lg line-clamp-2"
             title={title}

@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Loop — autonomous work-coordination agent. See docs/README.md.",
+  "description": "Company OS — Your Agentic Chief Of Staff. Autonomous work coordination. See docs/README.md.",
   "scripts": {
     "dev": "vite",
     "dev:api": "pnpm --filter @loop/api dev",
@@ -23,6 +23,7 @@
     "ops:meta-app-webhook-fix": "node scripts/ops/meta-app-webhook-fix.mjs",
     "ops:openrouter-secret": "node scripts/ops/set-openrouter-secret.mjs",
     "ops:supabase-migrate": "node scripts/ops/apply-supabase-migration.mjs",
+    "ops:telegram-webhook": "node scripts/ops/set-telegram-webhook.mjs",
     "smoke:prod": "node scripts/smoke/prod.mjs",
     "smoke:whatsapp": "node scripts/smoke/whatsapp-readiness.mjs",
     "smoke:api": "node scripts/smoke/offline-api.mjs",

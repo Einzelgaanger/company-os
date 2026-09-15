@@ -10,35 +10,43 @@ The failure mode to design against is the operational dashboard that shows forty
 
 ---
 
-## 7.2 The colour collision the audit found
+## 7.2 Historical colour collision (resolved)
 
-Current tokens: `--forest #0E1F1A`, `--lime #D3F36B`, `--gold #F0C419`. Lime is **brand and primary and accent**. Gold is **brand accent and "at risk"**.
+An earlier audit found lime serving as brand, primary and accent at once, and gold serving as both brand accent and “at risk.” Gold has been **deleted** from the brand set; warning chrome now draws from the `waiting` status family (`--status-waiting*`). Brand and status remain disjoint.
 
-This is the specific error the visualization literature warns about: never use a semantic status colour for branding. If the brand colour also means "warning", the user cannot tell a button from an alarm, and every screen carries a low-level false signal.
+Remaining invariant:
 
-Two further problems:
-- **Lime on white fails contrast.** `#D3F36B` against white is roughly 1.5:1. It cannot carry text or be a primary button surface. The audit found the CTA overridden to forest, which is the codebase telling you the token is wrong.
-- **Red/green status pairs.** Around 99% of colour blindness is red-green, and a dashboard where red means blocked and green means fine reduces both to similar muddy tones for those users.
+- **Lime on white fails contrast** (~1.5:1). It cannot be body text on a light surface. Enforced by `pnpm check:tokens`.
+- **Status axis is blue → orange**, not green → red, for colour-vision deficiency. Red is reserved for `attention`. Green appears only as `done` (completed work items — never people).
 
 ---
 
 ## 7.3 The rule: brand and status are disjoint sets
 
-**No colour appears in both sets. Ever.** This is checkable and must be enforced by a token test.
+**No colour appears in both sets. Ever.** Enforced by `pnpm check:tokens` (rules 1–4).
 
 ### Brand set — identity and interaction only
 
 | Token | Hex | Use |
 |---|---|---|
-| `--brand-ink` | `#0E1F1A` | Primary text, sidebar, dark surfaces. *(Forest retained — it is good, and it is the only brand colour that currently works.)* |
-| `--brand-primary` | `#0E1F1A` | Primary buttons. Dark on light — high contrast, calm, and it never competes with status. |
-| `--brand-accent` | `#D3F36B` | Lime. **Decorative only** — logo, marketing, illustration, focus glow. Never a surface behind text. Never a status. |
-| `--brand-muted` | `#5B6B66` | Secondary text |
+| `--brand-ink` / `--brand-primary` | `#0E1F1A` | Primary text, sidebar, dark surfaces, app primary buttons |
+| `--brand-accent` | `#D3F36B` | Lime — see lime CTA rule below |
+| `--brand-accent-wash` | `#F4FBE3` | Soft lime wash for selected / identity hover |
+| `--brand-muted` | `#5B6560` | Secondary text — **the only muted grey** |
 | `--surface` | `#FFFFFF` | Cards |
-| `--bg` | `#F6F8F7` | App background |
-| `--border` | `#E2E8E5` | Hairlines |
+| `--surface-raised` | `#F8F8F7` | Raised soft fills |
+| `--bg` | `#F5F5F3` | App background (neutral, not green-tinted) |
+| `--border` | `#E5E5E2` | Hairlines |
 
-Lime survives as brand identity — it is distinctive and the marketing site uses it well — but it loses every functional role. Primary actions become dark forest on light, which is high-contrast, quiet, and unambiguous.
+**Lime `#D3F36B` is the brand accent. It is never a status and never body text.**
+
+**Marketing and auth surfaces** (`.loop-site`, auth marketing pane): lime may fill the single primary CTA per viewport, the logo node, section rules and identity accents. Text on lime is always forest `#0E1F1A`.
+
+**App surfaces** (portal, sidebar, content canvas): lime never fills an interactive control. App primary action is forest. Lime appears only as focus ring, avatar chip and small identity accents.
+
+**Never anywhere:** lime as text on a light surface, lime as a status, lime as a chart series, lime to indicate a person's performance.
+
+**Accent budget:** Lime covers roughly five percent of any marketing viewport. One filled CTA, plus identity. If lime appears on three separate elements in one viewport it has stopped being a signal.
 
 ### Status set — flow states only, on a blue-to-orange axis
 
@@ -47,8 +55,8 @@ The primary status contrast runs **blue → orange**, not green → red, because
 | Token | Hex | Flow meaning | Icon | Label |
 |---|---|---|---|---|
 | `--status-moving` | `#2D7A9E` | `active` — someone is working on it | ▶ | Moving |
-| `--status-ready` | `#7C8B99` | `ready` — queued, untouched | ○ | Ready |
-| `--status-waiting` | `#C77D18` | `waiting_*` — the state Loop exists to surface | ⏸ | Waiting |
+| `--status-ready` | `#7B837E` | `ready` — queued, untouched (neutral grey — dormant) | ○ | Ready |
+| `--status-waiting` | `#C77D18` | `waiting_*` — the state Company OS exists to surface; also warning banners | ⏸ | Waiting |
 | `--status-review` | `#5B7C99` | `review` — awaiting acceptance | ◐ | In review |
 | `--status-attention` | `#B3402B` | Escalated, or waiting beyond the red threshold | ▲ | Needs attention |
 | `--status-done` | `#3E7A5B` | `done` | ✓ | Done |
@@ -56,6 +64,10 @@ The primary status contrast runs **blue → orange**, not green → red, because
 Green appears **only** for `done`. It is never a health signal, never "on track", never reassurance. This is deliberate: green-as-reassurance is the visual grammar of watermelon reporting, and removing it from the vocabulary removes the invitation to produce it.
 
 **Every status is rendered with all three of: colour, icon, text label.** Colour alone is never sufficient, in any component, including compact table cells and sparklines. Enforce it structurally — `<StatusChip state={...} />` is the only way to render a status, and it always emits the triad.
+
+### Warning chrome
+
+Banners that formerly used gold (`#F0C419` / wash / text) now use `waiting` tint / ink / mark. Do not reintroduce a brand gold family.
 
 ### Fever chart zones — the one place a traffic pattern is correct
 
@@ -87,21 +99,36 @@ These are not stylistic preferences. They are how the eye works, and violating t
 
 ## 7.5 Typography
 
-The audit found four families loaded: IBM Plex Mono, Inter, Plus Jakarta Sans, Space Grotesk. Four is at least one too many and costs real load time.
-
-**Keep three, each with a job:**
+**Three families, each with a job:**
 
 | Role | Family | Weights | Used for |
 |---|---|---|---|
-| Display | Plus Jakarta Sans | 600, 700 | Page titles, empty-state headlines, marketing. Sparingly. |
-| Interface | Inter | 400, 500, 600 | Everything else — tables, forms, labels, body |
-| Data | IBM Plex Mono | 500 | Durations, dates, counts, IDs, phone numbers |
+| Display | **Instrument Sans** (`--font-display`) | 400, 500, 600 | Marketing headlines, brand wordmarks. Weight 600 reserved for marketing display. |
+| Interface | **Inter** (`--font-sans`) | 400, 500 | App UI, body, tables, forms. Prefer 400/500 only in-app. |
+| Data | **IBM Plex Mono** (`--font-mono`) | 400, 500 | Durations, dates, counts, IDs, phone numbers |
 
-**Drop Space Grotesk.** It overlaps Plus Jakarta Sans and earns nothing.
+Plus Jakarta Sans and Space Grotesk are **gone**. Do not reload them.
 
-**Mono for durations is a deliberate signal.** "4.2 working days" in mono reads as a measurement rather than prose, and it aligns in columns. Loop is an instrument; its numbers should look like instrument readings.
+**Mono for durations is a deliberate signal.** "4.2 working days" in mono reads as a measurement rather than prose, and it aligns in columns. Company OS is an instrument; its numbers should look like instrument readings.
+
+**Display treatment:** H1 marketing weight 600, letter-spacing `-0.025em`, line-height `1.05`. H2 weight 600, letter-spacing `-0.015em`. Body Inter 400, line-height `1.6`, measure capped at ~68ch.
 
 **Scale:** 12 / 14 / 16 / 20 / 24 / 32 / 48. Body 14. Table cells 14. Nothing below 12.
+
+---
+
+## 7.5b Marketing chrome — anti-tell list
+
+These are where a templated “AI SaaS” feel actually comes from. Enforce in review:
+
+- No tracked-out all-caps eyebrow labels above headings. Sentence case, or no label.
+- No `→` appended to button or link text. The button says what happens.
+- No meta strings joined with middle dots.
+- No accenting a single word of a headline in lime. The headline is one colour.
+- No numbered markers (01 / 02 / 03) unless the content is genuinely a sequence.
+- No identical rounded cards with identical soft shadows as the section grammar. Cards are interaction containers only. Prefer bordered rows and full-bleed bands.
+- No fade-and-slide-up entrance on every section. One orchestrated page-load moment maximum.
+- Hero photography must be real work environments, not stock desks.
 
 ---
 

@@ -17,5 +17,5 @@ export const templates = {
   "W-STANDUP-PREP": (v: { team_name: string; on_track: number; blocked: number; overdue: number; link_to_dashboard: string }) =>
     `Standup snapshot for ${v.team_name}: ${v.on_track} on track, ${v.blocked} blocked, ${v.overdue} overdue. Full detail: ${v.link_to_dashboard}.`,
   "W-OTP": (v: { code: string }) =>
-    `Your Loop verification code is ${v.code}. It expires in 10 minutes.`,
+    `Your Company OS verification code is ${v.code}. It expires in 10 minutes.`,
 };

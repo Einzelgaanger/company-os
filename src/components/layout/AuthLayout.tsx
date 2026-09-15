@@ -25,15 +25,14 @@ export function AuthLayout({ children }: { children: ReactNode }) {
         <div className="flex shrink-0 flex-col justify-between p-5 safe-pad-x safe-pad-top text-white sm:p-6 lg:max-w-lg lg:flex-1 lg:p-10 xl:p-14">
           <Logo inverted />
           <div className="hidden space-y-4 lg:block">
-            <p
-              className="font-marketing text-xs font-semibold uppercase text-[#D3F36B]"
-              style={{ letterSpacing: "0.16em" }}
+            <h1
+              className="font-marketing text-[clamp(2.5rem,5vw,4rem)] font-bold tracking-tight text-[#F4F5F3]"
             >
               {BRAND.name}
-            </p>
-            <h1 className="max-w-[11ch] text-[clamp(2rem,4vw,3.25rem)] font-bold tracking-tight text-[#F3FAF5]">
-              {BRAND.tagline}
             </h1>
+            <p className="max-w-[22ch] text-[clamp(1.25rem,2.5vw,1.75rem)] font-semibold leading-snug text-[#D3F36B]">
+              {BRAND.slogan}
+            </p>
             <p className="max-w-[38ch] text-[15px] font-medium leading-relaxed text-[rgba(243,250,245,0.78)]">
               {BRAND.promise}
             </p>

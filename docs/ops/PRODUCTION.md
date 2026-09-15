@@ -1,6 +1,6 @@
-# Loop — production pilot status
+# Company OS — production pilot status
 
-**Project:** `pkxnfkubgpbdbftvtgvf` (*ProDG Internal Dani* — rename to **Loop** in dashboard)  
+**Project:** `pkxnfkubgpbdbftvtgvf` (*ProDG Internal Dani* — rename to **Company OS** in dashboard)  
 **Region:** eu-north-1  
 **URL:** https://pkxnfkubgpbdbftvtgvf.supabase.co  
 **Last full setup:** 2026-08-20
@@ -10,10 +10,10 @@
 | Step | Status |
 |---|---|
 | CLI linked | Done |
-| Migrations `0001`–`0008` | Up to date |
+| Migrations `0001`–`0008` (+ `0011_telegram` manually) | Apply `0011` in SQL Editor if not yet |
 | `app_secrets` (OpenRouter in DB) | Done |
-| Edge secrets (OpenRouter + public URLs) | Done |
-| 9 edge functions deployed | Done |
+| Edge secrets (OpenRouter + public URLs + Telegram) | Partial |
+| Edge functions deployed | Done (+ deploy `telegram-webhook`, `launch-readiness`) |
 | Cron + vault `loop_service_role_key` | Done (5 jobs) |
 | Demo seed | Done |
 | Smoke (`npm run smoke:prod`) | **8/8 passed** |
@@ -31,7 +31,11 @@ npm run dev
 ```
 
 ### Functions deployed
-`ingest-meeting`, `extract-commitments`, `send-checkin`, `escalate`, `generate-report`, `verify-otp`, `oauth`, `send-digest`, `whatsapp-webhook`
+`ingest-meeting`, `extract-commitments`, `send-checkin`, `escalate`, `generate-report`, `verify-otp`, `oauth`, `send-digest`, `whatsapp-webhook`, `telegram-webhook`, `launch-readiness`
+
+### Messaging
+- **Primary:** Telegram (`TELEGRAM_BOT_TOKEN` + user `LINK +phone`) — see `docs/ops/TELEGRAM.md`
+- **Fallback:** Meta / Twilio WhatsApp
 
 ### Cron
 - `loop-send-checkin` — hourly  
@@ -56,7 +60,7 @@ Edge functions (`extract-commitments`, `generate-report`, inbound classify) all 
 
 | Layer | Host |
 |-------|------|
-| SPA | **Render** — https://company-os-cce2.onrender.com |
+| SPA | **https://companyos.jabali.studio** (Render + custom domain) |
 | Auth / DB / WhatsApp / AI / cron | **Supabase** — `pkxnfkubgpbdbftvtgvf` |
 
 Coolify is **deferred**. Full steps: [`docs/ops/RENDER.md`](./RENDER.md).
@@ -64,7 +68,7 @@ Coolify is **deferred**. Full steps: [`docs/ops/RENDER.md`](./RENDER.md).
 ```env
 VITE_SUPABASE_URL=https://pkxnfkubgpbdbftvtgvf.supabase.co
 VITE_SUPABASE_ANON_KEY=...
-VITE_PUBLIC_SITE_URL=https://company-os-cce2.onrender.com
+VITE_PUBLIC_SITE_URL=https://companyos.jabali.studio
 # Do NOT set VITE_ALLOW_MOCK or VITE_API_URL
 ```
 

@@ -32,7 +32,7 @@ export type CommitmentStatus =
 
 export type Priority = "low" | "medium" | "high" | "critical";
 
-export type SourceType = "meeting" | "email" | "manual" | "whatsapp";
+export type SourceType = "meeting" | "email" | "manual" | "whatsapp" | "telegram";
 
 export type CheckinDirection = "outbound" | "inbound";
 
@@ -56,7 +56,7 @@ export type MeetingCategory =
 
 export type FeedbackLabel = "accurate" | "incorrect";
 
-export type StatusHistoryChannel = "ui" | "whatsapp" | "api" | "system" | "engine";
+export type StatusHistoryChannel = "ui" | "whatsapp" | "telegram" | "api" | "system" | "engine";
 
 export interface CommitmentDependency {
   id: string;
@@ -154,7 +154,7 @@ export interface OrgSettings {
   timezone?: string;
   escalation_sla_hours?: number;
   data_retention_months?: 6 | 12 | 24;
-  report_channels?: { email: boolean; in_app: boolean; whatsapp: boolean };
+  report_channels?: { email: boolean; in_app: boolean; whatsapp: boolean; telegram?: boolean };
   report_recipient_ids?: string[];
   // Governance
   default_classification?: Sensitivity;
@@ -184,6 +184,7 @@ export interface Organization {
 }
 
 export interface NotificationPrefs {
+  /** Master switch for outbound check-ins (Telegram primary, WhatsApp fallback). */
   whatsapp_checkins: boolean;
   daily_digest?: boolean;
 }
@@ -195,6 +196,9 @@ export interface User {
   email: string;
   phone_number: string | null;
   phone_verified_at: string | null;
+  telegram_chat_id?: string | null;
+  telegram_username?: string | null;
+  telegram_linked_at?: string | null;
   role: Role;
   manager_id: string | null;
   status: UserStatus;

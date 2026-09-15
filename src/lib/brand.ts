@@ -1,36 +1,40 @@
 /**
- * Loop brand — IOUX visual grammar; Loop identity & taste (PART C).
+ * Company OS brand — forest + lime visual grammar.
  *
  * Product world: Operators and leads who refuse to lose commitments in chat.
- * The room: standup desks, phones, calendars, meeting notes — not clinics or warehouses.
- * Belong: check-ins, nudges, escalations, owners. Ban: IOUX U, pharmacy, stethoscopes, receivables.
+ * Mark: geometric C monogram + lime status node (“the operating system for work follow-through”).
  *
- * Mark: open continuity ring + lime next-action node (“an open loop that still has a next beat”).
+ * Neutrals are deliberately non-green so forest + lime stay the only green poles.
+ * Warning chrome uses the `waiting` status tokens — never a separate gold family.
  */
 export const BRAND = {
-  name: "Loop",
-  tagline: "Your autonomous chief of staff",
+  name: "Company OS",
+  shortName: "Company",
+  slogan: "Your Agentic Chief Of Staff",
+  tagline: "Your Agentic Chief Of Staff",
   promise:
-    "Commitments tracked, check-ins sent, escalations governed — without another dashboard to babysit.",
+    "Captures what was promised, checks in daily, and when someone is stuck uses the work context to find the right person to unblock it — so your team stops chasing and stressing, and project reports still land with the people who run it.",
   world:
     "For operators keeping team promises alive — desks, phones, calendars; never clinics or warehouses.",
-  markExplain: "An open loop that still has a next beat.",
+  markExplain: "The operating system for work follow-through.",
+
   forest: "#0E1F1A",
   forestDeep: "#0A1712",
   forestHover: "#1A3A2E",
   forestSoft: "#173028",
+
   lime: "#D3F36B",
   limeBright: "#C8F14A",
-  mint: "#F4FBE3",
-  gold: "#F0C419",
-  goldWash: "#FFF8E0",
-  goldText: "#8A6A00",
-  ambient: "#EEF2EE",
-  soft: "#F7FAF6",
-  muted: "#5A6B7D",
+  /** Soft lime wash for selected / hover identity — not a page neutral. */
+  accentWash: "#F4FBE3",
+
   paper: "#FFFFFF",
-  nearWhite: "#F3FAF5",
-  /** Domain rooms: ops / follow-through — not healthcare, not IOUX logistics */
+  soft: "#F8F8F7",
+  ambient: "#EFEFEE",
+  hairline: "#E5E5E2",
+  nearWhite: "#F4F5F3",
+  muted: "#5B6560",
+
   authHero: "/auth-portal-hero.jpg",
   portalBackdrop: "/images/portal-backdrop.jpg",
   marketingHero: "/images/marketing-hero.jpg",

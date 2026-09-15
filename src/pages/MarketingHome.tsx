@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Check, Menu, X } from "lucide-react";
+import { Check, Menu, X } from "lucide-react";
 import { BrandMark } from "@/components/brand/LoopMark";
 import { BRAND } from "@/lib/brand";
 import "@/styles/loop-marketing.css";
@@ -8,17 +8,111 @@ import "@/styles/loop-marketing.css";
 const HERO = BRAND.marketingHero;
 
 const FLOW = [
-  { n: "01", title: "Capture", body: "Pull commitments from meetings, chat, and mail into one governed loop." },
-  { n: "02", title: "Check in", body: "Owners get calm, timely prompts — not another dashboard to babysit." },
-  { n: "03", title: "Nudge", body: "Silence triggers soft nudges before anything goes political." },
-  { n: "04", title: "Escalate", body: "Stalls route by sensitivity — the right person, the right tone." },
+  {
+    n: "01",
+    title: "Detect",
+    body: "Meetings, chat, and mail become owned commitments — not notes that evaporate after the call.",
+  },
+  {
+    n: "02",
+    title: "Track",
+    body: "Every item has an owner, a due date, and a waiting trail. The company can see what is actually in motion.",
+  },
+  {
+    n: "03",
+    title: "Check",
+    body: "People get calm daily prompts on Telegram (primary), with WhatsApp or email as fallback — facts about the work, not another status colour.",
+  },
+  {
+    n: "04",
+    title: "Nudge",
+    body: "Silence gets a human follow-up before the stall becomes political. Soft first. Then louder, by policy.",
+  },
+  {
+    n: "05",
+    title: "Escalate",
+    body: "When work is stuck, Company OS reads the trail — who owns it, what it depends on, who can unblock it — and routes the ask there. People are not left to guess, chase, or escalate themselves.",
+  },
+  {
+    n: "06",
+    title: "Report",
+    body: "Project managers and leads receive governed reports: where time went, what is waiting, what moved, what needs a decision.",
+  },
+] as const;
+
+const CHANNELS = [
+  {
+    title: "Daily prompts that sound like staff, not spam",
+    body: "Company OS checks in on live work the way a chief of staff would: short, specific, and timed to the item — not a blast to the whole company. Owners reply in the channel they already live in. The system records the answer, and only when something is actually stuck does it escalate — with context, not panic.",
+  },
+  {
+    title: "Unblock without the stress",
+    body: "When someone is blocked, Company OS already has the meeting notes, owners, and dependencies. It knows who to ask next so the person doing the work does not have to chase sideways, and the project manager does not have to hunt for the right inbox. Escalation arrives with judgment — the right person, the right tone — not a public pile-on.",
+  },
+  {
+    title: "Reports for people who run projects",
+    body: "Leads see project health, waiting time, open decisions, and follow-through on commitments — scoped to their projects, not a company-wide dump. This is operational visibility: who is holding work, what is blocked, what closed. It is not a scorecard for promotion or discipline.",
+  },
+] as const;
+
+const MODES = [
+  {
+    title: "Studios & agencies",
+    body: "Informal, fast, everyone on chat. Company OS finds who to ask and asks for you — light check-ins, lateral unblocks.",
+  },
+  {
+    title: "Founding teams",
+    body: "One principal, many threads. Surface only what needs their call. Keep the decision queue short and visible.",
+  },
+  {
+    title: "Operations & process",
+    body: "Defined steps and SLAs. Prompt only on exception. Escalate when a step exceeds the time it should take.",
+  },
+  {
+    title: "Multi-division groups",
+    body: "Roll up deliverable variance per division without micromanaging how each team works inside the box.",
+  },
+  {
+    title: "Professional practices",
+    body: "Law, engineering, audit. Track only commitments owed across a boundary. Never supervise how a professional does the work.",
+  },
+] as const;
+
+const AUDIENCE = [
+  {
+    who: "Project managers",
+    title: "Know the project without chasing it",
+    points: [
+      "Weekly (and optional daily) reports on waiting time, blockers, and what actually moved",
+      "Per-project health: fever, buffer, items waiting, direction versus last week",
+      "See follow-through by owner and team — operational, not a people-ranking board",
+    ],
+  },
+  {
+    who: "Operators & leads",
+    title: "Keep promises alive between meetings",
+    points: [
+      "One governed loop instead of a graveyard of Slack threads and spreadsheet trackers",
+      "Escalations that arrive with judgment — quiet for ops, louder when the cost of delay is real",
+      "A waiting register: what is stuck, on whom, and who can unstick it",
+    ],
+  },
+  {
+    who: "Everyone doing the work",
+    title: "Answer once. Get help, not heat.",
+    points: [
+      "A short prompt about the last thing that moved — not a demand for a traffic-light status",
+      "Reply on Telegram (or WhatsApp / email). The record updates everywhere.",
+      "When you are stuck, Company OS uses context to find who can unblock you — so you are not left chasing or stressed",
+    ],
+  },
 ] as const;
 
 const RIBBONS = [
   {
     index: "01",
     title: "Commitments that close",
-    body: "Every promise gets an owner, a due date, and a trail — so follow-through is the default.",
+    body: "Every promise gets an owner, a due date, and a trail — so follow-through is the default, across any company shape you run.",
     img: BRAND.ribbonDesk,
     reverse: false,
     forest: false,
@@ -26,15 +120,15 @@ const RIBBONS = [
   {
     index: "02",
     title: "Check-ins that feel human",
-    body: "WhatsApp and email prompts that sound like a chief of staff, not a bot spam blast.",
+    body: "Telegram, WhatsApp, and email prompts that sound like a chief of staff — specific to the work, never a bot spam blast.",
     img: BRAND.ribbonCheckin,
     reverse: true,
     forest: true,
   },
   {
     index: "03",
-    title: "Escalations with judgment",
-    body: "Governance rules decide who sees what — quiet for ops, louder when it matters.",
+    title: "Escalations that take the weight off people",
+    body: "Stuck work does not mean you have to stress or guess who to ping. Company OS uses owners, dependencies, and how your company coordinates to route the ask to the person who can actually unblock it — quietly when that is enough, louder when delay is expensive.",
     img: BRAND.ribbonEscalate,
     reverse: false,
     forest: false,
@@ -101,6 +195,16 @@ export default function MarketingHome() {
   }, []);
 
   useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const closeOnDesktop = () => {
+      if (mq.matches) setMenuOpen(false);
+    };
+    closeOnDesktop();
+    mq.addEventListener("change", closeOnDesktop);
+    return () => mq.removeEventListener("change", closeOnDesktop);
+  }, []);
+
+  useEffect(() => {
     if (!menuOpen) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -123,6 +227,8 @@ export default function MarketingHome() {
             <a href="#how" className={howActive ? "active" : undefined}>
               How it works
             </a>
+            <a href="#teams">For teams</a>
+            <a href="#reports">Reports</a>
             <a href="#product">Product</a>
             <Link to="/login" className="nav-sign">
               Sign in
@@ -130,11 +236,7 @@ export default function MarketingHome() {
           </div>
           <div className="nav-right">
             <Link to="/signup" className="btn btn-dark nav-cta-desktop">
-              Get started
-              <span className="node">
-                <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.5} />
-              </span>
-            </Link>
+              Get started</Link>
             <button
               type="button"
               className="nav-burger"
@@ -155,6 +257,12 @@ export default function MarketingHome() {
             <a href="#how" onClick={() => setMenuOpen(false)}>
               How it works
             </a>
+            <a href="#teams" onClick={() => setMenuOpen(false)}>
+              For teams
+            </a>
+            <a href="#reports" onClick={() => setMenuOpen(false)}>
+              Reports
+            </a>
             <a href="#product" onClick={() => setMenuOpen(false)}>
               Product
             </a>
@@ -162,11 +270,7 @@ export default function MarketingHome() {
               Sign in
             </Link>
             <Link to="/signup" className="btn btn-lime" onClick={() => setMenuOpen(false)}>
-              Get started
-              <span className="node">
-                <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.5} />
-              </span>
-            </Link>
+              Get started</Link>
           </div>
         </div>
       )}
@@ -176,23 +280,21 @@ export default function MarketingHome() {
         <div className="mk-hero__shade" aria-hidden />
         <div className="mk-hero__grain" aria-hidden />
         <div className="container mk-hero__inner">
-          <p className="mk-brand">{BRAND.name}</p>
+          <h1 className="mk-brand">
+            {BRAND.name}
+          </h1>
           <div className="mk-hero__rule" aria-hidden />
-          <h1>{BRAND.tagline}</h1>
+          <p className="sub mk-hero__slogan">
+            {BRAND.slogan}
+          </p>
           <p className="sub">{BRAND.promise}</p>
           <div className="jump">
             <Link to="/signup" className="btn btn-lime">
-              Start free
-              <span className="node">
-                <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.5} />
-              </span>
+              Start your workspace
             </Link>
-            <Link to="/login" className="btn btn-dark">
-              Sign in
-              <span className="node">
-                <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.5} />
-              </span>
-            </Link>
+            <a href="#how" className="btn btn-ghost-light">
+              See how it works
+            </a>
           </div>
         </div>
       </section>
@@ -201,29 +303,38 @@ export default function MarketingHome() {
 
       <section id="how" className="mk-problem">
         <span className="mk-problem__big" aria-hidden>
-          Loop
+          Staff
         </span>
         <div className="container mk-problem__grid">
           <Reveal>
-            <p className="label dark">The problem</p>
-            <h2>Commitments die in chat threads.</h2>
+            <p className="label dark">The job</p>
+            <h2>Work does not stall because people forget tasks. It stalls because waiting is invisible.</h2>
             <p className="body">
-              Teams ship hard, then lose the plot — silent owners, overdue asks, escalations that arrive too late or too loud.
+              A request sits in a thread. A date slips in a meeting that nobody wrote down. A project manager spends the week chasing
+              updates instead of unblocking work. By Friday the report is a collage of optimistic greens. Company OS exists so that
+              does not happen — for a five-person studio or a multi-division company.
             </p>
           </Reveal>
           <Reveal delay={2} className="mk-problem__aside">
-            <p>Loop is the autonomous chief of staff that keeps follow-through alive.</p>
+            <p>
+              {BRAND.name} is the agentic chief of staff that keeps follow-through alive: capture, prompt, escalate with
+              context, report — so people are not left chasing when work gets stuck.
+            </p>
             <ul className="tick-list">
-              {["Extract & own every commitment", "Check in before silence calcifies", "Escalate with governance, not drama"].map(
-                (t) => (
-                  <li key={t}>
-                    <span className="dot inline-flex items-center justify-center">
-                      <Check className="h-3 w-3 text-[#0E1F1A]" strokeWidth={3} />
-                    </span>
-                    {t}
-                  </li>
-                )
-              )}
+              {[
+                "Extract and own every commitment",
+                "Prompt people before silence calcifies",
+                "When someone is stuck, find who can unblock them",
+                "Escalate with context — no chasing, no stress pile-on",
+                "Put project reports in the right hands",
+              ].map((t) => (
+                <li key={t}>
+                  <span className="dot inline-flex items-center justify-center">
+                    <Check className="h-3 w-3 text-[#0E1F1A]" strokeWidth={3} />
+                  </span>
+                  {t}
+                </li>
+              ))}
             </ul>
           </Reveal>
         </div>
@@ -233,14 +344,80 @@ export default function MarketingHome() {
         <div className="container">
           <Reveal>
             <p className="label">How it works</p>
-            <h2>Four beats. One continuous loop.</h2>
+            <h2>Six beats. One continuous operating loop.</h2>
+            <p className="mk-flow__lead">
+              The product is not a board you babysit. It is a loop that runs while people do the work — detecting promises,
+              checking in, and writing the operating picture your leads already wish they had.
+            </p>
           </Reveal>
-          <div className="mk-rail">
+          <div className="mk-rail mk-rail--six">
             {FLOW.map((step, i) => (
               <Reveal key={step.n} delay={(Math.min(i + 1, 4) as 1 | 2 | 3 | 4)} className="mk-rail__step">
                 <div className="mk-rail__disc">{step.n}</div>
                 <h3>{step.title}</h3>
                 <p>{step.body}</p>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="mk-narrative">
+        <div className="container">
+          <Reveal>
+            <p className="label dark">Daily operations</p>
+            <h2>How people get prompted, how data stays true, how leads stay informed.</h2>
+          </Reveal>
+          <div className="mk-narrative__grid">
+            {CHANNELS.map((c, i) => (
+              <Reveal key={c.title} delay={(Math.min(i + 1, 4) as 1 | 2 | 3 | 4)} className="mk-narrative__card">
+                <span className="mk-narrative__n">{String(i + 1).padStart(2, "0")}</span>
+                <h3>{c.title}</h3>
+                <p>{c.body}</p>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="teams" className="mk-modes">
+        <div className="container">
+          <Reveal>
+            <p className="label">Built for how companies actually coordinate</p>
+            <h2>Not one industry template. A mode for how your organisation moves work.</h2>
+            <p className="mk-modes__lead">
+              A forty-person studio and a forty-person marketing agency often run the same way. A studio and a payments operations
+              team do not. Company OS changes cadence, tone, who gets asked, and how escalations route — so it feels native, not
+              bolted on.
+            </p>
+          </Reveal>
+          <div className="mk-modes__grid">
+            {MODES.map((m, i) => (
+              <Reveal key={m.title} delay={(Math.min(i + 1, 4) as 1 | 2 | 3 | 4)} className="mk-modes__card">
+                <h3>{m.title}</h3>
+                <p>{m.body}</p>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="reports" className="mk-audience">
+        <div className="container">
+          <Reveal>
+            <p className="label dark">Who it serves</p>
+            <h2>Project managers get the picture. Operators keep the loop. People doing the work stay unhassled.</h2>
+          </Reveal>
+          <div className="mk-audience__grid">
+            {AUDIENCE.map((a, i) => (
+              <Reveal key={a.who} delay={(Math.min(i + 1, 4) as 1 | 2 | 3 | 4)} className="mk-audience__card">
+                <p className="mk-audience__who">{a.who}</p>
+                <h3>{a.title}</h3>
+                <ul>
+                  {a.points.map((p) => (
+                    <li key={p}>{p}</li>
+                  ))}
+                </ul>
               </Reveal>
             ))}
           </div>
@@ -255,7 +432,6 @@ export default function MarketingHome() {
           >
             <div className="mk-ribbon__copy">
               <Reveal>
-                <div className="mk-ribbon__index">{r.index}</div>
                 <h3>{r.title}</h3>
                 <p>{r.body}</p>
               </Reveal>
@@ -270,9 +446,10 @@ export default function MarketingHome() {
       <section className="mk-statement">
         <div className="container">
           <Reveal>
-            <h2>
-              Less chasing. <span className="lime">More closing.</span>
-            </h2>
+            <h2>Less chasing. More closing.</h2>
+            <p className="mk-statement__sub">
+              Waiting made visible. Follow-through made default. Reports that describe the work — never a ranking of people.
+            </p>
           </Reveal>
         </div>
         <div className="mk-metrics">
@@ -294,16 +471,15 @@ export default function MarketingHome() {
       <section className="cta-band">
         <div className="container relative z-10">
           <Reveal>
-            <h2 className="max-w-[14ch] text-[clamp(1.5rem,4vw,2.25rem)] font-bold tracking-tight text-[#0E1F1A]">
-              Ready for an autonomous chief of staff?
+            <h2 className="max-w-[18ch] text-[clamp(1.5rem,4vw,2.25rem)] font-bold tracking-tight text-[#0E1F1A]">
+              Put an agentic chief of staff on your company.
             </h2>
+            <p className="mt-4 max-w-[46ch] text-[15px] leading-relaxed text-[#0E1F1A]/70">
+              Create a workspace, invite the people who hold work, connect the channels you already use. Company OS starts the loop.
+            </p>
             <div className="mt-8">
               <Link to="/signup" className="btn btn-dark">
-                Create your workspace
-                <span className="node">
-                  <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.5} />
-                </span>
-              </Link>
+                Create your workspace</Link>
             </div>
           </Reveal>
         </div>
@@ -317,11 +493,16 @@ export default function MarketingHome() {
                 <BrandMark className="h-9 w-9" />
                 <span className="font-marketing text-lg font-bold text-white">{BRAND.name}</span>
               </div>
-              <p className="mt-4 max-w-[32ch] text-sm leading-relaxed text-white/60">{BRAND.tagline}</p>
+              <p className="mt-4 max-w-[36ch] text-sm leading-relaxed text-white/60">{BRAND.slogan}</p>
+              <p className="mt-2 max-w-[40ch] text-sm leading-relaxed text-white/45">
+                Captures commitments, checks in daily, escalates with context when work is stuck — so people stop chasing.
+              </p>
             </div>
             <div>
               <h4>Product</h4>
               <a href="#how">How it works</a>
+              <a href="#teams">For teams</a>
+              <a href="#reports">Reports</a>
               <a href="#product">Features</a>
               <Link to="/signup">Get started</Link>
             </div>
@@ -332,13 +513,17 @@ export default function MarketingHome() {
             </div>
             <div>
               <h4>Trust</h4>
-              <span className="block text-[14.5px] text-white/80">Governed escalations</span>
-              <span className="block text-[14.5px] text-white/80">Sensitivity-aware</span>
+              <Link to="/privacy-policy">Privacy policy</Link>
+              <Link to="/terms-of-service">Terms of service</Link>
             </div>
           </div>
           <div className="mk-footer__bottom">
             <span>© {new Date().getFullYear()} {BRAND.name}</span>
-            <span>Operational density. Calm trust.</span>
+            <span>
+              <Link to="/privacy-policy">Privacy</Link>
+              {" · "}
+              <Link to="/terms-of-service">Terms</Link>
+            </span>
           </div>
         </div>
       </footer>

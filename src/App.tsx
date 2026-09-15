@@ -6,6 +6,7 @@ import MarketingHome from "@/pages/MarketingHome";
 import Login from "@/pages/auth/Login";
 import LoginSso from "@/pages/auth/LoginSso";
 import Signup from "@/pages/auth/Signup";
+import AuthCallback from "@/pages/auth/AuthCallback";
 import ForgotPassword from "@/pages/auth/ForgotPassword";
 import ResetPassword from "@/pages/auth/ResetPassword";
 import AcceptInvite from "@/pages/auth/AcceptInvite";
@@ -59,15 +60,22 @@ import SettingsCompliance from "@/pages/app/settings/SettingsCompliance";
 import SettingsSecurity from "@/pages/app/settings/SettingsSecurity";
 import SettingsBilling from "@/pages/app/settings/SettingsBilling";
 import NotFound from "@/pages/NotFound";
+import Privacy from "@/pages/legal/Privacy";
+import Terms from "@/pages/legal/Terms";
 
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<MarketingHome />} />
+      <Route path="/privacy-policy" element={<Privacy />} />
+      <Route path="/terms-of-service" element={<Terms />} />
+      <Route path="/privacy" element={<Navigate to="/privacy-policy" replace />} />
+      <Route path="/terms" element={<Navigate to="/terms-of-service" replace />} />
 
       <Route path="/login" element={<RedirectIfAuthed><Login /></RedirectIfAuthed>} />
       <Route path="/login/sso" element={<LoginSso />} />
       <Route path="/signup" element={<RedirectIfAuthed><Signup /></RedirectIfAuthed>} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/invite/:token" element={<AcceptInvite />} />

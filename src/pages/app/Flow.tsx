@@ -184,7 +184,7 @@ export default function Flow() {
         <EmptyState
           illustration={<LoopMotif size={180} />}
           title="Nothing's waiting"
-          description="Connect your meeting tool and Loop will start tracking what's owed."
+          description="Connect your meeting tool and Company OS will start tracking what's owed."
           action={<Button onClick={() => navigate("/integrations")}>Connect your tools</Button>}
         />
       </div>
@@ -276,7 +276,7 @@ export default function Flow() {
                   <div className="truncate text-sm font-medium text-forest">
                     {e.context_snapshot?.commitment?.title ?? e.reason}
                   </div>
-                  <div className="text-[11px] font-medium text-[#5A6B7D]">
+                  <div className="text-[11px] font-medium text-[#5B6560]">
                     {e.reason} · raised {timeAgo(e.created_at)}
                   </div>
                 </div>
@@ -302,7 +302,7 @@ export default function Flow() {
           {aging.error ? (
             <PanelError label="Aging chart" onRetry={loadAging} />
           ) : !aging.data || aging.data.items.length === 0 ? (
-            <p className="py-6 text-center text-[11px] font-medium text-[#5A6B7D]">
+            <p className="py-6 text-center text-[11px] font-medium text-[#5B6560]">
               No open items in this scope.
             </p>
           ) : (
@@ -334,7 +334,7 @@ export default function Flow() {
             <PanelError label="Waiting register" onRetry={loadWaiting} />
           </div>
         ) : !waiting.data || waiting.data.items.length === 0 ? (
-          <p className="px-3 py-8 text-center text-[11px] font-medium text-[#5A6B7D]">
+          <p className="px-3 py-8 text-center text-[11px] font-medium text-[#5B6560]">
             Nothing is waiting right now.
             {s ? ` ${s.unblockedThisWeek} items moved this week.` : ""}
           </p>
@@ -348,7 +348,7 @@ export default function Flow() {
               >
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-medium text-forest">{row.title}</div>
-                  <div className="text-[11px] font-medium text-[#5A6B7D]">
+                  <div className="text-[11px] font-medium text-[#5B6560]">
                     on {row.holderLabel}
                     {row.projectName ? ` · ${row.projectName}` : ""}
                   </div>
@@ -383,8 +383,8 @@ export default function Flow() {
 
 function PanelError({ label, onRetry }: { label: string; onRetry: () => void }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[rgba(14,31,26,0.1)] bg-[#F7FAF6] p-3 text-sm">
-      <span className="font-medium text-[#5A6B7D]">
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[rgba(14,31,26,0.1)] bg-[#F8F8F7] p-3 text-sm">
+      <span className="font-medium text-[#5B6560]">
         {label} — {t("C-ERR-GENERIC")}
       </span>
       <Button size="sm" variant="outline" onClick={onRetry}>

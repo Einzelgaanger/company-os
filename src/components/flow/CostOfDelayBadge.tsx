@@ -11,7 +11,7 @@ const BAND: Record<CostOfDelayBand, string> = {
   critical: "bg-status-attention-tint text-status-attention-ink border-status-attention",
   high: "bg-status-waiting-tint text-status-waiting-ink border-status-waiting",
   standard: "bg-status-ready-tint text-status-ready-ink border-status-ready",
-  low: "bg-[#F7FAF6] text-status-ready-ink border-[rgba(14,31,26,0.1)]",
+  low: "bg-[#F8F8F7] text-status-ready-ink border-[rgba(14,31,26,0.1)]",
 };
 
 export function CostOfDelayBadge({

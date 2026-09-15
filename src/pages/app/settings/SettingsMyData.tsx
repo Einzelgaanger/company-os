@@ -11,7 +11,7 @@ import type { Checkin, Commitment, Connection, SurveyAnswer } from "@/lib/types"
 import { DB_KEY } from "@/lib/data/store";
 
 /**
- * C-3 — What Loop knows about me. Full inventory + export + DSR + WhatsApp off.
+ * C-3 — What Company OS knows about me. Full inventory + export + DSR + WhatsApp off.
  */
 export default function SettingsMyData() {
   const { user, org, refresh } = useAuth();
@@ -109,18 +109,18 @@ export default function SettingsMyData() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="My data" subtitle="Everything Loop holds about you — and your rights." />
+      <PageHeader title="My data" subtitle="Everything Company OS holds about you — and your rights." />
 
       <div className="portal-callout">
         Your individual survey answers are never shown to your manager or leadership. Only combined summaries across at
-        least 5 people are reported. Loop does not produce a score, rating, or ranking of you.
+        least 5 people are reported. Company OS does not produce a score, rating, or ranking of you.
       </div>
 
       <Inventory
         rows={[
           ["Connections", String(connections.length)],
           ["Commitments (owned / requested)", String(commitments.length)],
-          ["WhatsApp / check-in messages", String(messages.length)],
+          ["Check-in messages", String(messages.length)],
           ["Survey responses", String(surveys.length)],
           ["Notice acknowledged", notice?.version ? `${notice.version}` : "Not yet"],
           ["Retention window", `${retention} months`],
@@ -151,10 +151,10 @@ export default function SettingsMyData() {
             Delete survey responses
           </Button>
           <Button variant="secondary" onClick={() => void turnWhatsAppOff()}>
-            Turn WhatsApp check-ins off
+            Turn check-ins off
           </Button>
         </div>
-        <p className="px-3 pb-3 text-[11px] font-medium text-[#5A6B7D]">
+        <p className="px-3 pb-3 text-[11px] font-medium text-[#5B6560]">
           Erasure is not absolute: commitments you owned remain part of the organizational record with your name
           replaced by &quot;Former team member&quot; after deprovisioning. Messages and survey responses are deleted.
         </p>
@@ -169,13 +169,13 @@ function Inventory({ rows }: { rows: [string, string][] }) {
       <header className="portal-section__head">
         <div>
           <h2 className="portal-section__title">Inventory</h2>
-          <p className="portal-section__desc">What Loop currently holds</p>
+          <p className="portal-section__desc">What Company OS currently holds</p>
         </div>
       </header>
       <div className="portal-section__body--pad grid gap-2 text-sm sm:grid-cols-2">
         {rows.map(([k, v]) => (
-          <div key={k} className="rounded-md border border-[#0E1F1A]/6 bg-[#f7faf6] p-2">
-            <div className="text-[10px] font-semibold text-[#5A6B7D]">{k}</div>
+          <div key={k} className="rounded-md border border-[#0E1F1A]/6 bg-[#F8F8F7] p-2">
+            <div className="text-[10px] font-semibold text-[#5B6560]">{k}</div>
             <div className="font-medium text-[#0E1F1A]">{v}</div>
           </div>
         ))}

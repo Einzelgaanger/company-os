@@ -42,25 +42,25 @@ export default function OnbNotice() {
   return (
     <OnboardingLayout
       step={0}
-      title="What Loop does with your work data"
-      description={`${org?.name ?? "Your organization"} uses Loop for work coordination — not performance evaluation.`}
+      title="What Company OS does with your work data"
+      description={`${org?.name ?? "Your organization"} uses Company OS for work coordination — not performance evaluation.`}
     >
       <div className="space-y-3 text-sm font-medium leading-relaxed text-[#0E1F1A]">
         <p>
-          Loop helps your team keep track of who&apos;s working on what, so nobody has to chase status manually.
+          Company OS helps your team keep track of who&apos;s working on what, so nobody has to chase status manually.
         </p>
         <p>
-          <strong>What Loop reads:</strong> meeting transcripts you&apos;re part of, your work calendar, and the
+          <strong>What Company OS reads:</strong> meeting transcripts you&apos;re part of, your work calendar, and the
           connected work tools your organization has enabled. It does not read your personal accounts, your screen, your
           keystrokes, or anything your organization has excluded.
         </p>
         <p>
-          <strong>What Loop asks you:</strong> short WhatsApp messages about how your work is going and what&apos;s
+          <strong>What Company OS asks you:</strong> short Telegram messages about how your work is going and what&apos;s
           blocking you. You choose whether to receive these, and you can turn them off at any time.
         </p>
         <p>
           <strong>What your managers see:</strong> the status of work items — what&apos;s done, what&apos;s late,
-          what&apos;s blocked. They do not see a score, rating, or ranking of you. Loop does not produce one.
+          what&apos;s blocked. They do not see a score, rating, or ranking of you. Company OS does not produce one.
         </p>
         <p>
           <strong>What leadership sees:</strong> project progress and, where at least 5 people have responded, anonymous
@@ -71,7 +71,7 @@ export default function OnbNotice() {
           transcripts.
         </p>
         <p>
-          <strong>Your rights:</strong> see everything Loop holds about you anytime, and request correction or deletion,
+          <strong>Your rights:</strong> see everything Company OS holds about you anytime, and request correction or deletion,
           from <strong>Settings → My data</strong>.
         </p>
         <label className="flex items-start gap-3 pt-2">
