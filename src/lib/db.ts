@@ -6,14 +6,14 @@ import { apiConfigured } from "./api";
 
 /**
  * Data plane selection:
- * - VITE_API_URL → Fastify API (required in production unless VITE_ALLOW_MOCK=1)
- * - else Supabase when configured (legacy)
+ * - Supabase when configured (Company OS production on Render)
+ * - else VITE_API_URL → optional local Fastify (@loop/api)
  * - else mock — DEV/test, or production only with VITE_ALLOW_MOCK=1
  */
 function resolveDb(): typeof mockDb {
-  if (apiConfigured()) return apiDb as unknown as typeof mockDb;
-  // Supabase is the production data plane for ProDG pilot when configured.
+  // Prefer Supabase whenever configured so a stray VITE_API_URL cannot hijack prod.
   if (!isMockMode) return supabaseDb as unknown as typeof mockDb;
+  if (apiConfigured()) return apiDb as unknown as typeof mockDb;
 
   const allowMock =
     import.meta.env.DEV ||

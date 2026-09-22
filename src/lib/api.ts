@@ -1,6 +1,8 @@
 /**
- * Offline API client for Fastify (@loop/api).
- * When VITE_API_URL is unset, callers keep using the SPA mock db.
+ * Optional Fastify client (@loop/api) for local / second-stack only.
+ * Production Company OS uses Supabase — leave VITE_API_URL unset on Render.
+ * Localhost URLs are ignored in production builds so a bad Render env cannot
+ * point the live site at someone's laptop.
  */
 import type {
   AgingResponse,
@@ -9,8 +11,28 @@ import type {
   WaitingResponse,
 } from "./flow";
 
-const BASE =
-  (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? "";
+function resolveApiBase(): string {
+  const raw =
+    (import.meta.env.VITE_API_URL as string | undefined)?.trim().replace(/\/$/, "") ??
+    "";
+  if (!raw) return "";
+  if (import.meta.env.PROD) {
+    try {
+      const host = new URL(raw).hostname;
+      if (host === "localhost" || host === "127.0.0.1" || host === "::1") {
+        console.warn(
+          `[company-os] Ignoring VITE_API_URL=${raw} in production. Remove it on Render; Supabase is the data plane.`,
+        );
+        return "";
+      }
+    } catch {
+      return "";
+    }
+  }
+  return raw;
+}
+
+const BASE = resolveApiBase();
 
 const ACCESS_KEY = "loop.api.accessToken";
 const REFRESH_KEY = "loop.api.refreshToken";
@@ -46,9 +68,10 @@ async function request<T>(
   try {
     res = await fetch(`${BASE}${path}`, { ...opts, headers });
   } catch {
-    throw new Error(
-      `Cannot reach the API at ${BASE}. Start Docker (npm run db:up) and the API (npm run dev:api).`,
-    );
+    const hint = import.meta.env.DEV
+      ? ` Start Docker (npm run db:up) and the API (npm run dev:api).`
+      : ` On Render, delete VITE_API_URL and redeploy — production uses Supabase, not a local API.`;
+    throw new Error(`Cannot reach the API at ${BASE}.${hint}`);
   }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

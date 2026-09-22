@@ -17,21 +17,23 @@ VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 VITE_PUBLIC_SITE_URL=https://companyos.jabali.studio
 ```
 
-### Do NOT set
+### Do NOT set (delete if present)
 
 ```env
 VITE_ALLOW_MOCK=1
-VITE_API_URL=
+VITE_API_URL=http://127.0.0.1:3001
 ```
 
-If `VITE_ALLOW_MOCK` exists on Render, **delete it** and redeploy.
+If either exists on Render, **delete the key entirely** (do not leave a localhost value) and **Clear build cache & deploy**.
+
+A `VITE_API_URL` pointing at `127.0.0.1` makes Launch readiness show: *Cannot reach the API… Start Docker…* — that is a bad env, not missing Docker.
 
 ## Deploy steps
 
 1. Open [Render Dashboard](https://dashboard.render.com) → service **company-os** / **loop-web**
 2. **Settings → Environment** → paste the three vars above
 3. **Custom domain** → `companyos.jabali.studio` (DNS CNAME to Render)
-4. **Remove** `VITE_ALLOW_MOCK` if present
+4. **Remove** `VITE_ALLOW_MOCK` and `VITE_API_URL` if present (especially any `127.0.0.1` / `localhost` value)
 5. **Manual Deploy → Clear build cache & deploy** (or push to `main`)
 
 ## After deploy

@@ -19,15 +19,17 @@ export default function SettingsLaunch() {
   const [odpcRef, setOdpcRef] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const useEdge = edgeFunctionsConfigured() && !apiConfigured();
+  // Supabase Edge is production; Fastify only when deliberately using the local API.
+  const useEdge = edgeFunctionsConfigured();
+  const useApi = apiConfigured() && !useEdge;
 
   async function load() {
     if (!user) return;
-    if (apiConfigured()) {
+    if (useApi) {
       try {
         setData(await api.launchStatus());
-      } catch {
-        toast("Could not load launch status.", "error");
+      } catch (e) {
+        toast(e instanceof Error ? e.message : "Could not load launch status.", "error");
       }
       return;
     }
@@ -50,7 +52,7 @@ export default function SettingsLaunch() {
 
   async function patchLaunch(patch: Record<string, unknown>) {
     if (!user) return;
-    if (apiConfigured()) {
+    if (useApi) {
       await api.patchLaunch(patch);
       return;
     }
@@ -72,7 +74,7 @@ export default function SettingsLaunch() {
     }
   }
 
-  if (!apiConfigured() && !useEdge) {
+  if (!useApi && !useEdge) {
     return (
       <div className="space-y-2">
         <PageHeader
