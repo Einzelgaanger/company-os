@@ -26,7 +26,7 @@ function resolveDb(): typeof mockDb {
 
   if (import.meta.env.PROD && !allowMock) {
     throw new Error(
-      "[loop] Production build requires VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY, VITE_API_URL, or VITE_ALLOW_MOCK=1 for demo-only hosts.",
+      "[company-os] This build has no backend config. On Render → Environment set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY (build-time), then Clear build cache & deploy. Do not set VITE_API_URL.",
     );
   }
 

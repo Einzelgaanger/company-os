@@ -15,5 +15,6 @@ services:
       - key: VITE_SUPABASE_ANON_KEY
         sync: false
       - key: VITE_PUBLIC_SITE_URL
-        value: https://companyos.jabali.studio
+        value: https://os.jabali.studio
       # Never set VITE_ALLOW_MOCK or VITE_API_URL on this service.
+      # VITE_SUPABASE_ANON_KEY must be set in the Render dashboard (sync: false).
