@@ -1,0 +1,26 @@
+# Company OS
+
+Company OS is an agentic chief of staff for teams that lose commitments in meetings and chat. It captures owned commitments, checks in via Chat or each person's messaging channel, escalates blockers with context and gives project leads operational reports (not people scorecards).
+
+## Product
+- [/](https://os.jabali.studio/): Homepage and product story
+- [/signup](https://os.jabali.studio/signup): Create a workspace
+- [/login](https://os.jabali.studio/login): Sign in
+
+## How it works
+- [/\#how](https://os.jabali.studio/#how): Six-beat loop (detect, track, check, nudge, escalate, report)
+- [/\#teams](https://os.jabali.studio/#teams): Coordination modes for how companies move work
+- [/\#reports](https://os.jabali.studio/#reports): Who it serves (project managers, operators, people doing the work)
+- [/\#product](https://os.jabali.studio/#product): Commitments, check-ins and escalations
+
+## Pricing
+- Public list pricing is not published. Start at [/signup](https://os.jabali.studio/signup). [NEEDS INPUT: public pricing URL when available]
+
+## Security
+- No public security page yet. See Privacy for data practices.
+- [/privacy-policy](https://os.jabali.studio/privacy-policy): Privacy Policy
+- [/terms-of-service](https://os.jabali.studio/terms-of-service): Terms of Service
+
+## Contact
+- Create a workspace or sign in to use in-product support paths.
+- [NEEDS INPUT: public contact email]
