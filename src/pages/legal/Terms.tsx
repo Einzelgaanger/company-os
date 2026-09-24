@@ -10,7 +10,7 @@ export default function Terms() {
       kicker="Legal"
       title="Terms of Service"
       updated={UPDATED}
-      intro={`These terms govern use of ${BRAND.name} — the agentic chief of staff for capturing commitments, prompting people, unblocking work, and reporting on projects. By creating an account or using a workspace, you agree to them.`}
+      intro={`These terms govern use of ${BRAND.name}: the agentic chief of staff for capturing commitments, prompting people, unblocking work and reporting on projects. By creating an account or using a workspace, you agree to them.`}
       other={{ to: "/privacy-policy", label: "Read the Privacy Policy →" }}
       sections={[
         {
@@ -20,12 +20,12 @@ export default function Terms() {
             <>
               <p>
                 {BRAND.name} coordinates work already in motion: it makes waiting visible, checks in with owners,
-                escalates with context, and produces reports for people who run projects. It is{" "}
-                <strong>not</strong> a task manager in the Asana/Jira sense, not a general-purpose chatbot, and not
+                escalates with context and produces reports for people who run projects. It is{" "}
+                <strong>not</strong> a task manager in the Asana/Jira sense, not a general-purpose chatbot and not
                 a human-resources or performance-management system.
               </p>
               <p>
-                Features may vary by plan, region, and what your organization enables (channels, connectors,
+                Features may vary by plan, region and what your organization enables (channels, connectors,
                 coordination mode).
               </p>
             </>
@@ -38,11 +38,11 @@ export default function Terms() {
             <>
               <p>
                 You must provide accurate account information and keep credentials confidential. Workspace admins
-                control invites, roles, connectors, and messaging. If you use {BRAND.name} for an organization, you
+                control invites, roles, connectors and messaging. If you use {BRAND.name} for an organization, you
                 represent that you have authority to bind that organization to these terms.
               </p>
               <p>
-                We may suspend access for security, unpaid invoices (when billing applies), or material breach.
+                We may suspend access for security, unpaid invoices (when billing applies) or material breach.
               </p>
             </>
           ),
@@ -54,9 +54,9 @@ export default function Terms() {
             <>
               <p>You will not:</p>
               <ul>
-                <li>Use the product to score, rank, or evaluate individuals for promotion, discipline, or firing.</li>
-                <li>Attempt to infer emotions, mood, or wellbeing of people from biometrics, voice, or video.</li>
-                <li>Probe, overload, or bypass security, tenancy, or messaging opt-out controls.</li>
+                <li>Use the product to score, rank or evaluate individuals for promotion, discipline or firing.</li>
+                <li>Attempt to infer emotions, mood or wellbeing of people from biometrics, voice or video.</li>
+                <li>Probe, overload or bypass security, tenancy or messaging opt-out controls.</li>
                 <li>Upload unlawful content or use the service to spam people outside work-coordination templates.</li>
                 <li>Reverse engineer the service except where the law allows.</li>
               </ul>
@@ -75,12 +75,12 @@ export default function Terms() {
             <>
               <p>
                 You and your organization retain rights to workspace content. You grant us a limited licence to host,
-                process, and transmit that content solely to provide and secure the service, including subprocessors
+                process and transmit that content solely to provide and secure the service, including subprocessors
                 listed in the <Link to="/privacy-policy">Privacy Policy</Link>.
               </p>
               <p>
                 You are responsible for having a lawful basis and giving required notice before monitoring employees
-                or connecting inboxes, calendars, or chat.
+                or connecting inboxes, calendars or chat.
               </p>
             </>
           ),
@@ -91,14 +91,14 @@ export default function Terms() {
           body: (
             <>
               <p>
-                Parts of the service use machine learning to extract commitments, classify replies, and draft
+                Parts of the service use machine learning to extract commitments, classify replies and draft
                 report prose. Numbers in reports are computed from your data; models must not invent percentages.
-                Extraction can be wrong — humans remain responsible for confirming the review queue and acting on
+                Extraction can be wrong. Humans remain responsible for confirming the review queue and acting on
                 escalations.
               </p>
               <p>
                 Recipients of outbound messages are resolved from your directory, not invented by a model. Check-ins
-                use governed templates, not free-form chat on WhatsApp.
+                use governed templates in Chat or linked messaging channels, not free-form personal chat.
               </p>
             </>
           ),
@@ -111,7 +111,7 @@ export default function Terms() {
               <p>
                 We aim for a reliable service but do not warrant uninterrupted operation. To the fullest extent
                 permitted by law, {BRAND.name} is provided “as is,” and we are not liable for lost profits,
-                indirect damages, or decisions you make from reports. Our aggregate liability for a claim is limited
+                indirect damages or decisions you make from reports. Our aggregate liability for a claim is limited
                 to fees paid for the service in the three months before the claim (or USD 100 if you are on a
                 free/pilot workspace with no fees).
               </p>
