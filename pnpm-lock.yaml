@@ -108,9 +108,6 @@ importers:
       sharp:
         specifier: ^0.35.3
         version: 0.35.3(@types/node@22.20.1)
-      simple-icons:
-        specifier: ^16.32.0
-        version: 16.32.0
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.19(tsx@4.23.12)
@@ -3626,10 +3623,6 @@ packages:
   siginfo@2.0.0:
     resolution: {integrity: sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g==}
 
-  simple-icons@16.32.0:
-    resolution: {integrity: sha512-BwqATHxAulx7X6kNdTkecy7PBjLkgtAHcgrwYLd9iA+cD2At9DzhJwdwaSELk2+aZe01IfiM/Wxtyp68Dvup2A==}
-    engines: {node: '>=0.12.18'}
-
   sonic-boom@4.2.1:
     resolution: {integrity: sha512-w6AxtubXa2wTXAUsZMMWERrsIRAdrK0Sc+FUytWvYAhBJLyuI4llrMIC1DtlNSdI99EI86KZum2MMq3EAZlF9Q==}
 
@@ -6932,8 +6925,6 @@ snapshots:
   shell-quote@1.10.0: {}
 
   siginfo@2.0.0: {}
-
-  simple-icons@16.32.0: {}
 
   sonic-boom@4.2.1:
     dependencies:

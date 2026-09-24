@@ -298,6 +298,8 @@ export interface Connection {
   error_message: string | null;
 }
 
+export type ProjectHealth = "on_track" | "at_risk" | "off_track" | "unknown";
+
 export interface Project {
   id: string;
   org_id: string;
@@ -310,6 +312,135 @@ export interface Project {
   // Governance (optional for backward-compat with older stored rows)
   sensitivity?: Sensitivity;
   tag_ids?: string[];
+  // Delivery (0013). Denormalised from the latest progress snapshot.
+  team_id?: string | null;
+  /** Routing signals used to match inbound meetings to this project. */
+  keywords?: string[];
+  client_aliases?: string[];
+  start_date?: string | null;
+  target_date?: string | null;
+  progress_pct?: number | null;
+  health?: ProjectHealth | null;
+  forecast_completion_date?: string | null;
+  last_progress_at?: string | null;
+  pulse_enabled?: boolean;
+  pulse_interval_days?: number;
+}
+
+export type ProjectRole = "lead" | "contributor" | "reviewer" | "observer";
+
+export interface ProjectMember {
+  org_id: string;
+  project_id: string;
+  user_id: string;
+  role_in_project: ProjectRole;
+  allocation_pct: number;
+  added_at: string;
+}
+
+export interface Team {
+  id: string;
+  org_id: string;
+  name: string;
+  description: string | null;
+  lead_user_id: string | null;
+  parent_team_id: string | null;
+  created_at: string;
+}
+
+export interface TeamMember {
+  org_id: string;
+  team_id: string;
+  user_id: string;
+  role_in_team: "lead" | "member";
+  added_at: string;
+}
+
+export type PulseStatus = "on_track" | "at_risk" | "blocked" | "done" | "unclear";
+
+/** Attributed project status from one person. Not a survey response. */
+export interface ProjectPulse {
+  id: string;
+  org_id: string;
+  project_id: string;
+  user_id: string;
+  asked_at: string;
+  responded_at: string | null;
+  status: PulseStatus | null;
+  self_progress_pct: number | null;
+  progress_note: string | null;
+  blocker_text: string | null;
+  needs_text: string | null;
+  confidence: number | null;
+}
+
+export interface ProgressMemberRow {
+  user_id: string;
+  name: string;
+  role_in_project: ProjectRole;
+  total_points: number;
+  done_points: number;
+  /** Null when this person has no tracked work on the project yet. */
+  pct: number | null;
+  open_count: number;
+  overdue_count: number;
+  active_titles: string[];
+  status: PulseStatus | null;
+  self_progress_pct: number | null;
+  blocker: string | null;
+  needs: string | null;
+  last_heard_at: string | null;
+}
+
+export interface ProgressInFlightRow {
+  commitment_id: string;
+  title: string;
+  owner_id: string | null;
+  owner_name: string | null;
+  status: CommitmentStatus;
+  due_date: string | null;
+  overdue: boolean;
+}
+
+export interface ProgressCluster {
+  label: string;
+  count: number;
+}
+
+/**
+ * Nightly per-project rollup written by the project-progress Edge Function.
+ * progress_pct is priority-weighted commitment delivery only — self-reported
+ * pulse progress feeds health and the forecast, never the headline number.
+ */
+export interface ProjectProgressSnapshot {
+  id: string;
+  org_id: string;
+  project_id: string;
+  as_of: string;
+  total_points: number;
+  done_points: number;
+  progress_pct: number;
+  commitments_total: number;
+  commitments_done: number;
+  commitments_active: number;
+  commitments_overdue: number;
+  commitments_blocked: number;
+  open_escalations: number;
+  pulses_sent: number;
+  pulses_responded: number;
+  pulse_on_track: number;
+  pulse_at_risk: number;
+  pulse_blocked: number;
+  member_breakdown: ProgressMemberRow[];
+  top_blockers: ProgressCluster[];
+  needs: ProgressCluster[];
+  in_flight: ProgressInFlightRow[];
+  velocity_per_week: number;
+  forecast_completion_date: string | null;
+  forecast_confidence: number | null;
+  forecast_basis: string | null;
+  health: ProjectHealth;
+  created_at: string;
 }
 
 export interface MeetingParticipant {
@@ -395,6 +526,8 @@ export interface EscalationContextSnapshot {
   sla_hours_elapsed: number;
 }
 
+export type UrgencyBand = "critical" | "high" | "medium" | "low";
+
 export interface Escalation {
   id: string;
   org_id: string;
@@ -406,7 +539,25 @@ export interface Escalation {
   created_at: string;
   acknowledged_at: string | null;
   resolved_at: string | null;
+  // Triage (0014). Recomputed hourly by escalation-triage; deterministic, so
+  // the queue order is reproducible and explainable.
+  urgency_score?: number | null;
+  urgency_band?: UrgencyBand | null;
+  urgency_rationale?: string | null;
+  urgency_computed_at?: string | null;
+  /** When this escalation breaches its SLA. */
+  due_by?: string | null;
+  sla_hours?: number;
+  repeat_count?: number;
+  project_id?: string | null;
 }
+
+export const URGENCY_RANK: Record<UrgencyBand, number> = {
+  critical: 3,
+  high: 2,
+  medium: 1,
+  low: 0,
+};
 
 export interface OwnershipMapEntry {
   id: string;
@@ -465,6 +616,90 @@ export interface SurveyAnswer {
   user_id: string;
   answers: Record<string, string | number>;
   submitted_at: string;
+}
+
+// --- Daily scoped surveys (0012) -------------------------------------------
+// The production shape. A cycle is one day, for one project or department, and
+// every question is open text. Responses are never keyed to a user.
+
+export type SurveyTopic =
+  | "clarity"
+  | "blockers"
+  | "resources"
+  | "process"
+  | "workload"
+  | "dependencies"
+  | "tooling"
+  | "information";
+
+export type SurveyScopeType = "project" | "department" | "org";
+
+export interface DailySurveyQuestion {
+  id: string;
+  cycle_id: string;
+  sort_order: number;
+  question_text: string;
+  topic: SurveyTopic;
+  /** Why the gap scorer chose this topic today. Shown to admins on review. */
+  probe_reason: string | null;
+  generated_by: "ai" | "admin" | "template";
+  approved: boolean | null;
+}
+
+export interface DailySurveyCycle {
+  id: string;
+  org_id: string;
+  scope_type: SurveyScopeType;
+  scope_key: string;
+  scope_label: string;
+  survey_date: string;
+  theme: string | null;
+  generation_rationale: string | null;
+  status: "draft" | "pending_review" | "live" | "closed" | "suppressed" | "failed";
+  invited_count: number;
+  respondent_count: number;
+  created_at: string;
+  opened_at: string | null;
+  closed_at: string | null;
+  questions?: DailySurveyQuestion[];
+}
+
+export interface SurveyTheme {
+  theme: string;
+  mentionCount: number;
+  exampleParaphrase?: string;
+}
+
+/**
+ * The only readable survey output. The database enforces
+ * respondent_count >= 5, so nothing here can identify an individual.
+ */
+export interface SurveyAggregate {
+  id: string;
+  org_id: string;
+  scope_type: SurveyScopeType | "manager_line";
+  scope_key: string;
+  scope_label: string;
+  period_start: string;
+  period_end: string;
+  respondent_count: number;
+  response_count: number;
+  invited_count: number;
+  themes: SurveyTheme[];
+  questions_asked: Array<{ question: string; topic: string; answers: number }>;
+  sentiment_positive_pct: number | null;
+  sentiment_neutral_pct: number | null;
+  sentiment_negative_pct: number | null;
+  created_at: string;
+}
+
+export interface MySurveyResponse {
+  cycle_id: string;
+  scope_label: string;
+  survey_date: string;
+  question_text: string;
+  answer_text: string;
+  created_at: string;
 }
 
 export type DsrType = "access" | "erasure" | "rectification" | "objection";

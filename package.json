@@ -3,6 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "packageManager": "pnpm@11.23.0",
   "description": "Company OS — Your Agentic Chief Of Staff. Autonomous work coordination. See docs/README.md.",
   "scripts": {
     "dev": "vite",
@@ -45,8 +46,11 @@
     "check:no-body-tenant": "node scripts/checks/no-body-tenant.mjs",
     "check:no-org-id": "node scripts/checks/no-org-id.mjs",
     "check:tokens": "node scripts/checks/tokens.mjs",
+    "check:connectors": "node scripts/checks/connectors.mjs",
+    "gen:icons": "node scripts/gen/provider-icons.mjs",
+    "gen:edge-providers": "node scripts/gen/edge-providers.mjs",
     "eval:ai": "pnpm --filter @loop/ai eval",
-    "ci:gates": "pnpm check:rls && pnpm check:no-body-tenant && pnpm check:no-org-id && pnpm check:tokens && pnpm test:ui && pnpm test:packages && pnpm eval:ai && npm run build && pnpm build:apps && pnpm typecheck:all"
+    "ci:gates": "pnpm check:rls && pnpm check:no-body-tenant && pnpm check:no-org-id && pnpm check:tokens && pnpm check:connectors && pnpm test:ui && pnpm test:packages && pnpm eval:ai && npm run build && pnpm build:apps && pnpm typecheck:all"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.2",

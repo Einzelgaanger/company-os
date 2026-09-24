@@ -19,6 +19,16 @@ import type {
   Organization,
   OwnershipMapEntry,
   Project,
+  DailySurveyCycle,
+  DailySurveyQuestion,
+  MySurveyResponse,
+  ProjectMember,
+  ProjectProgressSnapshot,
+  ProjectPulse,
+  ProjectRole,
+  SurveyAggregate,
+  Team,
+  TeamMember,
   Report,
   Role,
   Sensitivity,
@@ -908,6 +918,302 @@ export const supabaseDb = {
       .order("created_at", { ascending: false });
     if (error) throw error;
     return (data ?? []) as DataAccessLogEntry[];
+  },
+
+  // --- Teams (0013) ---------------------------------------------------------
+
+  async listTeams(orgId: string): Promise<Team[]> {
+    const { data, error } = await client()
+      .from("teams")
+      .select("*")
+      .eq("org_id", orgId)
+      .order("name");
+    if (error) throw error;
+    return (data ?? []) as Team[];
+  },
+
+  async createTeam(input: {
+    org_id: string;
+    name: string;
+    description?: string | null;
+    lead_user_id?: string | null;
+    created_by_id?: string | null;
+  }): Promise<Team> {
+    const { data, error } = await client().from("teams").insert(input).select("*").single();
+    if (error) throw error;
+    // The lead is a member by definition; a team whose lead is not in it makes
+    // every downstream membership query wrong.
+    if (input.lead_user_id) {
+      await client().from("team_members").upsert({
+        org_id: input.org_id,
+        team_id: data.id,
+        user_id: input.lead_user_id,
+        role_in_team: "lead",
+      });
+    }
+    await audit(input.org_id, input.created_by_id ?? "system", "team.created", "team", data.id);
+    return data as Team;
+  },
+
+  async updateTeam(id: string, patch: Partial<Team>): Promise<Team> {
+    const { data, error } = await client().from("teams").update(patch).eq("id", id).select("*").single();
+    if (error) throw error;
+    return data as Team;
+  },
+
+  async deleteTeam(id: string): Promise<void> {
+    const { error } = await client().from("teams").delete().eq("id", id);
+    if (error) throw error;
+  },
+
+  async listTeamMembers(teamId: string): Promise<TeamMember[]> {
+    const { data, error } = await client().from("team_members").select("*").eq("team_id", teamId);
+    if (error) throw error;
+    return (data ?? []) as TeamMember[];
+  },
+
+  async listAllTeamMembers(orgId: string): Promise<TeamMember[]> {
+    const { data, error } = await client().from("team_members").select("*").eq("org_id", orgId);
+    if (error) throw error;
+    return (data ?? []) as TeamMember[];
+  },
+
+  async addTeamMember(input: {
+    org_id: string;
+    team_id: string;
+    user_id: string;
+    role_in_team?: "lead" | "member";
+  }): Promise<void> {
+    const { error } = await client()
+      .from("team_members")
+      .upsert({ role_in_team: "member", ...input });
+    if (error) throw error;
+  },
+
+  async removeTeamMember(teamId: string, userId: string): Promise<void> {
+    const { error } = await client()
+      .from("team_members")
+      .delete()
+      .eq("team_id", teamId)
+      .eq("user_id", userId);
+    if (error) throw error;
+  },
+
+  // --- Project membership ---------------------------------------------------
+
+  async listProjectMembers(projectId: string): Promise<ProjectMember[]> {
+    const { data, error } = await client()
+      .from("project_members")
+      .select("*")
+      .eq("project_id", projectId);
+    if (error) throw error;
+    return (data ?? []) as ProjectMember[];
+  },
+
+  async listAllProjectMembers(orgId: string): Promise<ProjectMember[]> {
+    const { data, error } = await client().from("project_members").select("*").eq("org_id", orgId);
+    if (error) throw error;
+    return (data ?? []) as ProjectMember[];
+  },
+
+  async addProjectMember(input: {
+    org_id: string;
+    project_id: string;
+    user_id: string;
+    role_in_project?: ProjectRole;
+    allocation_pct?: number;
+  }): Promise<void> {
+    const { error } = await client()
+      .from("project_members")
+      .upsert({ role_in_project: "contributor", allocation_pct: 100, ...input });
+    if (error) throw error;
+  },
+
+  async updateProjectMember(
+    projectId: string,
+    userId: string,
+    patch: Partial<Pick<ProjectMember, "role_in_project" | "allocation_pct">>,
+  ): Promise<void> {
+    const { error } = await client()
+      .from("project_members")
+      .update(patch)
+      .eq("project_id", projectId)
+      .eq("user_id", userId);
+    if (error) throw error;
+  },
+
+  async removeProjectMember(projectId: string, userId: string): Promise<void> {
+    const { error } = await client()
+      .from("project_members")
+      .delete()
+      .eq("project_id", projectId)
+      .eq("user_id", userId);
+    if (error) throw error;
+  },
+
+  // --- Project progress -----------------------------------------------------
+
+  /** Latest nightly snapshot. Null before project-progress has run once. */
+  async getProjectProgress(projectId: string): Promise<ProjectProgressSnapshot | undefined> {
+    const { data } = await client()
+      .from("project_progress_snapshots")
+      .select("*")
+      .eq("project_id", projectId)
+      .order("as_of", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return (data as ProjectProgressSnapshot) ?? undefined;
+  },
+
+  /** Trailing history, for the progress trend line. */
+  async listProjectProgressHistory(projectId: string, days = 30): Promise<ProjectProgressSnapshot[]> {
+    const since = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+    const { data, error } = await client()
+      .from("project_progress_snapshots")
+      .select("*")
+      .eq("project_id", projectId)
+      .gte("as_of", since)
+      .order("as_of");
+    if (error) throw error;
+    return (data ?? []) as ProjectProgressSnapshot[];
+  },
+
+  async listProjectPulses(projectId: string, days = 14): Promise<ProjectPulse[]> {
+    const since = new Date(Date.now() - days * 86_400_000).toISOString();
+    const { data, error } = await client()
+      .from("project_pulses")
+      .select("*")
+      .eq("project_id", projectId)
+      .gte("asked_at", since)
+      .order("asked_at", { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as ProjectPulse[];
+  },
+
+  // --- Daily surveys (0012) -------------------------------------------------
+
+  /**
+   * The live cycle this person was actually invited to. Scope is resolved
+   * server-side, so the client finds it through its own delivery row rather
+   * than trying to work out which project or department it belongs to.
+   */
+  async getMyLiveSurvey(userId: string): Promise<DailySurveyCycle | undefined> {
+    const { data: deliveries } = await client()
+      .from("survey_deliveries")
+      .select("cycle_id")
+      .eq("user_id", userId)
+      .order("sent_at", { ascending: false })
+      .limit(10);
+
+    const ids = (deliveries ?? []).map((d: { cycle_id: string }) => d.cycle_id);
+    if (!ids.length) return undefined;
+
+    const { data: cycle } = await client()
+      .from("survey_cycles")
+      .select("*")
+      .in("id", ids)
+      .eq("status", "live")
+      .order("survey_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!cycle) return undefined;
+
+    const { data: questions } = await client()
+      .from("survey_questions")
+      .select("*")
+      .eq("cycle_id", cycle.id)
+      .order("sort_order");
+
+    return {
+      ...(cycle as DailySurveyCycle),
+      questions: ((questions ?? []) as DailySurveyQuestion[]).filter((q) => q.approved !== false),
+    };
+  },
+
+  async hasRespondedToSurvey(cycleId: string): Promise<boolean> {
+    const { data, error } = await client().rpc("survey_has_responded", { p_cycle: cycleId });
+    if (error) throw error;
+    return Boolean(data);
+  },
+
+  /** Answers are {question_id: text}. Blank entries are skipped server-side. */
+  async submitDailySurvey(cycleId: string, answers: Record<string, string>): Promise<number> {
+    const { data, error } = await client().rpc("submit_survey_response", {
+      p_cycle: cycleId,
+      p_answers: answers,
+    });
+    if (error) throw error;
+    return Number(data ?? 0);
+  },
+
+  async listDailySurveyCycles(orgId: string, days = 30): Promise<DailySurveyCycle[]> {
+    const since = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+    const { data, error } = await client()
+      .from("survey_cycles")
+      .select("*")
+      .eq("org_id", orgId)
+      .gte("survey_date", since)
+      .order("survey_date", { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as DailySurveyCycle[];
+  },
+
+  async getSurveyCycleQuestions(cycleId: string): Promise<DailySurveyQuestion[]> {
+    const { data, error } = await client()
+      .from("survey_questions")
+      .select("*")
+      .eq("cycle_id", cycleId)
+      .order("sort_order");
+    if (error) throw error;
+    return (data ?? []) as DailySurveyQuestion[];
+  },
+
+  async reviewDailySurveyQuestion(
+    questionId: string,
+    approved: boolean,
+    actorId: string,
+  ): Promise<void> {
+    const { error } = await client()
+      .from("survey_questions")
+      .update({ approved, approved_by_user_id: actorId, approved_at: nowIso() })
+      .eq("id", questionId);
+    if (error) throw error;
+  },
+
+  /**
+   * Aggregated results only. RLS restricts this to manager+ and the database
+   * CHECK guarantees every row represents at least five respondents.
+   */
+  async listSurveyAggregates(orgId: string, weeks = 8): Promise<SurveyAggregate[]> {
+    const since = new Date(Date.now() - weeks * 7 * 86_400_000).toISOString().slice(0, 10);
+    const { data, error } = await client()
+      .from("survey_aggregates")
+      .select("*")
+      .eq("org_id", orgId)
+      .gte("period_end", since)
+      .order("period_end", { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as SurveyAggregate[];
+  },
+
+  /** Transparency page: a person reads back their own answers, verbatim. */
+  async listMySurveyResponses(): Promise<MySurveyResponse[]> {
+    const { data, error } = await client().rpc("my_survey_responses");
+    if (error) throw error;
+    return (data ?? []) as MySurveyResponse[];
+  },
+
+  async deleteMySurveyResponses(cycleId: string): Promise<number> {
+    const { data, error } = await client().rpc("delete_my_survey_responses", { p_cycle: cycleId });
+    if (error) throw error;
+    return Number(data ?? 0);
+  },
+
+  // --- Email preferences (0014) ---------------------------------------------
+
+  async updateEmailPrefs(userId: string, prefs: Record<string, boolean>): Promise<void> {
+    const { error } = await client().from("users").update({ email_prefs: prefs }).eq("id", userId);
+    if (error) throw error;
   },
 
   async invokeAutonomySweep(): Promise<{ checkins: number; escalations: number }> {
