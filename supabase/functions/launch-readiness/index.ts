@@ -2,6 +2,8 @@
 // deno-lint-ignore-file no-explicit-any
 import { adminClient, json, corsHeaders } from "../_shared/supabase.ts";
 import { getSecret } from "../_shared/secrets.ts";
+import { tokenEncryptionConfigured } from "../_shared/tokenCrypto.ts";
+import { EDGE_CONNECTORS } from "../_shared/providers.generated.ts";
 
 function envConfigured(keys: string[]): { configured: boolean; missing: string[] } {
   const missing = keys.filter((k) => !Deno.env.get(k)?.trim());
@@ -27,6 +29,7 @@ Deno.serve(async (req) => {
     );
     const whatsappToken = Boolean(await getSecret("WHATSAPP_ACCESS_TOKEN"));
     const telegramToken = Boolean(await getSecret("TELEGRAM_BOT_TOKEN"));
+    const tokenEncryption = await tokenEncryptionConfigured();
 
     return json({
       odpc: {
@@ -66,6 +69,20 @@ Deno.serve(async (req) => {
           "MICROSOFT_OAUTH_CLIENT_ID",
           "MICROSOFT_OAUTH_CLIENT_SECRET",
         ]),
+        // Without this, every connector refuses to hand back a token rather than
+        // storing one in plaintext — so it gates the whole integrations page.
+        tokenEncryption: {
+          configured: tokenEncryption,
+          missing: tokenEncryption ? [] : ["TOKEN_ENCRYPTION_KEY"],
+        },
+        connectorsAvailable: Object.entries(EDGE_CONNECTORS)
+          .filter(
+            ([, def]) =>
+              Boolean(Deno.env.get(def.clientIdSecret)?.trim()) &&
+              Boolean(Deno.env.get(def.clientSecretSecret)?.trim()),
+          )
+          .map(([id]) => id),
+        connectorsTotal: Object.keys(EDGE_CONNECTORS).length,
       },
       workos: envConfigured(["WORKOS_API_KEY", "WORKOS_CLIENT_ID"]),
       email: { resendConfigured: Boolean(await getSecret("RESEND_API_KEY")) },

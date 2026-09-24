@@ -8,8 +8,11 @@
 import {
   DEFAULT_TAG_AUDIENCE,
   ROLE_RANK,
+  SENSITIVITY_RANK,
+  clearanceFor,
   roleAtLeast,
   type Role,
+  type Sensitivity,
   type Tag,
   type TagAudience,
   type User,
@@ -112,4 +115,39 @@ export function audienceSummary(tag: Tag, users: User[]): string {
 /** How many people end up with access, for the "3 people" style count. */
 export function audienceCount(tag: Tag, users: User[]): number {
   return audienceMembers(tag, users).length;
+}
+
+/** An item's labelling, as far as access control is concerned. */
+export interface ItemLabel {
+  sensitivity?: Sensitivity;
+  tagIds?: string[] | null;
+  ownerId?: string | null;
+  requesterId?: string | null;
+}
+
+/**
+ * The single access rule for a labelled item. Two gates, both of which must
+ * pass: tag audience, then clearance. Owner and requester keep need-to-know on
+ * clearance, but a tag audience still binds them — that is the point of a tag
+ * whose audience is "only these 3 people".
+ *
+ * The data layer's `canAccess` delegates here so that the "who will see this"
+ * preview shown while labelling cannot drift from what the reads enforce.
+ */
+export function itemAllows(
+  item: ItemLabel,
+  allTags: Tag[],
+  user: Pick<User, "id" | "role">,
+): boolean {
+  if (!tagsAllow(item.tagIds, allTags, user)) return false;
+  if (user.id === item.ownerId || user.id === item.requesterId) return true;
+  return (
+    SENSITIVITY_RANK[item.sensitivity ?? "internal"] <=
+    SENSITIVITY_RANK[clearanceFor(user.role)]
+  );
+}
+
+/** Everyone in the org who would still see an item labelled this way. */
+export function whoCanSee(item: ItemLabel, allTags: Tag[], users: User[]): User[] {
+  return users.filter((u) => u.status !== "disabled" && itemAllows(item, allTags, u));
 }

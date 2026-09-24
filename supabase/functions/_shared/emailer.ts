@@ -305,6 +305,26 @@ ${list([
     };
   },
 
+  invite_user(v: {
+    recipient: Recipient;
+    orgName: string;
+    role: string;
+    inviterName: string;
+    token: string;
+  }) {
+    return {
+      subject: `Join ${v.orgName} on Company OS`,
+      html: layout({
+        category: "system",
+        heading: `You're invited to ${v.orgName}`,
+        intro: `${v.inviterName} invited you to join as ${v.role}.`,
+        ctaLabel: "Accept invite",
+        ctaPath: `/invite/${v.token}`,
+        bodyHtml: `<p style="margin:0;color:#6b7280;font-size:13px">This link is for ${escapeHtml(v.recipient.email ?? "you")} only. If you were not expecting it, you can ignore this email.</p>`,
+      }),
+    };
+  },
+
   report_ready(v: { recipient: Recipient; orgName: string; type: string; bodyMarkdown: string; reportId: string; pdfUrl?: string | null }) {
     return {
       subject: `Company OS ${v.type} report — ${v.orgName}`,

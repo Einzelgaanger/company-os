@@ -9,6 +9,7 @@ Use this map until the long-form markdown is checked in.
 | `02_DATA_MODEL.md` | Schema | `packages/db/migrations/0001_init.sql`, `packages/db/src/schema/` |
 | `03_IDENTITY_ACCESS.md` | Authz, compliance, SCIM | `packages/shared/src/authz.ts`, `apps/api` auth/scim/compliance |
 | `04_INTEGRATIONS.md` | Calendar, project link, connections | `packages/shared/src/calendar.ts`, `projectLink.ts`, workers |
+| `04A_CONNECTOR_CATALOG.md` | The 76-connector inventory | `src/lib/providers.ts`, `apps/api/src/lib/providerRegistry.ts` |
 | `05_AI_PIPELINE.md` | Reader/validator/actor, evals | `packages/ai/` |
 | `06_WHATSAPP.md` | Templates, eligibility, STOP | `packages/messaging/` |
 | `07_ESCALATIONS.md` | Ownership map routing | `packages/shared/src/escalation.ts`, SPA escalations |

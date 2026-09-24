@@ -1,158 +1,315 @@
-// oauth — Google / Microsoft connector OAuth (calendar, drive, email scopes).
-// GET ?provider=google_calendar&action=start&state=orgId:userId
-// GET ?provider=google_calendar&action=callback&code=...&state=...
+// oauth — connector OAuth for the production (Supabase) data plane.
+//
+//   GET ?provider=slack&action=start&state=<tenantId>:<userId>
+//   GET ?provider=slack&action=callback&code=...&state=...
+//
+// Endpoints come from _shared/providers.generated.ts, which is projected from
+// apps/api/src/lib/providerRegistry.ts — the two planes cannot disagree.
+//
+// Hard rules (docs/design/09_CONNECTORS.md §9.2):
+//   · PKCE wherever the provider supports it; verifier travels inside signed state
+//   · state is HMAC-signed with a 10-minute TTL and verified on the way back
+//   · tokens are AES-256-GCM encrypted with TOKEN_ENCRYPTION_KEY before storage;
+//     a missing key refuses the connection instead of writing plaintext
 // deno-lint-ignore-file no-explicit-any
 import { adminClient, json, corsHeaders } from "../_shared/supabase.ts";
 import { getSecret } from "../_shared/secrets.ts";
+import { encryptToken, tokenEncryptionConfigured } from "../_shared/tokenCrypto.ts";
+import { EDGE_CONNECTORS, type EdgeConnector } from "../_shared/providers.generated.ts";
 
 const REDIRECT_BASE =
   Deno.env.get("PUBLIC_APP_URL") ?? Deno.env.get("APP_BASE_URL") ?? "http://localhost:5173";
+const STATE_TTL_MS = 10 * 60_000;
 
-const SCOPES: Record<string, string> = {
-  gmail: "https://www.googleapis.com/auth/gmail.readonly",
-  google_calendar: "https://www.googleapis.com/auth/calendar.readonly",
-  google_drive: "https://www.googleapis.com/auth/drive.readonly",
-  outlook: "offline_access Mail.Read",
-  microsoft_calendar: "offline_access Calendars.Read User.Read",
-  onedrive: "offline_access Files.Read.All",
-  fathom: "read",
-  slack: "channels:history",
-  teams: "Chat.Read",
-};
+const enc = new TextEncoder();
+const b64url = (bytes: Uint8Array) =>
+  btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const fromB64url = (value: string) =>
+  Uint8Array.from(
+    atob(value.replace(/-/g, "+").replace(/_/g, "/")),
+    (c) => c.charCodeAt(0),
+  );
 
-function isGoogle(p: string) {
-  return ["gmail", "google_calendar", "google_drive"].includes(p);
+async function hmacKey(): Promise<CryptoKey> {
+  const secret =
+    (await getSecret("OAUTH_STATE_SECRET")) ??
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
+    "";
+  if (!secret) throw new Error("state_secret_missing");
+  return crypto.subtle.importKey(
+    "raw",
+    enc.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign", "verify"],
+  );
 }
 
-function emailGated(provider: string): boolean {
-  if (provider !== "gmail" && provider !== "outlook") return false;
-  return Deno.env.get("FEATURE_EMAIL_INGESTION") !== "true";
+type StatePayload = {
+  tid: string;
+  uid: string;
+  provider: string;
+  verifier: string;
+  iat: number;
+  nonce: string;
+};
+
+async function signState(payload: StatePayload): Promise<string> {
+  const body = b64url(enc.encode(JSON.stringify(payload)));
+  const sig = await crypto.subtle.sign("HMAC", await hmacKey(), enc.encode(body));
+  return `${body}.${b64url(new Uint8Array(sig))}`;
+}
+
+async function verifyState(state: string): Promise<StatePayload | null> {
+  const [body, sig] = state.split(".");
+  if (!body || !sig) return null;
+  const ok = await crypto.subtle.verify(
+    "HMAC",
+    await hmacKey(),
+    fromB64url(sig),
+    enc.encode(body),
+  );
+  if (!ok) return null;
+  try {
+    const payload = JSON.parse(new TextDecoder().decode(fromB64url(body))) as StatePayload;
+    if (Date.now() - payload.iat > STATE_TTL_MS) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+async function resolveUrl(url: string, def: EdgeConnector): Promise<string> {
+  let out = url;
+  if (out.includes("{instance}")) {
+    const value = def.instanceSecret ? await getSecret(def.instanceSecret) : null;
+    if (!value) throw new Error(`instance_not_configured:${def.instanceSecret}`);
+    out = out.replaceAll("{instance}", value);
+  }
+  if (out.includes("{tenant}")) {
+    out = out.replaceAll("{tenant}", (await getSecret("MICROSOFT_TENANT_ID")) ?? "common");
+  }
+  return out;
+}
+
+function pick(source: any, path: string[] | null): string | null {
+  if (!path) return null;
+  let node = source;
+  for (const key of path) {
+    if (node == null || typeof node !== "object") return null;
+    node = node[key];
+  }
+  return typeof node === "string" && node.trim() ? node : null;
+}
+
+async function pkcePair() {
+  const verifier = b64url(crypto.getRandomValues(new Uint8Array(32)));
+  const digest = await crypto.subtle.digest("SHA-256", enc.encode(verifier));
+  return { verifier, challenge: b64url(new Uint8Array(digest)) };
+}
+
+/** One stable redirect URI so Google (and every other provider) only needs a single allowlist entry. */
+function redirectUri(): string {
+  return `${Deno.env.get("SUPABASE_URL")}/functions/v1/oauth`;
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   const url = new URL(req.url);
-  const provider = url.searchParams.get("provider") ?? "";
-  const action = url.searchParams.get("action") ?? "start";
-  const db = adminClient();
+  const code = url.searchParams.get("code");
+  const oauthError = url.searchParams.get("error");
+  const rawState = url.searchParams.get("state") ?? "";
+  const actionParam = url.searchParams.get("action");
+  const isCallback = actionParam === "callback" || Boolean(code) || Boolean(oauthError);
 
-  if (!provider || !SCOPES[provider]) return json({ error: "unknown provider" }, 404);
-  if (emailGated(provider)) {
-    return json({ error: "email_ingestion_disabled", hint: "Set FEATURE_EMAIL_INGESTION=true after CASA" }, 403);
+  let provider = url.searchParams.get("provider") ?? "";
+  if (isCallback && !provider && rawState) {
+    const preview = await verifyState(rawState);
+    provider = preview?.provider ?? "";
+  }
+  const action = isCallback ? "callback" : (actionParam ?? "start");
+  const def = EDGE_CONNECTORS[provider];
+
+  if (!def) return json({ error: "unknown_provider", provider }, 404);
+  if (def.featureFlag && Deno.env.get(def.featureFlag) !== "true") {
+    return json(
+      { error: "connector_gated", provider, hint: `Set ${def.featureFlag}=true first` },
+      403,
+    );
   }
 
-  const google = isGoogle(provider);
-  const clientId = google
-    ? await getSecret("GOOGLE_OAUTH_CLIENT_ID")
-    : await getSecret("MICROSOFT_OAUTH_CLIENT_ID");
-  const clientSecret = google
-    ? await getSecret("GOOGLE_OAUTH_CLIENT_SECRET")
-    : await getSecret("MICROSOFT_OAUTH_CLIENT_SECRET");
+  const clientId = await getSecret(def.clientIdSecret);
+  const clientSecret = await getSecret(def.clientSecretSecret);
   if (!clientId || !clientSecret) {
-    return json({ error: "oauth_not_configured", provider }, 503);
+    return json(
+      {
+        error: "oauth_not_configured",
+        provider,
+        missing: [
+          !clientId ? def.clientIdSecret : null,
+          !clientSecret ? def.clientSecretSecret : null,
+        ].filter(Boolean),
+      },
+      503,
+    );
   }
-
-  const redirectUri = `${Deno.env.get("SUPABASE_URL")}/functions/v1/oauth?provider=${provider}&action=callback`;
+  if (!(await tokenEncryptionConfigured())) {
+    return json(
+      { error: "token_encryption_not_configured", missing: ["TOKEN_ENCRYPTION_KEY"] },
+      503,
+    );
+  }
 
   if (action === "start") {
-    const state = url.searchParams.get("state") ?? "";
-    const authUrl = google
-      ? `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&access_type=offline&prompt=consent` +
-        `&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}` +
-        `&scope=${encodeURIComponent(SCOPES[provider])}&state=${encodeURIComponent(state)}`
-      : `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?response_type=code` +
-        `&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}` +
-        `&scope=${encodeURIComponent(SCOPES[provider])}&state=${encodeURIComponent(state)}`;
-    return Response.redirect(authUrl, 302);
+    const [tid, uid] = (url.searchParams.get("state") ?? "").split(":");
+    if (!tid) return json({ error: "missing_state" }, 400);
+    const { verifier, challenge } = await pkcePair();
+    const state = await signState({
+      tid,
+      uid: uid ?? "",
+      provider,
+      verifier,
+      iat: Date.now(),
+      nonce: b64url(crypto.getRandomValues(new Uint8Array(8))),
+    });
+
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri(),
+      response_type: "code",
+      state,
+    });
+    if (def.scopes.length > 0) params.set("scope", def.scopes.join(" "));
+    for (const [k, v] of Object.entries(def.authorizeParams)) {
+      params.set(k, await resolveUrl(v, def));
+    }
+    if (def.pkce) {
+      params.set("code_challenge", challenge);
+      params.set("code_challenge_method", "S256");
+    }
+    return Response.redirect(`${await resolveUrl(def.authorizeUrl, def)}?${params}`, 302);
   }
 
-  if (action === "callback") {
-    const code = url.searchParams.get("code");
-    const state = url.searchParams.get("state") ?? "";
-    const [org_id, user_id] = state.split(":");
-    if (!code || !org_id) return json({ error: "missing code/state" }, 400);
+  if (action !== "callback") return json({ error: "unknown_action" }, 404);
 
-    const tokenUrl = google
-      ? "https://oauth2.googleapis.com/token"
-      : "https://login.microsoftonline.com/common/oauth2/v2.0/token";
-    const tokenRes = await fetch(tokenUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        code,
-        client_id: clientId,
-        client_secret: clientSecret,
-        redirect_uri: redirectUri,
-        grant_type: "authorization_code",
-      }),
-    });
-    if (!tokenRes.ok) return json({ error: `token exchange failed: ${await tokenRes.text()}` }, 502);
-    const tokens = await tokenRes.json();
+  const failure = url.searchParams.get("error");
+  if (failure) {
+    return Response.redirect(
+      `${REDIRECT_BASE}/integrations?error=${encodeURIComponent(failure)}`,
+      302,
+    );
+  }
 
-    let external_account_email: string | null = null;
+  const payload = await verifyState(rawState);
+  if (!code || !payload || payload.provider !== provider) {
+    return Response.redirect(`${REDIRECT_BASE}/integrations?error=invalid_state`, 302);
+  }
+
+  const body = new URLSearchParams({
+    grant_type: "authorization_code",
+    code,
+    redirect_uri: redirectUri(),
+  });
+  if (def.pkce) body.set("code_verifier", payload.verifier);
+  const headers: Record<string, string> = {
+    "Content-Type": "application/x-www-form-urlencoded",
+  };
+  if (def.jsonAccept) headers.Accept = "application/json";
+  if (def.clientAuth === "basic") {
+    headers.Authorization = `Basic ${btoa(`${clientId}:${clientSecret}`)}`;
+  } else {
+    body.set("client_id", clientId);
+    body.set("client_secret", clientSecret);
+  }
+
+  const tokenRes = await fetch(await resolveUrl(def.tokenUrl, def), {
+    method: "POST",
+    headers,
+    body,
+  });
+  const text = await tokenRes.text();
+  if (!tokenRes.ok) {
+    return Response.redirect(
+      `${REDIRECT_BASE}/integrations?error=${encodeURIComponent(`token_exchange_failed_${tokenRes.status}`)}`,
+      302,
+    );
+  }
+  let tokens: any;
+  try {
+    tokens = JSON.parse(text);
+  } catch {
+    tokens = Object.fromEntries(new URLSearchParams(text));
+  }
+  if (!tokens.access_token || tokens.ok === false) {
+    return Response.redirect(`${REDIRECT_BASE}/integrations?error=no_access_token`, 302);
+  }
+
+  let account: string | null = pick(tokens, def.identityFromToken);
+  if (!account && def.identityUrl) {
     try {
-      if (google) {
-        const ui = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
-          headers: { Authorization: `Bearer ${tokens.access_token}` },
-        });
-        if (ui.ok) external_account_email = ((await ui.json()) as { email?: string }).email ?? null;
-      } else {
-        const me = await fetch("https://graph.microsoft.com/v1.0/me", {
-          headers: { Authorization: `Bearer ${tokens.access_token}` },
-        });
-        if (me.ok) {
-          const u = (await me.json()) as { mail?: string; userPrincipalName?: string };
-          external_account_email = u.mail ?? u.userPrincipalName ?? null;
-        }
+      const me = await fetch(await resolveUrl(def.identityUrl, def), {
+        headers: { Authorization: `Bearer ${tokens.access_token}`, Accept: "application/json" },
+      });
+      if (me.ok) {
+        const identity = await me.json();
+        account =
+          pick(identity, def.identityPath) ??
+          pick(identity, ["email"]) ??
+          pick(identity, ["userPrincipalName"]);
       }
     } catch {
-      /* optional */
+      /* identity is a label, not a requirement */
     }
-
-    const row = {
-      org_id,
-      user_id: user_id || null,
-      provider,
-      status: "connected",
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token ?? null,
-      scopes: [SCOPES[provider]],
-      external_account_email,
-      connected_at: new Date().toISOString(),
-      last_synced_at: new Date().toISOString(),
-      error_message: null,
-    };
-
-    const { data: existing } = await db
-      .from("connections")
-      .select("id")
-      .eq("org_id", org_id)
-      .eq("provider", provider)
-      .eq("user_id", user_id || null)
-      .maybeSingle();
-
-    if (existing) {
-      await db.from("connections").update(row).eq("id", existing.id);
-    } else {
-      await db.from("connections").insert(row);
-    }
-
-    // Kick calendar sync for calendar providers
-    if (provider === "google_calendar" || provider === "microsoft_calendar") {
-      const base = Deno.env.get("SUPABASE_URL")!;
-      fetch(`${base}/functions/v1/sync-calendar`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ org_id }),
-      }).catch(() => {});
-    }
-
-    return Response.redirect(`${REDIRECT_BASE}/integrations?connected=${provider}`, 302);
   }
 
-  return json({ error: "unknown action" }, 404);
+  const db = adminClient();
+  const userId = def.orgLevel ? null : payload.uid || null;
+  const row = {
+    org_id: payload.tid,
+    user_id: userId,
+    provider,
+    status: "connected",
+    access_token: await encryptToken(tokens.access_token),
+    refresh_token: tokens.refresh_token ? await encryptToken(tokens.refresh_token) : null,
+    scopes: (tokens.scope ?? def.scopes.join(" ")).split(" ").filter(Boolean),
+    external_account_email: account,
+    connected_at: new Date().toISOString(),
+    last_synced_at: new Date().toISOString(),
+    error_message: null,
+  };
+
+  const lookup = db
+    .from("connections")
+    .select("id")
+    .eq("org_id", payload.tid)
+    .eq("provider", provider);
+  const { data: existing } = await (userId === null
+    ? lookup.is("user_id", null)
+    : lookup.eq("user_id", userId)
+  ).maybeSingle();
+
+  if (existing) {
+    await db.from("connections").update(row).eq("id", existing.id);
+  } else {
+    await db.from("connections").insert(row);
+  }
+
+  // Calendar connectors have a first sync worth kicking immediately.
+  if (provider === "google_calendar" || provider === "microsoft_calendar") {
+    const base = Deno.env.get("SUPABASE_URL")!;
+    fetch(`${base}/functions/v1/sync-calendar`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ org_id: payload.tid }),
+    }).catch(() => {});
+  }
+
+  return Response.redirect(
+    `${REDIRECT_BASE}/integrations?connected=${encodeURIComponent(provider)}`,
+    302,
+  );
 });

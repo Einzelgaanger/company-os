@@ -87,18 +87,23 @@ export function TagEditorDialog({
 }) {
   const { user } = useAuth();
   const { toast } = useToast();
+  // Snapshot the tag on open so the title and the form stay in step through the
+  // close animation, when the caller has already cleared its selection.
+  const [editingTag, setEditingTag] = useState<Tag | null>(tag);
   const [draft, setDraft] = useState<Draft>(() => draftFrom(tag));
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (open) setDraft(draftFrom(tag));
+    if (!open) return;
+    setEditingTag(tag);
+    setDraft(draftFrom(tag));
   }, [open, tag]);
 
   const audienceIsEmpty = draft.audience.mode === "only" && draft.audience.member_ids.length === 0;
   const canSave = Boolean(draft.name.trim()) && !audienceIsEmpty && !busy;
 
   const preview: Tag = {
-    id: tag?.id ?? "preview",
+    id: editingTag?.id ?? "preview",
     org_id: user?.org_id ?? "",
     name: draft.name.trim().toLowerCase() || "new tag",
     color: draft.color,
@@ -106,7 +111,7 @@ export function TagEditorDialog({
     pii: draft.pii,
     description: draft.description || null,
     audience: draft.audience,
-    created_at: tag?.created_at ?? new Date().toISOString(),
+    created_at: editingTag?.created_at ?? new Date().toISOString(),
   };
 
   async function save() {
@@ -121,10 +126,12 @@ export function TagEditorDialog({
         description: draft.description.trim() || null,
         audience: draft.audience,
       };
-      if (tag) await db.updateTag(tag.id, fields, user);
+      if (editingTag) await db.updateTag(editingTag.id, fields, user);
       else await db.createTag({ org_id: user.org_id, ...fields });
       toast(
-        tag ? `"${fields.name}" updated — ${audienceCount(preview, users)} people have access.` : `Tag "${fields.name}" created.`,
+        editingTag
+          ? `"${fields.name}" updated — ${audienceCount(preview, users)} people have access.`
+          : `Tag "${fields.name}" created.`,
         "success",
       );
       onOpenChange(false);
@@ -140,7 +147,7 @@ export function TagEditorDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{tag ? `Edit "${tag.name}"` : "New tag"}</DialogTitle>
+          <DialogTitle>{editingTag ? `Edit "${editingTag.name}"` : "New tag"}</DialogTitle>
           <DialogDescription>
             A tag does two jobs: it classifies data and it decides who can read it. Changing the
             audience applies to everything already labelled with this tag.
@@ -236,7 +243,7 @@ export function TagEditorDialog({
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={save} disabled={!canSave}>
-            {tag ? "Save tag" : "Create tag"}
+            {editingTag ? "Save tag" : "Create tag"}
           </Button>
         </DialogFooter>
       </DialogContent>

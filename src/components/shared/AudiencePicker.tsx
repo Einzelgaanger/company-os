@@ -56,6 +56,16 @@ export function AudiencePicker({
     );
   }, [selectable, query]);
 
+  // `only` and `except` read the same list in opposite directions, so carrying
+  // names across would silently invert who has access. Start the new mode empty
+  // instead; `only` with nobody picked blocks saving.
+  function setMode(mode: TagAudienceMode) {
+    const inverts =
+      (audience.mode === "only" && mode === "except") ||
+      (audience.mode === "except" && mode === "only");
+    onChange({ ...audience, mode, member_ids: inverts ? [] : audience.member_ids });
+  }
+
   function toggleMember(id: string) {
     const has = audience.member_ids.includes(id);
     onChange({
@@ -77,7 +87,7 @@ export function AudiencePicker({
               <button
                 key={m.value}
                 type="button"
-                onClick={() => onChange({ ...audience, mode: m.value })}
+                onClick={() => setMode(m.value)}
                 className={cn(
                   "rounded-md border p-3 text-left transition-colors",
                   active

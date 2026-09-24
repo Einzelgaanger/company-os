@@ -23,14 +23,34 @@ export function InviteDialog({ onInvited }: { onInvited?: () => void }) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("member");
+  const [busy, setBusy] = useState(false);
 
   async function invite() {
     if (!user || !email.includes("@")) return;
-    await db.inviteUser(user, email.trim(), role, null);
-    toast(`Invite created for ${email}.`, "success");
-    setOpen(false);
-    setEmail("");
-    onInvited?.();
+    setBusy(true);
+    try {
+      const result = await db.inviteUser(user, email.trim(), role, null);
+      if (result.invite_url && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(result.invite_url).catch(() => undefined);
+      }
+      toast(
+        result.emailed
+          ? `Invite emailed to ${email}. Link also copied.`
+          : `Invite created for ${email}. Link copied — email delivery is not configured yet.`,
+        "success",
+      );
+      setOpen(false);
+      setEmail("");
+      onInvited?.();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "invite_failed";
+      toast(
+        msg === "already_a_member" ? "That person is already in this workspace." : msg,
+        "error",
+      );
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -56,14 +76,16 @@ export function InviteDialog({ onInvited }: { onInvited?: () => void }) {
               <SelectContent>
                 <SelectItem value="member">Member</SelectItem>
                 <SelectItem value="manager">Manager</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
+                {user?.role === "owner" ? <SelectItem value="admin">Admin</SelectItem> : null}
               </SelectContent>
             </Select>
           </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={invite} disabled={!email.includes("@")}>Send invite</Button>
+          <Button onClick={() => void invite()} disabled={!email.includes("@") || busy}>
+            {busy ? "Sending…" : "Send invite"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

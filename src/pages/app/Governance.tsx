@@ -51,9 +51,14 @@ export default function Governance() {
   // null = closed; { tag: null } = creating a new tag
   const [editing, setEditing] = useState<{ tag: Tag | null } | null>(null);
 
-  async function load() {
+  /**
+   * `silent` refetches in place after an edit. Without it the page swaps itself
+   * for a skeleton, which remounts the tabs and throws the admin back to
+   * Overview mid-task.
+   */
+  async function load({ silent = false } = {}) {
     if (!user) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     setError(false);
     try {
       const [allC, allU, t, log, r, o] = await Promise.all([
@@ -88,12 +93,14 @@ export default function Governance() {
 
   if (!user) return null;
   if (loading) return <TableSkeleton />;
-  if (error) return <ErrorState onRetry={load} />;
+  if (error) return <ErrorState onRetry={() => load()} />;
+
+  const refresh = () => load({ silent: true });
 
   async function removeTag(tag: Tag) {
     await db.deleteTag(tag.id);
     toast(`"${tag.name}" removed and detached from all data.`, "default");
-    load();
+    refresh();
   }
 
   const coveragePct = Math.round(stats.coverage * 100);
@@ -214,7 +221,7 @@ export default function Governance() {
             tags={tags}
             defaultClassification={org?.settings.default_classification ?? "internal"}
             canEdit={canEditTags}
-            onChanged={load}
+            onChanged={refresh}
           />
         </TabsContent>
 
@@ -302,7 +309,7 @@ export default function Governance() {
             tag={editing?.tag ?? null}
             users={users}
             onOpenChange={(o) => !o && setEditing(null)}
-            onSaved={load}
+            onSaved={refresh}
           />
         </TabsContent>
 

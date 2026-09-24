@@ -16,6 +16,12 @@
 
 **Do not build 5 before 1–4 are in production.** Email is the highest-value and highest-risk source; it is deliberately last.
 
+The table above is the **ingestion** build order — the sources the AI pipeline reads. The
+connection layer itself is broader: 76 connectors ship in the catalogue so a workspace can
+link the tools it already uses. See **[04A — Connector catalogue](04A_CONNECTOR_CATALOG.md)**
+for the full inventory, auth shape and deployment setup per provider. Everything in it obeys
+§4.2 below; phases 1–5 simply mark which connectors feed extraction first.
+
 ---
 
 ## 4.2 OAuth implementation

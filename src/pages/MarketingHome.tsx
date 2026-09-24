@@ -42,14 +42,21 @@ const FLOW = [
 
 const CHANNELS = [
   {
+    n: "01",
+    kicker: "Check-ins",
     title: "Daily prompts that sound like staff, not spam",
     body: "Company OS checks in on live work the way a chief of staff would: short, specific, and timed to the item — not a blast to the whole company. Owners reply in the channel they already live in. The system records the answer, and only when something is actually stuck does it escalate — with context, not panic.",
   },
   {
+    n: "02",
+    kicker: "Escalation",
+    tone: "forest",
     title: "Unblock without the stress",
     body: "When someone is blocked, Company OS already has the meeting notes, owners, and dependencies. It knows who to ask next so the person doing the work does not have to chase sideways, and the project manager does not have to hunt for the right inbox. Escalation arrives with judgment — the right person, the right tone — not a public pile-on.",
   },
   {
+    n: "03",
+    kicker: "Reports",
     title: "Reports for people who run projects",
     body: "Leads see project health, waiting time, open decisions, and follow-through on commitments — scoped to their projects, not a company-wide dump. This is operational visibility: who is holding work, what is blocked, what closed. It is not a scorecard for promotion or discipline.",
   },
@@ -134,6 +141,63 @@ const RIBBONS = [
     forest: false,
   },
 ] as const;
+
+/** Corner motif for each coordination-mode card. Lime, clipped by the card. */
+function ModeShape({ index }: { index: number }) {
+  return (
+    <svg className="mk-modes__shape" viewBox="0 0 160 130" aria-hidden="true" focusable="false">
+      {index === 0 && (
+        <>
+          <circle cx="108" cy="78" r="46" fill="currentColor" opacity="0.1" />
+          <circle cx="108" cy="78" r="46" stroke="currentColor" strokeWidth="1.6" opacity="0.55" />
+          <circle cx="74" cy="96" r="28" stroke="currentColor" strokeWidth="1.6" opacity="0.4" />
+          <circle cx="128" cy="52" r="16" fill="currentColor" opacity="0.28" />
+          <circle cx="92" cy="86" r="5" fill="currentColor" opacity="0.9" />
+        </>
+      )}
+      {index === 1 && (
+        <>
+          <g stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.55">
+            <line x1="36" y1="118" x2="18" y2="36" />
+            <line x1="36" y1="118" x2="62" y2="18" />
+            <line x1="36" y1="118" x2="108" y2="12" />
+            <line x1="36" y1="118" x2="148" y2="28" />
+            <line x1="36" y1="118" x2="154" y2="72" />
+          </g>
+          <circle cx="36" cy="118" r="7" fill="currentColor" opacity="0.9" />
+          <circle cx="108" cy="12" r="3.5" fill="currentColor" opacity="0.75" />
+          <circle cx="148" cy="28" r="3" fill="currentColor" opacity="0.55" />
+          <circle cx="62" cy="18" r="2.5" fill="currentColor" opacity="0.5" />
+        </>
+      )}
+      {index === 2 && (
+        <>
+          <rect x="18" y="28" width="128" height="14" rx="7" fill="currentColor" opacity="0.18" />
+          <rect x="42" y="52" width="104" height="14" rx="7" fill="currentColor" opacity="0.32" />
+          <rect x="66" y="76" width="80" height="14" rx="7" fill="currentColor" opacity="0.5" />
+          <rect x="90" y="100" width="56" height="14" rx="7" fill="currentColor" opacity="0.78" />
+        </>
+      )}
+      {index === 3 && (
+        <>
+          <rect x="28" y="18" width="48" height="48" rx="10" stroke="currentColor" strokeWidth="1.6" opacity="0.4" />
+          <rect x="84" y="18" width="48" height="48" rx="10" stroke="currentColor" strokeWidth="1.6" opacity="0.4" />
+          <rect x="28" y="72" width="48" height="48" rx="10" stroke="currentColor" strokeWidth="1.6" opacity="0.4" />
+          <rect x="90" y="78" width="48" height="48" rx="10" fill="currentColor" opacity="0.22" />
+          <rect x="90" y="78" width="48" height="48" rx="10" stroke="currentColor" strokeWidth="1.6" opacity="0.7" />
+        </>
+      )}
+      {index === 4 && (
+        <>
+          <circle cx="90" cy="74" r="46" stroke="currentColor" strokeWidth="1.5" strokeDasharray="6 7" opacity="0.45" />
+          <circle cx="90" cy="74" r="28" stroke="currentColor" strokeWidth="1.7" opacity="0.65" />
+          <circle cx="90" cy="74" r="12" fill="currentColor" opacity="0.24" />
+          <circle cx="90" cy="74" r="4.5" fill="currentColor" opacity="0.9" />
+        </>
+      )}
+    </svg>
+  );
+}
 
 function Reveal({
   children,
@@ -370,10 +434,18 @@ export default function MarketingHome() {
           </Reveal>
           <div className="mk-narrative__grid">
             {CHANNELS.map((c, i) => (
-              <Reveal key={c.title} delay={(Math.min(i + 1, 4) as 1 | 2 | 3 | 4)} className="mk-narrative__card">
-                <span className="mk-narrative__n">{String(i + 1).padStart(2, "0")}</span>
-                <h3>{c.title}</h3>
-                <p>{c.body}</p>
+              <Reveal key={c.title} delay={(Math.min(i + 1, 4) as 1 | 2 | 3 | 4)}>
+                <article className={`mk-narrative__card${"tone" in c ? " mk-narrative__card--forest" : ""}`}>
+                  <span className="mk-narrative__ghost" aria-hidden>
+                    {c.n}
+                  </span>
+                  <div className="mk-narrative__head">
+                    <span className="mk-narrative__n">{c.n}</span>
+                    <span className="mk-narrative__kicker">{c.kicker}</span>
+                  </div>
+                  <h3>{c.title}</h3>
+                  <p>{c.body}</p>
+                </article>
               </Reveal>
             ))}
           </div>
@@ -394,6 +466,7 @@ export default function MarketingHome() {
           <div className="mk-modes__grid">
             {MODES.map((m, i) => (
               <Reveal key={m.title} delay={(Math.min(i + 1, 4) as 1 | 2 | 3 | 4)} className="mk-modes__card">
+                <ModeShape index={i} />
                 <h3>{m.title}</h3>
                 <p>{m.body}</p>
               </Reveal>

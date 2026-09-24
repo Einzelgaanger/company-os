@@ -8,7 +8,8 @@ import { TableSkeleton } from "@/components/states";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { db } from "@/lib/db";
-import type { Role, User } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import type { OrgInvite, Role, User } from "@/lib/types";
 
 const ROLES: Role[] = ["member", "manager", "admin", "owner"];
 
@@ -16,13 +17,25 @@ export default function SettingsRoles() {
   const { user, refresh } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
+  const [invites, setInvites] = useState<OrgInvite[]>([]);
   const [loading, setLoading] = useState(true);
 
   async function load() {
     if (!user) return;
     setLoading(true);
-    setUsers(await db.listUsers(user.org_id));
+    const [people, pending] = await Promise.all([
+      db.listUsers(user.org_id),
+      db.listInvites?.(user.org_id) ?? Promise.resolve([]),
+    ]);
+    setUsers(people);
+    setInvites(pending);
     setLoading(false);
+  }
+
+  async function copyInvite(inv: OrgInvite) {
+    const url = `${window.location.origin}/invite/${inv.token}`;
+    await navigator.clipboard.writeText(url);
+    toast("Invite link copied.", "success");
   }
 
   useEffect(() => {
@@ -65,6 +78,32 @@ export default function SettingsRoles() {
       <div className="flex justify-end">
         <InviteDialog onInvited={load} />
       </div>
+      {invites.length > 0 ? (
+        <Card className="mb-4">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Pending invite</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {invites.map((inv) => (
+                <TableRow key={inv.token}>
+                  <TableCell className="text-slate">{inv.email}</TableCell>
+                  <TableCell className="capitalize">{inv.role}</TableCell>
+                  <TableCell className="text-right">
+                    <Button size="sm" variant="outline" onClick={() => void copyInvite(inv)}>
+                      Copy link
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      ) : null}
       <Card>
         <Table>
           <TableHeader>

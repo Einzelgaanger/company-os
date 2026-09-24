@@ -266,9 +266,11 @@ for (const file of files) {
     // remove false positives collected above for these files
   }
 
-  // Orphan hexes
+  // Orphan hexes. Vendored third-party brand marks are exempt: their colours
+  // belong to the provider, not to our palette (scripts/gen/provider-icons.mjs).
   if (
     !TOKEN_FILES.has(normPath(file)) &&
+    !r.startsWith("public/integrations/") &&
     !r.endsWith("tailwind.config.js") &&
     !r.endsWith("index.css") &&
     !r.endsWith("loop-marketing.css")

@@ -2,6 +2,7 @@
 // deno-lint-ignore-file no-explicit-any
 import { adminClient, json, corsHeaders } from "../_shared/supabase.ts";
 import { getSecret } from "../_shared/secrets.ts";
+import { decryptToken, encryptToken } from "../_shared/tokenCrypto.ts";
 
 async function refreshGoogleToken(refreshToken: string): Promise<string | null> {
   const clientId = await getSecret("GOOGLE_OAUTH_CLIENT_ID");
@@ -23,12 +24,18 @@ async function refreshGoogleToken(refreshToken: string): Promise<string | null> 
 }
 
 async function syncGoogleConnection(db: any, conn: any): Promise<number> {
-  let token = conn.access_token as string;
+  let token = await decryptToken(conn.access_token as string);
   if (conn.refresh_token) {
-    const refreshed = await refreshGoogleToken(conn.refresh_token);
+    const refreshed = await refreshGoogleToken(await decryptToken(conn.refresh_token));
     if (refreshed) {
       token = refreshed;
-      await db.from("connections").update({ access_token: token, last_synced_at: new Date().toISOString() }).eq("id", conn.id);
+      await db
+        .from("connections")
+        .update({
+          access_token: await encryptToken(refreshed),
+          last_synced_at: new Date().toISOString(),
+        })
+        .eq("id", conn.id);
     }
   }
   const since = new Date(Date.now() - 14 * 86400000).toISOString();
@@ -61,7 +68,7 @@ async function syncGoogleConnection(db: any, conn: any): Promise<number> {
 }
 
 async function syncMicrosoftConnection(db: any, conn: any): Promise<number> {
-  const token = conn.access_token as string;
+  const token = await decryptToken(conn.access_token as string);
   const since = new Date(Date.now() - 14 * 86400000).toISOString();
   const res = await fetch(
     `https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${encodeURIComponent(since)}&endDateTime=${encodeURIComponent(new Date().toISOString())}&$top=100`,

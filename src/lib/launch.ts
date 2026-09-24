@@ -38,6 +38,40 @@ export async function patchLaunchSettings(
   return res.json() as Promise<LaunchStatus>;
 }
 
+export async function peekInvite(token: string): Promise<{
+  email: string;
+  role: string;
+  org_name: string;
+} | null> {
+  const res = await fetch(
+    `${base()}/functions/v1/invite?token=${encodeURIComponent(token)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY as string,
+      },
+    },
+  );
+  if (!res.ok) return null;
+  return res.json() as Promise<{ email: string; role: string; org_name: string }>;
+}
+
+export async function acceptInviteAccount(input: {
+  token: string;
+  password: string;
+  fullName: string;
+}): Promise<{ email: string }> {
+  const res = await edgeFetch("invite", {
+    method: "POST",
+    body: JSON.stringify({ action: "accept", ...input }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? "invite_accept_failed");
+  }
+  return res.json() as Promise<{ email: string }>;
+}
+
 export function oauthStartUrl(provider: string, orgId: string, userId: string): string {
   const state = `${orgId}:${userId}`;
   return `${base()}/functions/v1/oauth?provider=${encodeURIComponent(provider)}&action=start&state=${encodeURIComponent(state)}`;

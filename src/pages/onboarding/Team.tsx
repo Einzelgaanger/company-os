@@ -31,7 +31,7 @@ export default function OnbTeam() {
     for (const r of valid) {
       await db.inviteUser(user, r.email.trim(), r.role, null);
     }
-    if (valid.length) toast(`${valid.length} invite${valid.length > 1 ? "s" : ""} created.`, "success");
+    if (valid.length) toast(`${valid.length} invite${valid.length > 1 ? "s" : ""} sent.`, "success");
     navigate("/onboarding/complete");
   }
 

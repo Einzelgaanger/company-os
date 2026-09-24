@@ -31,3 +31,6 @@ verify_jwt = true
 
 [functions.oauth]
 verify_jwt = false          # start/callback hit from the browser + provider redirect
+
+[functions.invite]
+verify_jwt = false          # peek/accept are public; send checks the caller's JWT itself

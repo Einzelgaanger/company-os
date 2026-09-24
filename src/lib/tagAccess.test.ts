@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { audienceCount, audienceSummary, blockingTags, tagAllows, tagsAllow } from "./tagAccess";
+import {
+  audienceCount,
+  audienceSummary,
+  blockingTags,
+  itemAllows,
+  tagAllows,
+  tagsAllow,
+  whoCanSee,
+} from "./tagAccess";
 import { DEFAULT_TAG_AUDIENCE, type Role, type Tag, type TagAudience, type User } from "./types";
 
 function user(id: string, role: Role): User {
@@ -126,5 +134,35 @@ describe("audience descriptions", () => {
     expect(audienceSummary(tag("d", { mode: "role", min_role: "manager" }), everyone)).toBe(
       "Managers and above",
     );
+  });
+});
+
+describe("itemAllows / whoCanSee", () => {
+  const hr = tag("hr", { mode: "only", member_ids: [grace.id], admin_override: false });
+
+  it("lets the owner read past their own clearance", () => {
+    expect(itemAllows({ sensitivity: "restricted" }, [], brian)).toBe(false);
+    expect(itemAllows({ sensitivity: "restricted", ownerId: brian.id }, [], brian)).toBe(true);
+  });
+
+  it("still applies a tag audience to the owner", () => {
+    expect(
+      itemAllows({ sensitivity: "internal", tagIds: [hr.id], ownerId: brian.id }, [hr], brian),
+    ).toBe(false);
+  });
+
+  it("previews the exact roster a labelling decision produces", () => {
+    expect(whoCanSee({ sensitivity: "internal", tagIds: [hr.id] }, [hr], everyone)).toEqual([grace]);
+  });
+
+  it("reports nobody when clearance and audience cannot both be met", () => {
+    // Only Brian passes the audience, and he cannot clear "restricted".
+    const t = tag("t", { mode: "only", member_ids: [brian.id], admin_override: false });
+    expect(whoCanSee({ sensitivity: "restricted", tagIds: [t.id] }, [t], everyone)).toEqual([]);
+  });
+
+  it("excludes deactivated people from the preview", () => {
+    const gone = { ...amina, status: "disabled" as const };
+    expect(whoCanSee({ sensitivity: "public" }, [], [brian, gone])).toEqual([brian]);
   });
 });
