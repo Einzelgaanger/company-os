@@ -13,9 +13,9 @@ export const BRAND = {
   slogan: "Your Agentic Chief Of Staff",
   tagline: "Your Agentic Chief Of Staff",
   promise:
-    "Captures what was promised, checks in daily, and when someone is stuck uses the work context to find the right person to unblock it — so your team stops chasing and stressing, and project reports still land with the people who run it.",
+    "Captures owned commitments from work already in motion, checks in on Chat or each person's channel and when someone is stuck finds who can unblock them. Project leads get the operating picture without another board to babysit.",
   world:
-    "For operators keeping team promises alive — desks, phones, calendars; never clinics or warehouses.",
+    "For operators keeping team promises alive: desks, phones, calendars; never clinics or warehouses.",
   markExplain: "The operating system for work follow-through.",
 
   forest: "#0E1F1A",
