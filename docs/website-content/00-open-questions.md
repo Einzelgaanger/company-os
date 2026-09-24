@@ -36,6 +36,12 @@ Log format per brief §11. Append throughout.
 - Options: A) Propose `/security` B) Strengthen Privacy only
 - Recommendation: A as proposal only (do not create without approval).
 
+### Q6: Email as messaging channel
+- Context: Marketing mentions email fallback. Email report delivery exists; email as check-in channel is limited vs Telegram/Chat/WhatsApp.
+- Why it matters: Oversell risk.
+- Recommendation: Soften email to reports/notifications unless verified as check-in channel.
+- Placeholder: `[NEEDS INPUT: confirm email check-in is live]`
+
 ### Q7: Public FAQ block
 - Context: Anxiety forces under-addressed; no FAQ component on marketing page.
 - Why it matters: Trust / Action scores.
