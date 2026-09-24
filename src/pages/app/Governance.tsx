@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SensitivityBadge, TagChip } from "@/components/governance";
 import { IngestionRules } from "@/components/shared/IngestionRules";
 import { TagEditorDialog } from "@/components/dialogs/TagEditorDialog";
+import { ReleaseCallDialog } from "@/components/dialogs/ReleaseCallDialog";
 import { TableSkeleton, ErrorState } from "@/components/states";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
@@ -21,6 +22,7 @@ import {
   type Commitment,
   type DataAccessLogEntry,
   type IngestionLabelRule,
+  type Meeting,
   type Organization,
   type Sensitivity,
   type Tag,
@@ -47,6 +49,8 @@ export default function Governance() {
   const [accessLog, setAccessLog] = useState<DataAccessLogEntry[]>([]);
   const [rules, setRules] = useState<IngestionLabelRule[]>([]);
   const [org, setOrg] = useState<Organization | undefined>();
+  const [heldCalls, setHeldCalls] = useState<Meeting[]>([]);
+  const [releasing, setReleasing] = useState<Meeting | null>(null);
 
   // null = closed; { tag: null } = creating a new tag
   const [editing, setEditing] = useState<{ tag: Tag | null } | null>(null);
@@ -61,13 +65,14 @@ export default function Governance() {
     if (!silent) setLoading(true);
     setError(false);
     try {
-      const [allC, allU, t, log, r, o] = await Promise.all([
+      const [allC, allU, t, log, r, o, held] = await Promise.all([
         db.listCommitments(user.org_id),
         db.listUsers(user.org_id),
         db.listTags(user.org_id),
         db.listDataAccessLog(user.org_id),
         db.listIngestionRules(user.org_id),
         db.getOrg(user.org_id),
+        db.listHeldMeetings(user.org_id),
       ]);
       setCommitments(visibleCommitments(user, allC, allU, t));
       setUsers(allU);
@@ -75,6 +80,7 @@ export default function Governance() {
       setAccessLog(log);
       setRules(r);
       setOrg(o);
+      setHeldCalls(held);
     } catch {
       setError(true);
     } finally {
@@ -115,6 +121,12 @@ export default function Governance() {
       <Tabs defaultValue="overview">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="calls">
+            Incoming calls
+            {heldCalls.length > 0 && (
+              <Badge variant="amber" className="ml-1.5">{heldCalls.length}</Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="sources">Connected apps</TabsTrigger>
           <TabsTrigger value="tags">Tags &amp; access</TabsTrigger>
           <TabsTrigger value="access">Access log</TabsTrigger>
@@ -212,6 +224,41 @@ export default function Governance() {
                 ))}
               </CardContent>
             </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="calls" className="space-y-4">
+          <p className="max-w-2xl text-sm text-slate">
+            Connected apps deliver a meeting as one whole call. It stays held until you tag it
+            for privacy — then it is stored, and every commitment extracted from it inherits
+            that tag.
+          </p>
+          {heldCalls.length === 0 ? (
+            <Card>
+              <CardContent className="p-5 text-sm text-slate">
+                No calls waiting. New Fathom / Zoom / Teams meetings will land here first.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {heldCalls.map((m) => (
+                <Card key={m.id}>
+                  <CardContent className="flex flex-wrap items-start justify-between gap-3 p-5">
+                    <div className="min-w-0 space-y-1">
+                      <div className="font-medium">{m.title ?? "Untitled call"}</div>
+                      <div className="text-xs text-slate">
+                        {formatDateTime(m.occurred_at ?? m.ingested_at)} · {m.source} ·{" "}
+                        {m.participants.map((p) => p.name).join(", ") || "No participants"}
+                      </div>
+                      {m.transcript_text && (
+                        <p className="line-clamp-2 text-sm text-slate">{m.transcript_text}</p>
+                      )}
+                    </div>
+                    <Button onClick={() => setReleasing(m)}>Tag &amp; store</Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           )}
         </TabsContent>
 
@@ -351,6 +398,15 @@ export default function Governance() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <ReleaseCallDialog
+        meeting={releasing}
+        tags={tags}
+        users={users}
+        open={releasing !== null}
+        onOpenChange={(o) => !o && setReleasing(null)}
+        onStored={refresh}
+      />
     </div>
   );
 }

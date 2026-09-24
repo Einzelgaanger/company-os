@@ -108,7 +108,18 @@ export default function ReportDetail() {
       </button>
 
       <PageHeader
-        title={report.type === "daily" ? "Daily report" : "Weekly report"}
+        title={
+          report.type === "daily"
+            ? "Daily report"
+            : report.type === "survey_weekly"
+              ? "Weekly team pulse"
+              : "Weekly report"
+        }
+        description={
+          report.type === "survey_weekly"
+            ? "Anonymous answers from your line, grouped into themes. Reported only where at least five people responded."
+            : undefined
+        }
         actions={
           <div className="flex flex-wrap gap-2">
             {apiConfigured() ? (
@@ -135,8 +146,9 @@ export default function ReportDetail() {
         <CardContent className="p-6">
           <Markdown source={report.content_md} />
           <p className="mt-8 border-t border-[rgba(14,31,26,0.1)] pt-4 text-[11px] font-medium leading-relaxed text-[#5B6560]">
-            This report describes the status of work items and projects. It is not a measure of individual performance
-            and must not be used as the basis for promotion, discipline, or termination decisions.
+            {report.type === "survey_weekly"
+              ? "These answers were given anonymously and cannot be traced to a person, including by Company OS. Nothing here describes an individual, and it must not be used as the basis for promotion, discipline, or termination decisions."
+              : "This report describes the status of work items and projects. It is not a measure of individual performance and must not be used as the basis for promotion, discipline, or termination decisions."}
           </p>
         </CardContent>
       </Card>

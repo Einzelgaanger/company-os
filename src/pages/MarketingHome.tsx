@@ -87,6 +87,7 @@ const MODES = [
 
 const AUDIENCE = [
   {
+    n: "01",
     who: "Project managers",
     title: "Know the project without chasing it",
     points: [
@@ -96,7 +97,9 @@ const AUDIENCE = [
     ],
   },
   {
+    n: "02",
     who: "Operators & leads",
+    tone: "forest",
     title: "Keep promises alive between meetings",
     points: [
       "One governed loop instead of a graveyard of Slack threads and spreadsheet trackers",
@@ -105,6 +108,7 @@ const AUDIENCE = [
     ],
   },
   {
+    n: "03",
     who: "Everyone doing the work",
     title: "Answer once. Get help, not heat.",
     points: [
@@ -141,6 +145,71 @@ const RIBBONS = [
     forest: false,
   },
 ] as const;
+
+/** Corner motif for each operating-loop beat. Lime, clipped by the step. */
+function BeatShape({ index }: { index: number }) {
+  return (
+    <svg className="mk-rail__shape" viewBox="0 0 160 120" aria-hidden="true" focusable="false">
+      {index === 0 && (
+        <>
+          <path d="M18 108 A78 78 0 0 1 148 72" fill="none" stroke="currentColor" strokeWidth="1.6" opacity="0.4" />
+          <path d="M34 108 A56 56 0 0 1 132 78" fill="none" stroke="currentColor" strokeWidth="1.6" opacity="0.62" />
+          <circle cx="22" cy="108" r="6" fill="currentColor" opacity="0.9" />
+          <circle cx="128" cy="74" r="4" fill="currentColor" opacity="0.75" />
+        </>
+      )}
+      {index === 1 && (
+        <>
+          <path
+            d="M12 96 C 48 96, 52 36, 92 36 S 128 78, 152 28"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeDasharray="3 7"
+            strokeLinecap="round"
+            opacity="0.7"
+          />
+          <circle cx="28" cy="92" r="4" fill="currentColor" opacity="0.45" />
+          <circle cx="72" cy="48" r="4.5" fill="currentColor" opacity="0.65" />
+          <circle cx="112" cy="52" r="4" fill="currentColor" opacity="0.5" />
+          <circle cx="148" cy="30" r="6" fill="currentColor" opacity="0.9" />
+        </>
+      )}
+      {index === 2 && (
+        <>
+          <rect x="22" y="16" width="116" height="68" rx="18" fill="currentColor" opacity="0.08" />
+          <rect x="22" y="16" width="116" height="68" rx="18" fill="none" stroke="currentColor" strokeWidth="1.6" opacity="0.55" />
+          <path d="M48 84 L40 108 L72 84" fill="currentColor" opacity="0.35" />
+          <circle cx="52" cy="50" r="4" fill="currentColor" opacity="0.7" />
+          <circle cx="80" cy="50" r="4" fill="currentColor" opacity="0.5" />
+          <circle cx="108" cy="50" r="4" fill="currentColor" opacity="0.35" />
+        </>
+      )}
+      {index === 3 && (
+        <>
+          <circle cx="104" cy="72" r="52" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.28" />
+          <circle cx="104" cy="72" r="34" fill="none" stroke="currentColor" strokeWidth="1.6" opacity="0.5" />
+          <circle cx="104" cy="72" r="16" fill="currentColor" opacity="0.28" />
+          <circle cx="104" cy="72" r="5" fill="currentColor" opacity="0.9" />
+        </>
+      )}
+      {index === 4 && (
+        <>
+          <polyline points="28,96 70,54 112,96" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" strokeLinecap="round" opacity="0.35" />
+          <polyline points="44,78 86,36 128,78" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" strokeLinecap="round" opacity="0.55" />
+          <polyline points="60,60 102,18 144,60" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" opacity="0.85" />
+        </>
+      )}
+      {index === 5 && (
+        <>
+          <rect x="28" y="68" width="22" height="40" rx="5" fill="currentColor" opacity="0.28" />
+          <rect x="62" y="44" width="22" height="64" rx="5" fill="currentColor" opacity="0.48" />
+          <rect x="96" y="22" width="22" height="86" rx="5" fill="currentColor" opacity="0.72" />
+        </>
+      )}
+    </svg>
+  );
+}
 
 /** Corner motif for each coordination-mode card. Lime, clipped by the card. */
 function ModeShape({ index }: { index: number }) {
@@ -417,6 +486,7 @@ export default function MarketingHome() {
           <div className="mk-rail mk-rail--six">
             {FLOW.map((step, i) => (
               <Reveal key={step.n} delay={(Math.min(i + 1, 4) as 1 | 2 | 3 | 4)} className="mk-rail__step">
+                <BeatShape index={i} />
                 <div className="mk-rail__disc">{step.n}</div>
                 <h3>{step.title}</h3>
                 <p>{step.body}</p>
@@ -483,14 +553,27 @@ export default function MarketingHome() {
           </Reveal>
           <div className="mk-audience__grid">
             {AUDIENCE.map((a, i) => (
-              <Reveal key={a.who} delay={(Math.min(i + 1, 4) as 1 | 2 | 3 | 4)} className="mk-audience__card">
-                <p className="mk-audience__who">{a.who}</p>
-                <h3>{a.title}</h3>
-                <ul>
-                  {a.points.map((p) => (
-                    <li key={p}>{p}</li>
-                  ))}
-                </ul>
+              <Reveal key={a.who} delay={(Math.min(i + 1, 4) as 1 | 2 | 3 | 4)}>
+                <article className={`mk-audience__card${"tone" in a ? " mk-audience__card--forest" : ""}`}>
+                  <span className="mk-audience__ghost" aria-hidden>
+                    {a.n}
+                  </span>
+                  <div className="mk-audience__head">
+                    <span className="mk-audience__n">{a.n}</span>
+                    <p className="mk-audience__who">{a.who}</p>
+                  </div>
+                  <h3>{a.title}</h3>
+                  <ul>
+                    {a.points.map((p) => (
+                      <li key={p}>
+                        <span className="mk-audience__tick" aria-hidden>
+                          <Check className="h-3 w-3 text-[#0E1F1A]" strokeWidth={3} />
+                        </span>
+                        {p}
+                      </li>
+                    ))}
+                  </ul>
+                </article>
               </Reveal>
             ))}
           </div>

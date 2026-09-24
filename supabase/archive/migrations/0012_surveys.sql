@@ -28,10 +28,8 @@ create table if not exists survey_cycles (
   generation_rationale text,
   status               text not null default 'draft'
                          check (status in ('draft','pending_review','live','closed','suppressed','failed')),
-  -- HMAC key, shared by every cycle in the same week so the weekly aggregate can
-  -- count distinct people rather than distinct answers. Nulled by
-  -- survey-weekly-report once the week is aggregated, after which no
-  -- respondent_hash can be traced to a person by anyone, service role included.
+  -- Per-cycle HMAC key. Nulled on close, after which respondent_hash cannot be
+  -- traced back to a person by anyone, including the service role.
   respondent_salt      text,
   invited_count        int not null default 0,
   respondent_count     int not null default 0,
@@ -84,7 +82,7 @@ create table if not exists survey_responses (
 create index if not exists survey_responses_cycle_idx on survey_responses(cycle_id);
 create index if not exists survey_responses_org_created_idx on survey_responses(org_id, created_at);
 
-comment on table survey_responses is 'C-2: no user_id column. Keyed by HMAC(user_id, week salt); salt destroyed once the week is aggregated.';
+comment on table survey_responses is 'C-2: no user_id column. Keyed by HMAC(user_id, cycle salt); salt destroyed on close.';
 
 -- SURVEY DELIVERIES ---------------------------------------------------------
 -- Outbound bookkeeping only, so the sender is idempotent. Carries no answer

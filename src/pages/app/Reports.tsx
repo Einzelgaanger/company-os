@@ -11,10 +11,25 @@ import { db } from "@/lib/db";
 import { roleAtLeast, type Report } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 
+const TYPE_LABEL: Record<Report["type"], string> = {
+  daily: "Daily",
+  weekly: "Weekly",
+  survey_weekly: "Team pulse",
+};
+
 function summarize(r: Report): string {
-  const j = r.content_json as Record<string, number>;
+  const j = r.content_json as Record<string, number | string>;
+
+  if (r.type === "survey_weekly") {
+    const people = Number(j.respondent_count ?? 0);
+    const answers = Number(j.response_count ?? 0);
+    if (!people) return "Not enough responses to report";
+    const scope = j.scope === "org" ? " (rolled up company-wide)" : "";
+    return `${people} people, ${answers} answers${scope}`;
+  }
+
   const bits: string[] = [];
-  if (j.escalated) bits.push(`${j.escalated} escalation${j.escalated > 1 ? "s" : ""}`);
+  if (j.escalated) bits.push(`${j.escalated} escalation${Number(j.escalated) > 1 ? "s" : ""}`);
   if (j.resolved) bits.push(`${j.resolved} resolved`);
   if (j.overdue) bits.push(`${j.overdue} overdue`);
   return bits.join(", ") || "No notable activity";
@@ -87,7 +102,13 @@ export default function Reports() {
                   <CardContent className="flex items-center justify-between p-4">
                     <div>
                       <div className="flex items-center gap-2">
-                        <Badge variant={r.type === "daily" ? "teal" : "outline"}>{r.type === "daily" ? "Daily" : "Weekly"}</Badge>
+                        <Badge
+                          variant={
+                            r.type === "daily" ? "teal" : r.type === "survey_weekly" ? "lime" : "outline"
+                          }
+                        >
+                          {TYPE_LABEL[r.type]}
+                        </Badge>
                         <span className="font-mono text-xs text-slate">
                           {format(parseISO(r.period_start), "MMM d")} – {format(parseISO(r.period_end), "MMM d")}
                         </span>

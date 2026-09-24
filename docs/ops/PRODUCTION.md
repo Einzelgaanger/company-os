@@ -60,7 +60,7 @@ Edge functions (`extract-commitments`, `generate-report`, inbound classify) all 
 
 | Layer | Host |
 |-------|------|
-| SPA | **https://companyos.jabali.studio** (Render + custom domain) |
+| SPA | **https://os.jabali.studio** (Render + custom domain) |
 | Auth / DB / WhatsApp / AI / cron | **Supabase** — `pkxnfkubgpbdbftvtgvf` |
 
 Coolify is **deferred**. Full steps: [`docs/ops/RENDER.md`](./RENDER.md).
@@ -68,7 +68,7 @@ Coolify is **deferred**. Full steps: [`docs/ops/RENDER.md`](./RENDER.md).
 ```env
 VITE_SUPABASE_URL=https://pkxnfkubgpbdbftvtgvf.supabase.co
 VITE_SUPABASE_ANON_KEY=...
-VITE_PUBLIC_SITE_URL=https://companyos.jabali.studio
+VITE_PUBLIC_SITE_URL=https://os.jabali.studio
 # Do NOT set VITE_ALLOW_MOCK or VITE_API_URL
 ```
 
@@ -81,6 +81,21 @@ Apply migration `0009_production_infra.sql`:
 ```bash
 npm run ops:supabase-migrate
 ```
+
+## Go-live env (one place)
+
+All production Edge secrets come from **`.env`** (gitignored):
+
+```bash
+npm run ops:ensure-env            # adds missing keys (PUBLIC_APP_URL, FEATURE_EMAIL_INGESTION, REPORT_FROM_ADDRESS, …)
+npm run ops:production-secrets    # pushes every non-empty value → Supabase Edge
+```
+
+Then redeploy functions that read flags (invite, oauth, email-dispatch, …).
+
+**Render** only needs the three `VITE_*` vars at build time — see `docs/ops/RENDER.md`. Do not set `VITE_ALLOW_MOCK` or `VITE_API_URL` there.
+
+Verify **Resend** [from domain](https://resend.com/domains) matches `REPORT_FROM_ADDRESS` in `.env`.
 
 ## Still optional
 

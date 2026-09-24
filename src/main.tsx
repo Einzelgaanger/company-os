@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
+import { BRAND } from "@/lib/brand";
 import "./index.css";
 
 const root = document.getElementById("root")!;
@@ -8,7 +9,7 @@ const root = document.getElementById("root")!;
 function showBootError(err: unknown) {
   const message = err instanceof Error ? err.message : String(err);
   root.innerHTML = `
-    <main style="min-height:100vh;display:grid;place-items:center;padding:2rem;font-family:Inter,system-ui,sans-serif;background:#0E1F1A;color:#F4F7F5">
+    <main style="min-height:100vh;display:grid;place-items:center;padding:2rem;font-family:Inter,system-ui,sans-serif;background:${BRAND.forest};color:${BRAND.onForest}">
       <div style="max-width:36rem">
         <p style="margin:0 0 .5rem;font:600 1.25rem/1.3 Instrument Sans,sans-serif">Company OS could not start</p>
         <p style="margin:0;opacity:.85;line-height:1.5;white-space:pre-wrap">${message.replace(/</g, "&lt;")}</p>

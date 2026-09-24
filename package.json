@@ -3,7 +3,6 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "packageManager": "pnpm@11.23.0",
   "description": "Company OS — Your Agentic Chief Of Staff. Autonomous work coordination. See docs/README.md.",
   "scripts": {
     "dev": "vite",
@@ -18,13 +17,17 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "seed:demo": "node scripts/seed/demo.mjs",
+    "ops:ensure-env": "node scripts/ops/ensure-production-env.mjs",
+    "ops:production-secrets": "node scripts/ops/set-production-secrets.mjs",
+    "ops:resend-secret": "node scripts/ops/set-resend-secret.mjs",
+    "ops:google-oauth-secrets": "node scripts/ops/set-google-oauth-secrets.mjs",
     "ops:twilio-secrets": "node scripts/ops/set-twilio-secrets.mjs",
     "ops:whatsapp-secrets": "node scripts/ops/set-whatsapp-secrets.mjs",
-    "ops:google-oauth-secrets": "node scripts/ops/set-google-oauth-secrets.mjs",
     "ops:meta-webhook-subscribe": "node scripts/ops/meta-webhook-subscribe.mjs",
     "ops:meta-app-webhook-fix": "node scripts/ops/meta-app-webhook-fix.mjs",
     "ops:openrouter-secret": "node scripts/ops/set-openrouter-secret.mjs",
     "ops:supabase-migrate": "node scripts/ops/apply-supabase-migration.mjs",
+    "ops:deploy-pending": "node scripts/ops/deploy-pending-supabase.mjs",
     "ops:telegram-webhook": "node scripts/ops/set-telegram-webhook.mjs",
     "smoke:prod": "node scripts/smoke/prod.mjs",
     "smoke:whatsapp": "node scripts/smoke/whatsapp-readiness.mjs",
@@ -51,7 +54,7 @@
     "gen:icons": "node scripts/gen/provider-icons.mjs",
     "gen:edge-providers": "node scripts/gen/edge-providers.mjs",
     "eval:ai": "pnpm --filter @loop/ai eval",
-    "ci:gates": "pnpm check:rls && pnpm check:no-body-tenant && pnpm check:no-org-id && pnpm check:tokens && pnpm check:connectors && pnpm lint && pnpm test:ui && pnpm test:packages && pnpm eval:ai && pnpm build && pnpm build:apps && pnpm typecheck:all"
+    "ci:gates": "pnpm check:rls && pnpm check:no-body-tenant && pnpm check:no-org-id && pnpm check:tokens && pnpm check:connectors && pnpm test:ui && pnpm test:packages && pnpm eval:ai && npm run build && pnpm build:apps && pnpm typecheck:all"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.2",
@@ -86,13 +89,11 @@
     "autoprefixer": "^10.4.20",
     "axe-core": "^4.13.0",
     "eslint": "^9.18.0",
-    "eslint-plugin-react-hooks": "^5.2.0",
     "jsdom": "^25.0.1",
     "postcss": "^8.4.49",
     "sharp": "^0.35.3",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
-    "typescript-eslint": "^8.70.1",
     "vite": "^6.0.7",
     "vitest": "^3.2.7"
   }

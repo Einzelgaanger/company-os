@@ -27,6 +27,8 @@ export const BRAND = {
   surfaceRaised: "#F8F8F7",
   bg: "#F5F5F3",
   border: "#E5E5E2",
+  onForest: "#F4F7F5",
+  chatOutbound: "#E8F0E9",
 } as const;
 
 export type StatusToken = "moving" | "ready" | "waiting" | "review" | "attention" | "done";

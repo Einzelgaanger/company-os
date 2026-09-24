@@ -139,8 +139,8 @@ export default function Chat() {
                     className={cn(
                       "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
                       fromBot
-                        ? "bg-[#0E1F1A] text-[#F4F7F5]"
-                        : "bg-[#E8F0E9] text-[#0E1F1A]",
+                        ? "bg-ink text-[color:var(--brand-on-forest)]"
+                        : "bg-[color:var(--brand-chat-outbound)] text-ink",
                     )}
                   >
                     <p className="whitespace-pre-wrap">{m.message_text}</p>
@@ -221,7 +221,7 @@ export default function Chat() {
                   onClick={() => setThreadUserId(u.id)}
                   className={cn(
                     "w-full rounded-lg px-2.5 py-2 text-left text-sm",
-                    activeId === u.id ? "bg-[#0E1F1A] text-white" : "hover:bg-[#F4F7F5]",
+                    activeId === u.id ? "bg-ink text-white" : "hover:bg-[color:var(--brand-on-forest)]",
                   )}
                 >
                   <div className="truncate font-medium">{u.full_name}</div>

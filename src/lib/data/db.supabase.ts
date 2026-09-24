@@ -41,7 +41,13 @@ import type {
   User,
 } from "../types";
 import { DEFAULT_TAG_AUDIENCE, SENSITIVITY_RANK } from "../types";
-import { labelIngestedItem, type IngestedItem, type LabelDecision } from "../ingestionPolicy";
+import {
+  labelIngestedItem,
+  stampIngestedClassification,
+  type IngestedItem,
+  type LabelDecision,
+} from "../ingestionPolicy";
+import { isHeldMeeting } from "../meetingIngest";
 
 function client() {
   if (!supabase) throw new Error("Supabase is not configured.");
@@ -276,6 +282,30 @@ export const supabaseDb = {
       tag_ids = guess.tags.map((n) => byName.get(n)).filter(Boolean) as string[];
       classified_by = "system";
     }
+    const [org, rules] = await Promise.all([
+      supabaseDb.getOrg(input.org_id),
+      supabaseDb.listIngestionRules(input.org_id),
+    ]);
+    const stamped = stampIngestedClassification(
+      {
+        source_type: input.source_type,
+        title: input.title,
+        description: input.description,
+        sensitivity,
+        tag_ids,
+      },
+      rules,
+      org?.settings.default_classification ?? "internal",
+    );
+    if (
+      stamped.sensitivity !== sensitivity ||
+      stamped.tag_ids.length !== (tag_ids ?? []).length ||
+      stamped.matched_rule_ids.length > 0
+    ) {
+      classified_by = classified_by ?? "system";
+    }
+    sensitivity = stamped.sensitivity;
+    tag_ids = stamped.tag_ids;
     const { data, error } = await client()
       .from("commitments")
       .insert({
@@ -466,12 +496,82 @@ export const supabaseDb = {
   async listMeetings(orgId: string): Promise<Meeting[]> {
     const { data, error } = await client().from("meetings").select("*").eq("org_id", orgId);
     if (error) throw error;
+    return ((data ?? []) as Meeting[]).filter((m) => !isHeldMeeting(m));
+  },
+
+  async listHeldMeetings(orgId: string): Promise<Meeting[]> {
+    const { data, error } = await client()
+      .from("meetings")
+      .select("*")
+      .eq("org_id", orgId)
+      .eq("privacy_held", true)
+      .order("ingested_at", { ascending: false });
+    if (error) throw error;
     return (data ?? []) as Meeting[];
   },
 
   async getMeeting(id: string): Promise<Meeting | undefined> {
     const { data } = await client().from("meetings").select("*").eq("id", id).maybeSingle();
     return (data as Meeting) ?? undefined;
+  },
+
+  async ingestMeeting(
+    input: Omit<Meeting, "id" | "ingested_at" | "processed_at" | "extracted_commitments_count">
+  ): Promise<Meeting> {
+    const { data, error } = await client()
+      .from("meetings")
+      .insert({
+        ...input,
+        privacy_held: true,
+        classified_by: null,
+        processed_at: null,
+        extracted_commitments_count: 0,
+      })
+      .select("*")
+      .single();
+    if (error) throw error;
+    await audit(data.org_id, "system", "meeting.held", "meeting", data.id, { title: data.title });
+    return data as Meeting;
+  },
+
+  async releaseMeeting(
+    actor: User,
+    id: string,
+    sensitivity: Sensitivity,
+    tagIds: string[]
+  ): Promise<Meeting> {
+    const { data, error } = await client()
+      .from("meetings")
+      .update({
+        sensitivity,
+        tag_ids: tagIds,
+        privacy_held: false,
+        classified_by: "user",
+      })
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) throw error;
+    await audit(actor.org_id, actor.id, "meeting.stored", "meeting", id, { sensitivity, tags: tagIds });
+    const meeting = data as Meeting;
+    if (meeting.transcript_text) {
+      try {
+        await client().functions.invoke("extract-commitments", {
+          body: {
+            org_id: meeting.org_id,
+            text: meeting.transcript_text,
+            source_type: "meeting",
+            source_meeting_id: meeting.id,
+            inherit_sensitivity: sensitivity,
+            inherit_tag_ids: tagIds,
+          },
+        });
+      } catch {
+        // Extraction is best-effort; the call itself is already stored.
+      }
+    }
+    const refreshed = await supabaseDb.getMeeting(id);
+    return refreshed ?? meeting;
   },
 
   async listCheckins(orgId: string): Promise<Checkin[]> {

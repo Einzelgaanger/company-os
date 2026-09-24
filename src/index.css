@@ -17,6 +17,8 @@
 :root {
   /* ---- Brand set — identity and interaction only. Never a status. ---- */
   --brand-ink: #0e1f1a; /* primary text, sidebar, dark surfaces */
+  --brand-on-forest: #f4f7f5;
+  --brand-chat-outbound: #e8f0e9;
   --brand-primary: #0e1f1a; /* primary buttons — dark on light */
   /* Lime is the brand accent. Marketing/auth may fill the primary CTA with it;
      app surfaces never fill interactive controls with it. Never body text on light.

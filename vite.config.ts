@@ -41,7 +41,7 @@ export default defineConfig(({ mode }) => {
       allowedHosts: [
         "localhost",
         "127.0.0.1",
-        "companyos.jabali.studio",
+        "os.jabali.studio",
         ".jabali.studio",
         ".onrender.com",
       ],
@@ -51,7 +51,7 @@ export default defineConfig(({ mode }) => {
       allowedHosts: [
         "localhost",
         "127.0.0.1",
-        "companyos.jabali.studio",
+        "os.jabali.studio",
         ".jabali.studio",
         ".onrender.com",
       ],

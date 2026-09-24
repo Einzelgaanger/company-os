@@ -12,7 +12,7 @@ import { adminClient, audit, corsHeaders, json } from "../_shared/supabase.ts";
 import { sendEmail } from "../_shared/email.ts";
 import { emailTemplates, sendTemplatedEmail } from "../_shared/emailer.ts";
 
-const APP = Deno.env.get("PUBLIC_APP_URL") ?? "https://companyos.jabali.studio";
+const APP = Deno.env.get("PUBLIC_APP_URL") ?? "https://os.jabali.studio";
 const ROLES = new Set(["member", "manager", "admin"]);
 
 function inviteUrl(token: string): string {

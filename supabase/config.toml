@@ -34,3 +34,6 @@ verify_jwt = false          # start/callback hit from the browser + provider red
 
 [functions.invite]
 verify_jwt = false          # peek/accept are public; send checks the caller's JWT itself
+
+[functions.email-dispatch]
+verify_jwt = true           # cron / service role retry sweep

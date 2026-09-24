@@ -4,6 +4,7 @@
 // deno-lint-ignore-file no-explicit-any
 import { adminClient, json, corsHeaders } from "../_shared/supabase.ts";
 import { loadProjectProfiles, routeToProject } from "../_shared/projectRouting.ts";
+import { stampFromOrgRules } from "../_shared/ingestionLabel.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -80,6 +81,17 @@ Deno.serve(async (req) => {
       // Routing is best-effort; an unrouted meeting is still worth ingesting.
     }
 
+    // Hold the whole call. Org rules may suggest a floor, but nothing is
+    // extracted or treated as live data until a person tags it for privacy.
+    const suggested = await stampFromOrgRules(
+      db,
+      org_id,
+      "meeting",
+      `${title ?? ""}\n${transcript_text}`,
+      null,
+      { sensitivity: "internal", tag_ids: [] },
+    );
+
     const { data: meeting, error } = await db
       .from("meetings")
       .insert({
@@ -90,36 +102,25 @@ Deno.serve(async (req) => {
         participants: resolved,
         transcript_url,
         recording_url,
+        transcript_text: transcript_text || null,
         occurred_at,
         project_id: routing.projectId,
         project_match_confidence: routing.projectId ? routing.confidence : null,
         project_match_method: routing.method,
+        sensitivity: suggested.sensitivity,
+        tag_ids: [],
+        privacy_held: true,
+        classified_by: null,
+        processed_at: null,
+        extracted_commitments_count: 0,
       })
       .select("id")
       .single();
     if (error) return json({ error: error.message }, 500);
 
-    // Fire extraction. Left as needs-review if transcript is empty.
-    if (transcript_text) {
-      const base = Deno.env.get("SUPABASE_URL")!;
-      await fetch(`${base}/functions/v1/extract-commitments`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          org_id,
-          text: transcript_text,
-          source_type: "meeting",
-          source_meeting_id: meeting.id,
-          project_id: routing.projectId,
-        }),
-      });
-    }
-
     return json({
       meeting_id: meeting.id,
+      held: true,
       project_id: routing.projectId,
       project_match_confidence: routing.confidence,
       project_match_method: routing.method,

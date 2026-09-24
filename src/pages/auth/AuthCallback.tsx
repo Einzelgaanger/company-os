@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase";
  * OAuth return URL. Supabase Auth redirects here after Google (or other providers).
  * Add this path under Authentication → URL Configuration → Redirect URLs:
  *   http://localhost:5173/auth/callback
- *   https://companyos.jabali.studio/auth/callback
+ *   https://os.jabali.studio/auth/callback
  */
 export default function AuthCallback() {
   const navigate = useNavigate();

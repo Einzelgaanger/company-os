@@ -7,9 +7,7 @@ services:
     runtime: static
     repo: https://github.com/PRODG-XYZ/company-os
     branch: main
-    # This repo ships pnpm-lock.yaml and no package-lock.json, so `npm ci`
-    # cannot run here — it requires a lockfile npm wrote.
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+    buildCommand: npm ci && npm run build
     staticPublishPath: dist
     envVars:
       - key: VITE_SUPABASE_URL

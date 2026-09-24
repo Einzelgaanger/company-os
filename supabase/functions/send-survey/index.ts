@@ -101,7 +101,7 @@ async function sendForOrg(db: any, org: any, surveyDate: string): Promise<number
       const body =
         `Hi ${String(member.full_name ?? "there").split(" ")[0]} — ${approved.length} quick questions ` +
         `about how ${cycle.scope_label} is going. Takes two minutes, and your answers stay private:\n` +
-        `${Deno.env.get("PUBLIC_APP_URL") ?? "https://companyos.jabali.studio"}/surveys/current`;
+        `${Deno.env.get("PUBLIC_APP_URL") ?? "https://os.jabali.studio"}/surveys/current`;
 
       let channel = "in_app";
       try {

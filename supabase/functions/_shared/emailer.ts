@@ -1,4 +1,4 @@
-// Templated email with delivery logging, preference and suppression checks.
+﻿// Templated email with delivery logging, preference and suppression checks.
 //
 // _shared/email.ts is the raw Resend transport. Everything in the product sends
 // through this module instead, so that every message lands in email_messages and
@@ -18,7 +18,7 @@ export type EmailCategory =
 /** Operational mail a person cannot opt out of while they hold an account. */
 const MANDATORY: EmailCategory[] = ["system"];
 
-const APP_URL = Deno.env.get("PUBLIC_APP_URL") ?? "https://companyos.jabali.studio";
+const APP_URL = Deno.env.get("PUBLIC_APP_URL") ?? "https://os.jabali.studio";
 
 export function escapeHtml(s: unknown): string {
   return String(s ?? "")
@@ -28,7 +28,7 @@ export function escapeHtml(s: unknown): string {
     .replace(/"/g, "&quot;");
 }
 
-/** Minimal inline-styled shell — email clients ignore stylesheets. */
+/** Minimal inline-styled shell â email clients ignore stylesheets. */
 export function layout(input: {
   heading: string;
   intro?: string;
@@ -45,7 +45,7 @@ export function layout(input: {
 
   const unsubscribe =
     input.unsubscribeToken && !MANDATORY.includes(input.category)
-      ? `<a href="${APP_URL}/email/unsubscribe?token=${input.unsubscribeToken}&category=${input.category}" style="color:#6b7280">Turn off ${input.category.replace("_", " ")} email</a> · `
+      ? `<a href="${APP_URL}/email/unsubscribe?token=${input.unsubscribeToken}&category=${input.category}" style="color:#6b7280">Turn off ${input.category.replace("_", " ")} email</a> Â· `
       : "";
 
   return `<!doctype html><html><body style="margin:0;padding:0;background:#f5f6f5">
@@ -215,7 +215,7 @@ export const emailTemplates = {
         ctaLabel: "Open escalation",
         ctaPath: `/escalations/${v.escalationId}`,
         bodyHtml: `
-<p style="margin:0 0 14px"><span style="color:${bandColour};font-weight:700;text-transform:uppercase;font-size:12px;letter-spacing:.06em">${escapeHtml(v.urgencyBand)}</span> — ${escapeHtml(v.urgencyRationale)}</p>
+<p style="margin:0 0 14px"><span style="color:${bandColour};font-weight:700;text-transform:uppercase;font-size:12px;letter-spacing:.06em">${escapeHtml(v.urgencyBand)}</span> â ${escapeHtml(v.urgencyRationale)}</p>
 ${list([
           `Owed to <strong>${escapeHtml(v.requesterName)}</strong>`,
           `Due <strong>${escapeHtml(v.dueDate)}</strong>`,
@@ -236,7 +236,7 @@ ${list([
           `<tr>
 <td style="padding:10px 0;border-bottom:1px solid #f0f0f0">
 <div style="font-weight:600"><a href="${APP_URL}/escalations/${i.id}" style="color:#0E1F1A;text-decoration:none">${escapeHtml(i.title)}</a></div>
-<div style="font-size:13px;color:#6b7280">${escapeHtml(i.band)} · ${escapeHtml(i.dueIn)} · ${escapeHtml(i.rationale)}</div>
+<div style="font-size:13px;color:#6b7280">${escapeHtml(i.band)} Â· ${escapeHtml(i.dueIn)} Â· ${escapeHtml(i.rationale)}</div>
 </td></tr>`,
       )
       .join("");
@@ -246,7 +246,7 @@ ${list([
         category: "escalation",
         unsubscribeToken: v.recipient.email_unsubscribe_token,
         heading: "Your escalation queue",
-        intro: "Ordered by urgency — most pressing first.",
+        intro: "Ordered by urgency â most pressing first.",
         ctaLabel: "Open all escalations",
         ctaPath: "/escalations",
         bodyHtml: `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table>`,
@@ -256,7 +256,7 @@ ${list([
 
   survey_invite(v: { recipient: Recipient; scopeLabel: string; questionCount: number; cycleId: string }) {
     return {
-      subject: `${v.questionCount} quick questions — ${v.scopeLabel}`,
+      subject: `${v.questionCount} quick questions â ${v.scopeLabel}`,
       html: layout({
         category: "survey",
         unsubscribeToken: v.recipient.email_unsubscribe_token,
@@ -277,11 +277,11 @@ ${list([
     reportId: string;
   }) {
     return {
-      subject: `Weekly team pulse — ${v.scopeLabel} (${v.periodLabel})`,
+      subject: `Weekly team pulse â ${v.scopeLabel} (${v.periodLabel})`,
       html: layout({
         category: "report",
         unsubscribeToken: v.recipient.email_unsubscribe_token,
-        heading: `Weekly team pulse — ${v.scopeLabel}`,
+        heading: `Weekly team pulse â ${v.scopeLabel}`,
         intro: v.periodLabel,
         ctaLabel: "Open full report",
         ctaPath: `/reports/${v.reportId}`,
@@ -327,7 +327,7 @@ ${list([
 
   report_ready(v: { recipient: Recipient; orgName: string; type: string; bodyMarkdown: string; reportId: string; pdfUrl?: string | null }) {
     return {
-      subject: `Company OS ${v.type} report — ${v.orgName}`,
+      subject: `Company OS ${v.type} report â ${v.orgName}`,
       html: layout({
         category: "report",
         unsubscribeToken: v.recipient.email_unsubscribe_token,

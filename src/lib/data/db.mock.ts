@@ -48,7 +48,13 @@ import type {
 } from "../types";
 import { DEFAULT_TAG_AUDIENCE, roleAtLeast, SENSITIVITY_RANK } from "../types";
 import { itemAllows } from "../tagAccess";
-import { labelIngestedItem, type IngestedItem, type LabelDecision } from "../ingestionPolicy";
+import {
+  labelIngestedItem,
+  stampIngestedClassification,
+  type IngestedItem,
+  type LabelDecision,
+} from "../ingestionPolicy";
+import { draftCommitmentsFromCall, isHeldMeeting } from "../meetingIngest";
 
 // Small async wrapper so pages can `await` and later swap in a Supabase adapter
 // that shares this exact signature.
@@ -268,9 +274,8 @@ export const mockDb = {
   async createCommitment(
     input: Omit<Commitment, "id" | "created_at" | "updated_at" | "resolved_at" | "last_checkin_at">
   ): Promise<Commitment> {
-    // Auto-classify on ingest if not already classified, so nothing enters
-    // untagged. In production the extract-commitments edge function does this
-    // via Claude; here we use the shared heuristic.
+    // Heuristic first (so a title like "payroll" still gets a hint), then the
+    // org's ingestion rules as a floor. Rules can only raise, never downgrade.
     let { sensitivity, tag_ids, classified_by } = input;
     if (!sensitivity) {
       const guess = classify(input.title, input.description);
@@ -279,6 +284,27 @@ export const mockDb = {
       tag_ids = guess.tags.map((n) => byName.get(n)).filter(Boolean) as string[];
       classified_by = "system";
     }
+    const org = store.all("organizations").find((o) => o.id === input.org_id);
+    const stamped = stampIngestedClassification(
+      {
+        source_type: input.source_type,
+        title: input.title,
+        description: input.description,
+        sensitivity,
+        tag_ids,
+      },
+      store.all("ingestion_label_rules").filter((r) => r.org_id === input.org_id),
+      org?.settings.default_classification ?? "internal",
+    );
+    if (
+      stamped.sensitivity !== sensitivity ||
+      stamped.tag_ids.length !== (tag_ids ?? []).length ||
+      stamped.matched_rule_ids.length > 0
+    ) {
+      classified_by = classified_by ?? "system";
+    }
+    sensitivity = stamped.sensitivity;
+    tag_ids = stamped.tag_ids;
     const c: Commitment = {
       ...input,
       sensitivity,
@@ -449,11 +475,115 @@ export const mockDb = {
   // --- Meetings ------------------------------------------------------------
 
   async listMeetings(orgId: string): Promise<Meeting[]> {
-    return ok(store.all("meetings").filter((m) => m.org_id === orgId));
+    return ok(store.all("meetings").filter((m) => m.org_id === orgId && !isHeldMeeting(m)));
+  },
+
+  async listHeldMeetings(orgId: string): Promise<Meeting[]> {
+    return ok(
+      store
+        .all("meetings")
+        .filter((m) => m.org_id === orgId && isHeldMeeting(m))
+        .sort((a, b) => (b.ingested_at ?? "").localeCompare(a.ingested_at ?? ""))
+    );
   },
 
   async getMeeting(id: string): Promise<Meeting | undefined> {
     return ok(store.all("meetings").find((m) => m.id === id));
+  },
+
+  /**
+   * A connected app hands over one whole call. It is held — not live, not
+   * extracted — until someone tags it for privacy.
+   */
+  async ingestMeeting(
+    input: Omit<Meeting, "id" | "ingested_at" | "processed_at" | "extracted_commitments_count">
+  ): Promise<Meeting> {
+    const meeting: Meeting = {
+      ...input,
+      id: uuid(),
+      privacy_held: true,
+      classified_by: null,
+      processed_at: null,
+      extracted_commitments_count: 0,
+      ingested_at: nowIso(),
+    };
+    store.set("meetings", [...store.all("meetings"), meeting]);
+    audit(meeting.org_id, "system", "meeting.held", "meeting", meeting.id, { title: meeting.title });
+    return ok(meeting);
+  },
+
+  /**
+   * Tag the whole call, store it as live data, then extract commitments that
+   * inherit the call's privacy label.
+   */
+  async releaseMeeting(
+    actor: User,
+    id: string,
+    sensitivity: Sensitivity,
+    tagIds: string[]
+  ): Promise<Meeting> {
+    const meeting = store.all("meetings").find((m) => m.id === id);
+    if (!meeting) throw new Error("meeting not found");
+    const released: Meeting = {
+      ...meeting,
+      sensitivity,
+      tag_ids: tagIds,
+      privacy_held: false,
+      classified_by: "user",
+    };
+    store.set(
+      "meetings",
+      store.all("meetings").map((m) => (m.id === id ? released : m))
+    );
+    audit(actor.org_id, actor.id, "meeting.stored", "meeting", id, { sensitivity, tags: tagIds });
+
+    const drafts = draftCommitmentsFromCall(released.transcript_text, released.title);
+    const org = store.all("organizations").find((o) => o.id === released.org_id);
+    const rules = store.all("ingestion_label_rules").filter((r) => r.org_id === released.org_id);
+    let created = 0;
+    for (const draft of drafts) {
+      const stamped = stampIngestedClassification(
+        {
+          source_type: "meeting",
+          title: draft.title,
+          description: draft.description,
+          sensitivity,
+          tag_ids: tagIds,
+        },
+        rules,
+        org?.settings.default_classification ?? "internal",
+      );
+      await mockDb.createCommitment({
+        org_id: released.org_id,
+        project_id: null,
+        title: draft.title,
+        description: draft.description,
+        owner_id: released.participants.find((p) => p.user_id)?.user_id ?? actor.id,
+        owner_external_name: null,
+        requested_by_id: actor.id,
+        source_type: "meeting",
+        source_meeting_id: released.id,
+        due_date: null,
+        status: "open",
+        priority: "medium",
+        sensitivity: stamped.sensitivity,
+        tag_ids: stamped.tag_ids,
+        classified_by: "system",
+        source_quote: draft.source_quote,
+        needs_review: false,
+      });
+      created += 1;
+    }
+    const done: Meeting = {
+      ...released,
+      processed_at: nowIso(),
+      extracted_commitments_count: created,
+    };
+    store.set(
+      "meetings",
+      store.all("meetings").map((m) => (m.id === id ? done : m))
+    );
+    return ok(done);
   },
 
   // --- Check-ins -----------------------------------------------------------

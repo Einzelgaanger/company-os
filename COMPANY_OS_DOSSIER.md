@@ -460,7 +460,7 @@ sequenceDiagram
 ### Production path (documented + config)
 
 - **SPA:** Render static — `render.yaml` (`npm ci && npm run build`, publish `dist`).
-- **Domain names observed in docs/config:** `os.jabali.studio`, `companyos.jabali.studio`, `*.onrender.com` service naming.
+- **Production site:** `https://os.jabali.studio` (Render SPA). Also `*.onrender.com` service naming in infra.
 - **Backend:** Supabase project ref name appears in config files as hostname form `*.supabase.co` (no secrets copied here).
 - **Confirm live users/traffic:** **cannot** from code alone. Deploy configs **suggest** intent to be live; ops scripts (`scripts/ops/*`, `smoke:prod`) exist.
 

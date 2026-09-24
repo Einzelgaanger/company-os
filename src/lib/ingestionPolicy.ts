@@ -13,12 +13,15 @@ import {
   type IngestionContentKind,
   type IngestionLabelRule,
   type Sensitivity,
+  type SourceType,
 } from "./types";
 
 /** An item a connected source is handing over, before it is stored. */
 export interface IngestedItem {
-  provider: ConnectionProvider;
-  kind: IngestionContentKind;
+  /** Null/omitted when we only know the content kind, not which connector. */
+  provider?: ConnectionProvider | null;
+  /** Null/omitted for a manual create — only org-wide (kind-less) rules apply. */
+  kind?: IngestionContentKind | null;
   /** Subject line, event title, meeting name, filename. */
   title?: string | null;
   /** Body, transcript excerpt, or description. */
@@ -103,6 +106,89 @@ export function labelIngestedItem(
       ? `${sensitivity} — matched ${reasons.join(", ")}.`
       : `${sensitivity} — org default, no rule matched.`,
   };
+}
+
+/** Map a stored commitment/meeting source onto the ingestion content kinds. */
+export function contentKindForSource(
+  source: SourceType | string | null | undefined,
+): IngestionContentKind | null {
+  switch (source) {
+    case "email":
+      return "email";
+    case "meeting":
+    case "fathom":
+    case "zoom":
+    case "teams":
+      return "meeting";
+    case "whatsapp":
+    case "telegram":
+      return "chat_message";
+    case "calendar":
+      return "calendar_event";
+    default:
+      return null;
+  }
+}
+
+/** The more restrictive of two levels. Undefined loses to the other side. */
+export function raiseSensitivity(
+  a: Sensitivity | null | undefined,
+  b: Sensitivity | null | undefined,
+): Sensitivity {
+  const left = a ?? "public";
+  const right = b ?? "public";
+  return SENSITIVITY_RANK[left] >= SENSITIVITY_RANK[right] ? left : right;
+}
+
+/**
+ * Overlay the org's ingestion rules onto a classification that already exists
+ * (Claude's guess, the heuristic, or a user-supplied value). Rules can only
+ * raise sensitivity and add tags — they never strip a stricter label.
+ */
+export function overlayIngestionLabel(
+  item: IngestedItem,
+  rules: IngestionLabelRule[],
+  defaultClassification: Sensitivity,
+  existing?: { sensitivity?: Sensitivity | null; tag_ids?: string[] | null },
+): LabelDecision {
+  const decision = labelIngestedItem(item, rules, defaultClassification);
+  return {
+    ...decision,
+    sensitivity: raiseSensitivity(existing?.sensitivity, decision.sensitivity),
+    tag_ids: [...new Set([...(existing?.tag_ids ?? []), ...decision.tag_ids])],
+  };
+}
+
+/**
+ * Stamp a commitment (or meeting) the way the ingestion pipeline does. Shared
+ * by the mock and Supabase create paths so a rule an admin tests in Governance
+ * is the same rule that fires when the row is written.
+ */
+export function stampIngestedClassification(
+  input: {
+    source_type?: string | null;
+    provider?: ConnectionProvider | null;
+    title?: string | null;
+    description?: string | null;
+    from_address?: string | null;
+    sensitivity?: Sensitivity | null;
+    tag_ids?: string[] | null;
+  },
+  rules: IngestionLabelRule[],
+  defaultClassification: Sensitivity = "internal",
+): LabelDecision {
+  return overlayIngestionLabel(
+    {
+      provider: input.provider ?? null,
+      kind: contentKindForSource(input.source_type),
+      title: input.title,
+      body: input.description,
+      from_address: input.from_address,
+    },
+    rules,
+    defaultClassification,
+    { sensitivity: input.sensitivity, tag_ids: input.tag_ids },
+  );
 }
 
 /** Plain-English restatement of a rule, for the rules list. */

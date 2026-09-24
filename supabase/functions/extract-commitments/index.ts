@@ -3,6 +3,7 @@
 // deno-lint-ignore-file no-explicit-any
 import { adminClient, json, corsHeaders } from "../_shared/supabase.ts";
 import { claude, extractJson } from "../_shared/anthropic.ts";
+import { raiseSensitivity, stampFromOrgRules } from "../_shared/ingestionLabel.ts";
 
 type Sensitivity = "public" | "internal" | "confidential" | "restricted";
 type MeetingCategory = "catch_up" | "deal_origination" | "project_execution" | "follow_up" | "unknown";
@@ -148,6 +149,10 @@ Deno.serve(async (req) => {
       // Resolved upstream by _shared/projectRouting.ts so everything extracted
       // from one meeting lands on the same project.
       project_id = null,
+      // Privacy label of the whole call — inherited by every extracted item,
+      // then raised (never lowered) by org ingestion rules.
+      inherit_sensitivity = null,
+      inherit_tag_ids = [],
     } = body;
     if (!org_id || !text) return json({ error: "org_id and text required" }, 400);
 
@@ -200,7 +205,21 @@ Deno.serve(async (req) => {
       if (!it.title?.trim()) continue;
       const owner_id = await resolveUser(db, org_id, it.owner_name, it.owner_email ?? undefined, participantEmailToUser);
       const requested_by_id = await resolveUser(db, org_id, it.requested_by_name);
-      const tag_ids = await resolveTagIds(db, org_id, it.tags);
+      const claudeTags = await resolveTagIds(db, org_id, it.tags);
+      const inheritedTags = Array.isArray(inherit_tag_ids) ? inherit_tag_ids.map(String) : [];
+      const stamped = await stampFromOrgRules(
+        db,
+        org_id,
+        source_type,
+        `${it.title}\n${it.description ?? ""}\n${text}`,
+        it.owner_email ?? null,
+        {
+          sensitivity: raiseSensitivity(inherit_sensitivity, it.sensitivity),
+          tag_ids: [...new Set([...inheritedTags, ...claudeTags])],
+        },
+      );
+      const tag_ids = stamped.tag_ids;
+      const sensitivity = stamped.sensitivity;
       const needs_review = gateReview(it) || !owner_id;
       const confidence =
         typeof it.confidence_score === "number"
@@ -224,7 +243,7 @@ Deno.serve(async (req) => {
           due_date: it.due_date ?? null,
           priority: it.priority_guess ?? "medium",
           status: "open",
-          sensitivity: it.sensitivity ?? "internal",
+          sensitivity,
           tag_ids,
           classified_by: "system",
           confidence_score: confidence,

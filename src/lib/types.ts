@@ -100,7 +100,8 @@ export interface CommitmentStatusHistory {
 
 export type EscalationStatus = "open" | "acknowledged" | "resolved";
 
-export type ReportType = "daily" | "weekly";
+/** survey_weekly is the anonymous team pulse written for each line manager (0012). */
+export type ReportType = "daily" | "weekly" | "survey_weekly";
 
 // --- Data governance (classification & tagging) --------------------------
 
@@ -486,6 +487,15 @@ export interface Meeting {
   category?: MeetingCategory | null;
   sensitivity?: Sensitivity;
   tag_ids?: string[];
+  classified_by?: "system" | "user" | null;
+  /**
+   * Whole-call privacy gate. A connected app delivers the call as one batch
+   * and it stays held until someone tags it; only then is it stored as live
+   * data and extraction may run.
+   */
+  privacy_held?: boolean;
+  /** Kept with the batch so extraction can run after the privacy tag. */
+  transcript_text?: string | null;
 }
 
 export interface Commitment {

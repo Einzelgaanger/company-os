@@ -225,7 +225,7 @@ export default function SettingsProfile() {
             );
           })}
 
-          <div className="rounded-lg border border-[rgba(14,31,26,0.1)] bg-[#F4F7F5] p-3 text-xs text-[#5B6560]">
+          <div className="rounded-lg border border-[rgba(14,31,26,0.1)] bg-[color:var(--brand-on-forest)] p-3 text-xs text-slate">
             <p className="font-medium text-[#0E1F1A]">Connect Telegram</p>
             <ol className="mt-1 list-decimal space-y-1 pl-4">
               <li>Save your phone number above (E.164, e.g. +254…).</li>
@@ -243,7 +243,7 @@ export default function SettingsProfile() {
             )}
           </div>
 
-          <div className="rounded-lg border border-[rgba(14,31,26,0.1)] bg-[#F4F7F5] p-3 text-xs text-[#5B6560]">
+          <div className="rounded-lg border border-[rgba(14,31,26,0.1)] bg-[color:var(--brand-on-forest)] p-3 text-xs text-slate">
             <p className="font-medium text-[#0E1F1A]">Connect WhatsApp</p>
             <p className="mt-1">
               Save phone, then verify with OTP when WhatsApp messaging is configured. If Meta is not live yet,

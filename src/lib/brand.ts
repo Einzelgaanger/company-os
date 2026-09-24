@@ -33,6 +33,10 @@ export const BRAND = {
   ambient: "#EFEFEE",
   hairline: "#E5E5E2",
   nearWhite: "#F4F5F3",
+  /** Primary copy on forest surfaces (boot screen, dark bubbles). */
+  onForest: "#F4F7F5",
+  /** Outbound chat bubble fill. */
+  chatOutbound: "#E8F0E9",
   muted: "#5B6560",
 
   authHero: "/auth-portal-hero.jpg",
