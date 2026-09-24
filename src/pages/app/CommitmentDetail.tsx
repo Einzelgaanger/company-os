@@ -14,6 +14,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { api, apiConfigured } from "@/lib/api";
 import { canAccess, db } from "@/lib/db";
+import { pickEscalationRecipient } from "@/lib/escalationRouting";
 import { blockingTags } from "@/lib/tagAccess";
 import type { FlowState } from "@/lib/flow";
 import { FLOW_STATE_LABEL } from "@/lib/flow";
@@ -158,12 +159,17 @@ export default function CommitmentDetail() {
 
   async function escalateNow() {
     if (!user || !commitment) return;
-    const to =
-      users.find((u) => u.role === "manager" || u.role === "admin" || u.role === "owner")?.id ??
-      user.manager_id ??
-      user.id;
-    await db.escalateNow(user, commitment.id, to, "Manual escalate from commitment detail");
-    toast("Escalated.", "success");
+    const [map, tags] = await Promise.all([
+      db.listOwnershipMap(user.org_id),
+      db.listTags(user.org_id),
+    ]);
+    const recipient = pickEscalationRecipient(commitment, map, users, tags);
+    if (!recipient) {
+      toast("Nobody is on the ownership map for this. Add a route in Settings → Ownership map.", "error");
+      return;
+    }
+    await db.escalateNow(user, commitment.id, recipient.id, "Manual escalate from commitment detail");
+    toast(`Escalated to ${recipient.full_name}.`, "success");
     load();
   }
 
@@ -264,8 +270,9 @@ export default function CommitmentDetail() {
                   Escalate now
                 </Button>
                 <select
-                  className="rounded-md border px-2 py-1 text-xs"
+                  className="h-9 rounded-md border border-[rgba(14,31,26,0.12)] bg-white px-2 text-sm text-ink"
                   defaultValue=""
+                  aria-label="Reassign owner"
                   onChange={(e) => {
                     if (e.target.value) void reassignOwner(e.target.value);
                   }}
@@ -279,23 +286,23 @@ export default function CommitmentDetail() {
                 </select>
                 <input
                   type="date"
-                  className="rounded-md border px-2 py-1 text-xs"
+                  className="h-9 rounded-md border border-[rgba(14,31,26,0.12)] bg-white px-2 text-sm text-ink"
                   defaultValue={commitment.due_date ?? ""}
                   onChange={(e) => void editDue(e.target.value)}
-                  title="Edit due date"
+                  aria-label="Due date"
                 />
                 <input
                   type="number"
                   min={0}
                   max={100}
-                  className="w-20 rounded-md border px-2 py-1 text-xs"
+                  className="h-9 w-20 rounded-md border border-[rgba(14,31,26,0.12)] bg-white px-2 text-sm text-ink"
                   placeholder="%"
                   defaultValue={commitment.progress_pct ?? ""}
                   onBlur={(e) => {
                     const n = Number(e.target.value);
                     if (Number.isFinite(n)) void updateProgress(n);
                   }}
-                  title="Progress %"
+                  aria-label="Progress percent"
                 />
                 <Button variant="outline" onClick={() => void flagNotCommitment()}>
                   Not a commitment

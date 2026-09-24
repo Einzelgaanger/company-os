@@ -1,7 +1,7 @@
 import { buildSeed, DEMO_USER_ID, type SeedData } from "./seed";
 
 /** Bump when seed shape changes so browsers reseed (drops prior local mock). */
-export const DB_KEY = "loop.db.v9"; // v9: whole-call privacy hold before store/extract
+export const DB_KEY = "loop.db.v10"; // v10: teams, project members, urgency on escalations
 const SESSION_KEY = "loop.session.v1";
 
 type TableName = keyof SeedData;

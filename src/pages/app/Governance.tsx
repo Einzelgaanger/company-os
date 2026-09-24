@@ -12,6 +12,7 @@ import { IngestionRules } from "@/components/shared/IngestionRules";
 import { TagEditorDialog } from "@/components/dialogs/TagEditorDialog";
 import { ReleaseCallDialog } from "@/components/dialogs/ReleaseCallDialog";
 import { TableSkeleton, ErrorState } from "@/components/states";
+import { pageOf, Pager } from "@/components/shared/Pager";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { db, governanceStats, visibleCommitments } from "@/lib/db";
@@ -51,6 +52,7 @@ export default function Governance() {
   const [org, setOrg] = useState<Organization | undefined>();
   const [heldCalls, setHeldCalls] = useState<Meeting[]>([]);
   const [releasing, setReleasing] = useState<Meeting | null>(null);
+  const [logPage, setLogPage] = useState(0);
 
   // null = closed; { tag: null } = creating a new tag
   const [editing, setEditing] = useState<{ tag: Tag | null } | null>(null);
@@ -114,8 +116,8 @@ export default function Governance() {
   return (
     <div className="portal-page animate-fade-in">
       <PageHeader
-        title="Data governance"
-        description="Classification, tagging, and access — so sensitive data is handled correctly everywhere Company OS touches it."
+        title="Classification & access"
+        description="Tags, sensitivity, and who can see what. Ingestion rules live in Settings."
       />
 
       <Tabs defaultValue="overview">
@@ -382,7 +384,7 @@ export default function Governance() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {accessLog.map((l) => (
+                    {pageOf(accessLog, logPage, 25).map((l) => (
                       <TableRow key={l.id}>
                         <TableCell className="pl-5 text-ink">{userMap.get(l.actor_id) ?? l.actor_id}</TableCell>
                         <TableCell className="font-mono text-xs text-slate">{l.action}</TableCell>
@@ -394,6 +396,9 @@ export default function Governance() {
                   </TableBody>
                 </Table>
               )}
+              <div className="px-5 py-3">
+                <Pager page={logPage} pageSize={25} total={accessLog.length} onPage={setLogPage} />
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

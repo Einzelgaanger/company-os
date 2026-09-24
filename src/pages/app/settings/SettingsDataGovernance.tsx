@@ -138,7 +138,7 @@ export default function SettingsDataGovernance() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Data governance"
+        title="Ingestion rules"
         subtitle="What Company OS must never read — evaluated before any content is fetched."
       />
       <div className="portal-callout">

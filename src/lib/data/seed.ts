@@ -16,6 +16,9 @@ import type {
   Milestone,
   Organization,
   OrgTeam,
+  Team,
+  TeamMember,
+  ProjectMember,
   OwnershipMapEntry,
   Project,
   Report,
@@ -104,6 +107,9 @@ export interface SeedData {
   dsr_requests: DsrRequest[];
   messaging_metrics: MessagingMetrics[];
   org_teams: OrgTeam[];
+  teams: Team[];
+  team_members: TeamMember[];
+  project_members: ProjectMember[];
   auth_sessions: AuthSessionRow[];
   holidays: TenantHoliday[];
   ingestion_exclusions: IngestionExclusion[];
@@ -625,6 +631,11 @@ export function buildSeed(): SeedData {
       created_at: iso(0, 9),
       acknowledged_at: null,
       resolved_at: null,
+      urgency_score: 78,
+      urgency_band: "critical",
+      urgency_rationale: "Past the 24-hour SLA, and the owner says they cannot do it.",
+      sla_hours: 24,
+      project_id: "p-vgg",
       context_snapshot: {
         commitment: commitments.find((c) => c.id === "cm-sharepoint")!,
         checkins: checkins.filter((c) => c.commitment_id === "cm-sharepoint"),
@@ -1494,6 +1505,44 @@ export function buildSeed(): SeedData {
     },
   ];
 
+  const teams: Team[] = [
+    {
+      id: "team-delivery",
+      org_id: ORG,
+      name: "Delivery",
+      description: "Client work: VGG and anything that ships to a customer.",
+      lead_user_id: U.wanjiru,
+      parent_team_id: null,
+      created_at: iso(-20),
+    },
+    {
+      id: "team-ops",
+      org_id: ORG,
+      name: "Operations",
+      description: "Internal process, access, and the things that keep delivery moving.",
+      lead_user_id: U.grace,
+      parent_team_id: null,
+      created_at: iso(-20),
+    },
+  ];
+
+  const team_members: TeamMember[] = [
+    { org_id: ORG, team_id: "team-delivery", user_id: U.wanjiru, role_in_team: "lead", added_at: iso(-20) },
+    { org_id: ORG, team_id: "team-delivery", user_id: U.kayode, role_in_team: "member", added_at: iso(-18) },
+    { org_id: ORG, team_id: "team-delivery", user_id: U.brian, role_in_team: "member", added_at: iso(-18) },
+    { org_id: ORG, team_id: "team-ops", user_id: U.grace, role_in_team: "lead", added_at: iso(-20) },
+    { org_id: ORG, team_id: "team-ops", user_id: U.amina, role_in_team: "member", added_at: iso(-12) },
+  ];
+
+  const project_members: ProjectMember[] = [
+    { org_id: ORG, project_id: "p-vgg", user_id: U.wanjiru, role_in_project: "lead", allocation_pct: 60, added_at: iso(-30) },
+    { org_id: ORG, project_id: "p-vgg", user_id: U.kayode, role_in_project: "contributor", allocation_pct: 80, added_at: iso(-28) },
+    { org_id: ORG, project_id: "p-vgg", user_id: U.brian, role_in_project: "contributor", allocation_pct: 40, added_at: iso(-20) },
+    { org_id: ORG, project_id: "p-onboarding", user_id: U.grace, role_in_project: "lead", allocation_pct: 30, added_at: iso(-22) },
+    { org_id: ORG, project_id: "p-onboarding", user_id: U.brian, role_in_project: "contributor", allocation_pct: 50, added_at: iso(-18) },
+    { org_id: ORG, project_id: "p-brand", user_id: U.alfred, role_in_project: "lead", allocation_pct: 20, added_at: iso(-15) },
+  ];
+
   return expandSeedHeavy({
     organizations,
     users,
@@ -1504,6 +1553,9 @@ export function buildSeed(): SeedData {
     checkins,
     escalations,
     ownership_map,
+    teams,
+    team_members,
+    project_members,
     reports,
     audit_log,
     notifications,

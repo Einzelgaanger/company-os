@@ -16,12 +16,14 @@ import { useAuth } from "@/context/AuthContext";
 import { db, projectHealth } from "@/lib/db";
 import { computeProjectProgress } from "@/lib/progress";
 import { flowStateOf } from "@/lib/flow";
+import { deriveProjectSnapshot } from "@/lib/projectSnapshot";
 import {
   roleAtLeast,
   type Commitment,
   type Meeting,
   type Milestone,
   type Project,
+  type ProjectProgressSnapshot,
   type User,
 } from "@/lib/types";
 import { formatDate, formatDateTime } from "@/lib/utils";
@@ -37,6 +39,7 @@ export default function ProjectDetail() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [snapshot, setSnapshot] = useState<ProjectProgressSnapshot | null>(null);
 
   async function load() {
     if (!user || !id) return;
@@ -48,11 +51,13 @@ export default function ProjectDetail() {
         setError(true);
         return;
       }
-      const [allC, allM, allU, ms] = await Promise.all([
+      const [allC, allM, allU, ms, pm, stored] = await Promise.all([
         db.listCommitments(user.org_id),
         db.listMeetings(user.org_id),
         db.listUsers(user.org_id),
         db.listMilestones(id),
+        db.listProjectMembers(id),
+        db.getProjectProgress(id).catch(() => undefined),
       ]);
       const projectCommitments = allC.filter((c) => c.project_id === id);
       const linkedMeetingIds = new Set(
@@ -63,6 +68,15 @@ export default function ProjectDetail() {
       setMeetings(allM.filter((m) => linkedMeetingIds.has(m.id)));
       setUsers(allU);
       setMilestones(ms);
+      setSnapshot(
+        stored ??
+          deriveProjectSnapshot({
+            project: p,
+            commitments: projectCommitments,
+            users: allU,
+            members: pm,
+          }),
+      );
     } catch {
       setError(true);
     } finally {
@@ -93,7 +107,7 @@ export default function ProjectDetail() {
     }).length;
     const bufferConsumedDays = waitingish * 1.5;
     return readFever({
-      bufferDays: commitments.length >= 3 ? 10 : null,
+      bufferDays: project?.buffer_days ?? (commitments.length >= 3 ? 10 : null),
       bufferConsumedDays,
       chainCompletePct,
       commitmentCount: commitments.length,
@@ -142,6 +156,95 @@ export default function ProjectDetail() {
           </span>
         </span>
       </div>
+
+      {snapshot ? (
+        <section className="space-y-4 border border-[rgba(14,31,26,0.12)] bg-white p-5">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="font-mono text-[11px] uppercase tracking-wide text-slate">Delivered</p>
+              <p className="text-3xl font-semibold tabular-nums text-ink">{snapshot.progress_pct}%</p>
+              <p className="text-xs text-slate">
+                {snapshot.done_points} of {snapshot.total_points} priority points done ·{" "}
+                {snapshot.commitments_done} of {snapshot.commitments_total} items
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="font-mono text-[11px] uppercase tracking-wide text-slate">ETA</p>
+              <p className="text-sm font-semibold text-ink">
+                {snapshot.forecast_completion_date
+                  ? formatDate(snapshot.forecast_completion_date)
+                  : "No date yet"}
+              </p>
+              <p className="max-w-xs text-[11px] text-slate">{snapshot.forecast_basis}</p>
+            </div>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-soft">
+            <div
+              className="h-2 rounded-full bg-forest"
+              style={{ width: `${Math.max(0, Math.min(100, snapshot.progress_pct))}%` }}
+            />
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <h3 className="mb-2 font-mono text-[11px] uppercase tracking-wide text-slate">
+                Main blocker
+              </h3>
+              {snapshot.top_blockers[0] ? (
+                <p className="text-sm text-ink">{snapshot.top_blockers[0].label}</p>
+              ) : (
+                <p className="text-sm text-slate">Nothing is blocked right now.</p>
+              )}
+            </div>
+            <div>
+              <h3 className="mb-2 font-mono text-[11px] uppercase tracking-wide text-slate">
+                Happening now
+              </h3>
+              {snapshot.in_flight.length === 0 ? (
+                <p className="text-sm text-slate">No open work.</p>
+              ) : (
+                <ul className="space-y-1 text-sm">
+                  {snapshot.in_flight.slice(0, 5).map((row) => (
+                    <li key={row.commitment_id} className="flex justify-between gap-3">
+                      <span className="text-ink">{row.title}</span>
+                      <span className="shrink-0 text-slate">{row.owner_name ?? "Unassigned"}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+
+          {snapshot.member_breakdown.length > 0 ? (
+            <div>
+              <h3 className="mb-2 font-mono text-[11px] uppercase tracking-wide text-slate">
+                By person
+              </h3>
+              <ul className="space-y-2">
+                {snapshot.member_breakdown.map((row) => (
+                  <li key={row.user_id}>
+                    <div className="mb-1 flex justify-between text-sm">
+                      <span className="text-ink">{row.name}</span>
+                      <span className="font-mono text-xs tabular-nums text-slate">
+                        {row.pct == null ? "—" : `${row.pct}%`} · {row.open_count} open
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-soft">
+                      <div
+                        className="h-1.5 rounded-full bg-forest/70"
+                        style={{ width: `${row.pct ?? 0}%` }}
+                      />
+                    </div>
+                    {row.active_titles[0] ? (
+                      <p className="mt-0.5 text-[12px] text-slate">On: {row.active_titles.join(" · ")}</p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       <Tabs defaultValue="commitments">
         <TabsList>
@@ -225,7 +328,9 @@ export default function ProjectDetail() {
               <div className="rounded-md border border-border bg-secondary/30 px-3 py-2 text-sm">
                 <span className="font-medium text-ink">Buffer sizing:</span>{" "}
                 <span className="text-slate">
-                  Classical 50% / demo 10 working days until an explicit buffer is set on the project.
+                  {project.buffer_days
+                    ? `${project.buffer_days} working days, set on this project.`
+                    : "Classical 50% / demo 10 working days until an explicit buffer is set on the project."}
                 </span>
               </div>
               <div>

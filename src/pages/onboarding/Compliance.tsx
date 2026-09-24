@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { api, apiConfigured } from "@/lib/api";
+import { db } from "@/lib/db";
 import { NOTICE_VERSION } from "@/lib/legalRecords";
 
 /**
@@ -16,7 +17,7 @@ import { NOTICE_VERSION } from "@/lib/legalRecords";
  * in the browser, so clearing storage cannot fabricate or destroy the record.
  */
 export default function OnbCompliance() {
-  const { user } = useAuth();
+  const { user, org, refresh } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [lawful, setLawful] = useState(false);
@@ -34,6 +35,19 @@ export default function OnbCompliance() {
     if (!ok || !user) return;
     setBusy(true);
     try {
+      const attestation = {
+        attested_at: new Date().toISOString(),
+        lawful_basis: "legitimate_interest",
+        dpo_email: dpoEmail.trim(),
+        dpia_completed: true as const,
+        lia_completed: true,
+        works_council_required: works,
+        works_council_consulted: works,
+        employee_notice_published: true,
+        employee_notice_version: NOTICE_VERSION,
+        acknowledged_not_for_hr_decisions: true,
+        high_risk_use_prohibited: true as const,
+      };
       if (apiConfigured()) {
         await api.attestCompliance({
           lawfulBasis: "legitimate_interest",
@@ -46,8 +60,13 @@ export default function OnbCompliance() {
           dpoEmail: dpoEmail.trim(),
           acknowledgedNotForHrDecisions: true,
         });
+      } else if (org) {
+        await db.updateOrg(org.id, {
+          settings: { ...org.settings, compliance: attestation },
+        });
+        await refresh();
       }
-      navigate("/onboarding/profile");
+      navigate("/onboarding/coordination");
     } catch (err) {
       toast(
         err instanceof Error ? err.message : "Could not record the attestation.",

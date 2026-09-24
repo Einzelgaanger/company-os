@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -123,7 +124,7 @@ export default function SettingsMessaging() {
         const row = await db.queueMessage(user.org_id, {
           templateKey: "checkin_pre_due",
           preview,
-          recipientUserId: "u-kayode",
+          recipientUserId: user.id,
         });
         setQueue((prev) => [
           {
@@ -163,6 +164,13 @@ export default function SettingsMessaging() {
         title="Messaging"
         description="Per-person channels (In-app Chat, Telegram, WhatsApp), quality/caps, templates, and pilot approval queue."
       />
+      <p className="text-sm text-slate">
+        Nudge usefulness lives on{" "}
+        <Link to="/settings/nudge-quality" className="font-semibold text-ink underline">
+          Nudge quality
+        </Link>
+        .
+      </p>
 
       {metrics ? (
         <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

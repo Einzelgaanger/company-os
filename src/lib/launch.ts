@@ -74,7 +74,15 @@ export async function acceptInviteAccount(input: {
 
 export function oauthStartUrl(provider: string, orgId: string, userId: string): string {
   const state = `${orgId}:${userId}`;
-  return `${base()}/functions/v1/oauth?provider=${encodeURIComponent(provider)}&action=start&state=${encodeURIComponent(state)}`;
+  const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+  const params = new URLSearchParams({
+    provider,
+    action: "start",
+    state,
+  });
+  // Browser navigations cannot set the gateway header. The anon key is public.
+  if (anon) params.set("apikey", anon);
+  return `${base()}/functions/v1/oauth?${params}`;
 }
 
 export async function sendPhoneOtp(userId: string): Promise<void> {

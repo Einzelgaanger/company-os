@@ -18,7 +18,14 @@ import { encryptToken, tokenEncryptionConfigured } from "../_shared/tokenCrypto.
 import { EDGE_CONNECTORS, type EdgeConnector } from "../_shared/providers.generated.ts";
 
 const REDIRECT_BASE =
-  Deno.env.get("PUBLIC_APP_URL") ?? Deno.env.get("APP_BASE_URL") ?? "http://localhost:5173";
+  Deno.env.get("PUBLIC_APP_URL") ?? Deno.env.get("APP_BASE_URL") ?? "https://os.jabali.studio";
+
+/** Browser navigations should land back in the app, never on a JSON error page. */
+function backToApp(error: string, provider = ""): Response {
+  const params = new URLSearchParams({ error });
+  if (provider) params.set("provider", provider);
+  return Response.redirect(`${REDIRECT_BASE}/integrations?${params}`, 302);
+}
 const STATE_TTL_MS = 10 * 60_000;
 
 const enc = new TextEncoder();
@@ -131,39 +138,28 @@ Deno.serve(async (req) => {
   const action = isCallback ? "callback" : (actionParam ?? "start");
   const def = EDGE_CONNECTORS[provider];
 
-  if (!def) return json({ error: "unknown_provider", provider }, 404);
-  if (def.featureFlag && Deno.env.get(def.featureFlag) !== "true") {
-    return json(
-      { error: "connector_gated", provider, hint: `Set ${def.featureFlag}=true first` },
-      403,
+  const fail = (reason: string) =>
+    Response.redirect(
+      `${REDIRECT_BASE}/integrations?error=${encodeURIComponent(reason)}&provider=${encodeURIComponent(provider || "unknown")}`,
+      302,
     );
-  }
+
+  if (!def) return action === "start" ? fail("unknown_provider") : json({ error: "unknown_provider", provider }, 404);
 
   const clientId = await getSecret(def.clientIdSecret);
   const clientSecret = await getSecret(def.clientSecretSecret);
   if (!clientId || !clientSecret) {
-    return json(
-      {
-        error: "oauth_not_configured",
-        provider,
-        missing: [
-          !clientId ? def.clientIdSecret : null,
-          !clientSecret ? def.clientSecretSecret : null,
-        ].filter(Boolean),
-      },
-      503,
-    );
+    return action === "start" ? fail("oauth_not_configured") : json({ error: "oauth_not_configured", provider }, 503);
   }
   if (!(await tokenEncryptionConfigured())) {
-    return json(
-      { error: "token_encryption_not_configured", missing: ["TOKEN_ENCRYPTION_KEY"] },
-      503,
-    );
+    return action === "start"
+      ? fail("token_encryption_not_configured")
+      : json({ error: "token_encryption_not_configured" }, 503);
   }
 
   if (action === "start") {
     const [tid, uid] = (url.searchParams.get("state") ?? "").split(":");
-    if (!tid) return json({ error: "missing_state" }, 400);
+    if (!tid) return fail("invalid_state");
     const { verifier, challenge } = await pkcePair();
     const state = await signState({
       tid,
@@ -191,19 +187,14 @@ Deno.serve(async (req) => {
     return Response.redirect(`${await resolveUrl(def.authorizeUrl, def)}?${params}`, 302);
   }
 
-  if (action !== "callback") return json({ error: "unknown_action" }, 404);
+  if (action !== "callback") return backToApp("unknown_action", provider);
 
   const failure = url.searchParams.get("error");
-  if (failure) {
-    return Response.redirect(
-      `${REDIRECT_BASE}/integrations?error=${encodeURIComponent(failure)}`,
-      302,
-    );
-  }
+  if (failure) return backToApp(failure, provider);
 
   const payload = await verifyState(rawState);
   if (!code || !payload || payload.provider !== provider) {
-    return Response.redirect(`${REDIRECT_BASE}/integrations?error=invalid_state`, 302);
+    return backToApp("invalid_state", provider);
   }
 
   const body = new URLSearchParams({
@@ -229,21 +220,14 @@ Deno.serve(async (req) => {
     body,
   });
   const text = await tokenRes.text();
-  if (!tokenRes.ok) {
-    return Response.redirect(
-      `${REDIRECT_BASE}/integrations?error=${encodeURIComponent(`token_exchange_failed_${tokenRes.status}`)}`,
-      302,
-    );
-  }
+  if (!tokenRes.ok) return backToApp("token_exchange_failed", provider);
   let tokens: any;
   try {
     tokens = JSON.parse(text);
   } catch {
     tokens = Object.fromEntries(new URLSearchParams(text));
   }
-  if (!tokens.access_token || tokens.ok === false) {
-    return Response.redirect(`${REDIRECT_BASE}/integrations?error=no_access_token`, 302);
-  }
+  if (!tokens.access_token || tokens.ok === false) return backToApp("no_access_token", provider);
 
   let account: string | null = pick(tokens, def.identityFromToken);
   if (!account && def.identityUrl) {

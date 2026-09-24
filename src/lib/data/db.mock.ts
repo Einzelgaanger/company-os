@@ -28,7 +28,10 @@ import type {
   Priority,
   Project,
   ProjectMember,
+  ProjectProgressSnapshot,
   ProjectRole,
+  Team,
+  TeamMember,
   Report,
   Role,
   Sensitivity,
@@ -55,6 +58,7 @@ import {
   type LabelDecision,
 } from "../ingestionPolicy";
 import { draftCommitmentsFromCall, isHeldMeeting } from "../meetingIngest";
+import { deriveProjectSnapshot } from "../projectSnapshot";
 
 // Small async wrapper so pages can `await` and later swap in a Supabase adapter
 // that shares this exact signature.
@@ -62,7 +66,6 @@ function ok<T>(value: T): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(value), 120));
 }
 
-let mockProjectMembers: ProjectMember[] = [];
 
 function audit(
   orgId: string,
@@ -216,8 +219,93 @@ export const mockDb = {
     return ok(store.all("projects").find((p) => p.id === id));
   },
 
+  async listTeams(orgId: string): Promise<Team[]> {
+    return ok(store.all("teams").filter((t) => t.org_id === orgId));
+  },
+
+  async createTeam(input: {
+    org_id: string;
+    name: string;
+    description?: string | null;
+    lead_user_id?: string | null;
+  }): Promise<Team> {
+    const team: Team = {
+      id: uuid(),
+      org_id: input.org_id,
+      name: input.name,
+      description: input.description ?? null,
+      lead_user_id: input.lead_user_id ?? null,
+      parent_team_id: null,
+      created_at: nowIso(),
+    };
+    store.set("teams", [...store.all("teams"), team]);
+    if (input.lead_user_id) {
+      store.set("team_members", [
+        ...store.all("team_members"),
+        {
+          org_id: input.org_id,
+          team_id: team.id,
+          user_id: input.lead_user_id,
+          role_in_team: "lead" as const,
+          added_at: nowIso(),
+        },
+      ]);
+    }
+    return ok(team);
+  },
+
+  async deleteTeam(id: string): Promise<void> {
+    store.set(
+      "teams",
+      store.all("teams").filter((t) => t.id !== id),
+    );
+    store.set(
+      "team_members",
+      store.all("team_members").filter((m) => m.team_id !== id),
+    );
+    return ok(undefined);
+  },
+
+  async listTeamMembers(teamId: string): Promise<TeamMember[]> {
+    return ok(store.all("team_members").filter((m) => m.team_id === teamId));
+  },
+
+  async listAllTeamMembers(orgId: string): Promise<TeamMember[]> {
+    return ok(store.all("team_members").filter((m) => m.org_id === orgId));
+  },
+
+  async addTeamMember(input: {
+    org_id: string;
+    team_id: string;
+    user_id: string;
+    role_in_team?: "lead" | "member";
+  }): Promise<void> {
+    const rest = store.all("team_members").filter(
+      (m) => !(m.team_id === input.team_id && m.user_id === input.user_id),
+    );
+    store.set("team_members", [
+      ...rest,
+      {
+        org_id: input.org_id,
+        team_id: input.team_id,
+        user_id: input.user_id,
+        role_in_team: input.role_in_team ?? "member",
+        added_at: nowIso(),
+      },
+    ]);
+    return ok(undefined);
+  },
+
+  async removeTeamMember(teamId: string, userId: string): Promise<void> {
+    store.set(
+      "team_members",
+      store.all("team_members").filter((m) => !(m.team_id === teamId && m.user_id === userId)),
+    );
+    return ok(undefined);
+  },
+
   async listProjectMembers(projectId: string): Promise<ProjectMember[]> {
-    return ok(mockProjectMembers.filter((m) => m.project_id === projectId));
+    return ok(store.all("project_members").filter((m) => m.project_id === projectId));
   },
 
   async addProjectMember(input: {
@@ -227,24 +315,49 @@ export const mockDb = {
     role_in_project?: ProjectRole;
     allocation_pct?: number;
   }): Promise<void> {
-    mockProjectMembers = mockProjectMembers.filter(
+    const rest = store.all("project_members").filter(
       (m) => !(m.project_id === input.project_id && m.user_id === input.user_id),
     );
-    mockProjectMembers.push({
-      org_id: input.org_id,
-      project_id: input.project_id,
-      user_id: input.user_id,
-      role_in_project: input.role_in_project ?? "contributor",
-      allocation_pct: input.allocation_pct ?? 100,
-      added_at: nowIso(),
-    });
+    store.set("project_members", [
+      ...rest,
+      {
+        org_id: input.org_id,
+        project_id: input.project_id,
+        user_id: input.user_id,
+        role_in_project: input.role_in_project ?? "contributor",
+        allocation_pct: input.allocation_pct ?? 100,
+        added_at: nowIso(),
+      },
+    ]);
     return ok(undefined);
   },
 
   async removeProjectMember(projectId: string, userId: string): Promise<void> {
-    mockProjectMembers = mockProjectMembers.filter(
-      (m) => !(m.project_id === projectId && m.user_id === userId),
+    store.set(
+      "project_members",
+      store.all("project_members").filter((m) => !(m.project_id === projectId && m.user_id === userId)),
     );
+    return ok(undefined);
+  },
+
+  async getProjectProgress(projectId: string): Promise<ProjectProgressSnapshot | undefined> {
+    const project = store.all("projects").find((p) => p.id === projectId);
+    if (!project) return ok(undefined);
+    return ok(
+      deriveProjectSnapshot({
+        project,
+        commitments: store.all("commitments").filter((c) => c.project_id === projectId),
+        users: store.all("users"),
+        members: store.all("project_members").filter((m) => m.project_id === projectId),
+      }),
+    );
+  },
+
+  async updateEmailPrefs(userId: string, prefs: Record<string, boolean>): Promise<void> {
+    const rows = store.all("users").map((u) =>
+      u.id === userId ? { ...u, email_prefs: { ...(u.email_prefs ?? {}), ...prefs } } : u,
+    );
+    store.set("users", rows);
     return ok(undefined);
   },
 

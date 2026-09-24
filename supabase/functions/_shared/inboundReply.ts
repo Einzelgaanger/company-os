@@ -5,6 +5,7 @@ import { sendOutbound, type MessagingChannel } from "./whatsapp.ts";
 import { normalizePhoneE164 } from "./metaWhatsApp.ts";
 import { claude, extractJson } from "./anthropic.ts";
 import { templates } from "./templates.ts";
+import { emailUserNotice } from "./emailer.ts";
 
 const CLARIFY_LIMIT = 1;
 
@@ -218,12 +219,22 @@ Update: "${bodyText}"`,
 
   // A blocker nobody is told about is the thing this product exists to prevent.
   if (parsed.status === "blocked" && project?.owner_id && project.owner_id !== user.id) {
+    const blockTitle = `${user.full_name} is blocked on ${project.name}`;
+    const blockBody = parsed.blocker_text ?? bodyText.slice(0, 200);
     await db.from("notifications").insert({
       org_id: user.org_id,
       user_id: project.owner_id,
       kind: "escalation",
-      title: `${user.full_name} is blocked on ${project.name}`,
-      body: parsed.blocker_text ?? bodyText.slice(0, 200),
+      title: blockTitle,
+      body: blockBody,
+      link: `/projects/${projectId}`,
+    });
+    await emailUserNotice(db, {
+      orgId: user.org_id,
+      userId: project.owner_id,
+      kind: "escalation",
+      title: blockTitle,
+      body: blockBody,
       link: `/projects/${projectId}`,
     });
   }

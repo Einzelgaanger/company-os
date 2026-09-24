@@ -9,7 +9,7 @@ export default function OnbComplete() {
   const navigate = useNavigate();
 
   return (
-    <OnboardingLayout step={4} title="You're set up" description="Company OS is now watching your connected sources.">
+    <OnboardingLayout step={6} title="You're set up" description="Company OS is now watching your connected sources.">
       <div className="flex flex-col items-center gap-6 py-2 text-center">
         <LoopMotif size={200} />
         <p className="max-w-sm text-sm text-slate">

@@ -49,8 +49,8 @@ import { SettingsLayout } from "@/pages/app/settings/SettingsLayout";
 import SettingsProfile from "@/pages/app/settings/SettingsProfile";
 import SettingsMyData from "@/pages/app/settings/SettingsMyData";
 import SettingsOrganization from "@/pages/app/settings/SettingsOrganization";
+import SettingsCoordination from "@/pages/app/settings/SettingsCoordination";
 import SettingsRoles from "@/pages/app/settings/SettingsRoles";
-import SettingsPeople from "@/pages/app/settings/SettingsPeople";
 import SettingsTeams from "@/pages/app/settings/SettingsTeams";
 import SettingsOwnershipMap from "@/pages/app/settings/SettingsOwnershipMap";
 import SettingsDataGovernance from "@/pages/app/settings/SettingsDataGovernance";
@@ -134,7 +134,8 @@ export default function App() {
           <Route path="profile" element={<SettingsProfile />} />
           <Route path="my-data" element={<SettingsMyData />} />
           <Route path="organization" element={<RequireRole min="admin"><SettingsOrganization /></RequireRole>} />
-          <Route path="people" element={<RequireRole min="admin"><SettingsPeople /></RequireRole>} />
+          <Route path="coordination" element={<RequireRole min="admin"><SettingsCoordination /></RequireRole>} />
+          <Route path="people" element={<Navigate to="/settings/roles" replace />} />
           <Route path="roles" element={<RequireRole min="admin"><SettingsRoles /></RequireRole>} />
           <Route path="teams" element={<RequireRole min="admin"><SettingsTeams /></RequireRole>} />
           <Route path="ownership-map" element={<RequireRole min="admin"><SettingsOwnershipMap /></RequireRole>} />

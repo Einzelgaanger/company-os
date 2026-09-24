@@ -108,6 +108,23 @@ export default function ProjectSettings() {
           </select>
         </label>
         <label className="block text-xs font-medium text-[#5B6560]">
+          Buffer (working days)
+          <Input
+            type="number"
+            min={1}
+            className="input-glass mt-1"
+            defaultValue={project.buffer_days ?? ""}
+            placeholder="10"
+            onBlur={(e) => {
+              const n = Number(e.target.value);
+              void saveMeta({ buffer_days: Number.isFinite(n) && n > 0 ? n : null });
+            }}
+          />
+          <span className="mt-1 block text-[11px]">
+            Used by the fever chart. Leave blank for the 10-day demo buffer.
+          </span>
+        </label>
+        <label className="block text-xs font-medium text-[#5B6560]">
           Status
           <select
             className="mt-1 w-full rounded-md border border-[rgba(14,31,26,0.15)] bg-white px-2 py-2 text-sm"
@@ -200,10 +217,46 @@ export default function ProjectSettings() {
         <h2 className="text-sm font-bold text-[#0E1F1A]">Milestones</h2>
         <ul className="space-y-2">
           {milestones.map((m) => (
-            <li key={m.id} className="flex items-center justify-between gap-2 text-sm">
-              <span>
-                {m.title} · {m.status} · w{m.weight}
-              </span>
+            <li key={m.id} className="flex flex-wrap items-center gap-2 text-sm">
+              <Input
+                className="input-glass min-w-[10rem] flex-1"
+                defaultValue={m.title}
+                onBlur={(e) => {
+                  const title = e.target.value.trim();
+                  if (title && title !== m.title) void db.upsertMilestone({ ...m, title }).then(load);
+                }}
+              />
+              <Input
+                type="date"
+                className="input-glass w-36"
+                defaultValue={m.due_date ?? ""}
+                onBlur={(e) => void db.upsertMilestone({ ...m, due_date: e.target.value || null }).then(load)}
+              />
+              <Input
+                type="number"
+                min={1}
+                className="input-glass w-16"
+                defaultValue={m.weight}
+                title="Weight"
+                onBlur={(e) => {
+                  const weight = Number(e.target.value);
+                  if (weight > 0) void db.upsertMilestone({ ...m, weight }).then(load);
+                }}
+              />
+              <select
+                className="input-glass rounded-md px-2 py-2 text-sm"
+                value={m.status}
+                onChange={(e) =>
+                  void db
+                    .upsertMilestone({ ...m, status: e.target.value as Milestone["status"] })
+                    .then(load)
+                }
+              >
+                <option value="pending">pending</option>
+                <option value="in_progress">in progress</option>
+                <option value="done">done</option>
+                <option value="skipped">skipped</option>
+              </select>
               <Button size="sm" variant="outline" onClick={() => void removeMs(m.id)}>
                 Remove
               </Button>

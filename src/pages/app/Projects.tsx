@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { ProjectStatusBadge } from "@/components/badges";
 import { StatusDot } from "@/components/StatusDot";
 import { DataTable } from "@/components/shared/DataTable";
@@ -22,6 +23,7 @@ export default function Projects() {
   const [commitments, setCommitments] = useState<Commitment[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [query, setQuery] = useState("");
 
   async function load() {
     if (!user) return;
@@ -51,10 +53,14 @@ export default function Projects() {
   const userMap = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
   const canCreate = user ? roleAtLeast(user.role, "manager") : false;
 
-  const rows = useMemo(
-    () => projects.filter((p) => statusFilter === "all" || p.status === statusFilter),
-    [projects, statusFilter]
-  );
+  const rows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return projects.filter((p) => {
+      if (statusFilter !== "all" && p.status !== statusFilter) return false;
+      if (!q) return true;
+      return `${p.name} ${p.client_name ?? ""} ${p.description ?? ""}`.toLowerCase().includes(q);
+    });
+  }, [projects, statusFilter, query]);
 
   if (!user) return null;
 
@@ -73,6 +79,12 @@ export default function Projects() {
       />
 
       <div className="portal-toolbar">
+        <Input
+          value={query}
+          placeholder="Search projects"
+          className="max-w-sm"
+          onChange={(e) => setQuery(e.target.value)}
+        />
         <div className="portal-filter">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger>

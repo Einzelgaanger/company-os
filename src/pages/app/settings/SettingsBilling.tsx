@@ -26,7 +26,8 @@ export default function SettingsBilling() {
           <span className="text-sm text-slate">{seats} active seats</span>
         </div>
         <p className="text-sm text-slate">
-          You're on the pilot plan. Billing is managed manually during the pilot phase.
+          You're on the pilot plan. Billing is managed manually during the pilot phase. This
+          page sends a request to the team. It does not take a card or start a checkout.
         </p>
         <Button variant="outline" asChild>
           <a href="mailto:hello@companyos.app?subject=Company OS plan change">Contact us to change plan</a>

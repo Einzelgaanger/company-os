@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { api, apiConfigured } from "@/lib/api";
+import { db } from "@/lib/db";
 import { NOTICE_VERSION } from "@/lib/legalRecords";
 
 /**
@@ -13,7 +14,7 @@ import { NOTICE_VERSION } from "@/lib/legalRecords";
  * The acknowledgement is written to `users.notice_acknowledged_at`.
  */
 export default function OnbNotice() {
-  const { user, org } = useAuth();
+  const { user, org, refresh } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [ack, setAck] = useState(false);
@@ -27,8 +28,17 @@ export default function OnbNotice() {
     try {
       if (apiConfigured()) {
         await api.ackNotice(NOTICE_VERSION);
+      } else if (user) {
+        await db.updateUser(user.id, {
+          notification_prefs: {
+            ...user.notification_prefs,
+            notice_acknowledged_at: new Date().toISOString(),
+            notice_acknowledged_version: NOTICE_VERSION,
+          },
+        });
+        await refresh();
       }
-      navigate("/onboarding/profile");
+      navigate("/onboarding/coordination");
     } catch (err) {
       toast(
         err instanceof Error ? err.message : "Could not record the acknowledgement.",
@@ -42,6 +52,7 @@ export default function OnbNotice() {
   return (
     <OnboardingLayout
       step={0}
+      steps={["Notice", "Profile", "Connections"]}
       title="What Company OS does with your work data"
       description={`${org?.name ?? "Your organization"} uses Company OS for work coordination — not performance evaluation.`}
     >

@@ -3,6 +3,7 @@
 // deno-lint-ignore-file no-explicit-any
 import { adminClient, json, corsHeaders } from "../_shared/supabase.ts";
 import { sendOutbound } from "../_shared/whatsapp.ts";
+import { emailTemplates, sendTemplatedEmail } from "../_shared/emailer.ts";
 
 function todayStr(tzOffsetMin = 0): string {
   const d = new Date(Date.now() + tzOffsetMin * 60_000);
@@ -77,6 +78,15 @@ Deno.serve(async (req) => {
           title: "Morning digest",
           body: body.slice(0, 500),
           link: "/commitments",
+        });
+        const mail = emailTemplates.digest({ recipient: user, body });
+        await sendTemplatedEmail(db, {
+          orgId: org.id,
+          to: user,
+          category: "digest",
+          template: "digest",
+          subject: mail.subject,
+          html: mail.html,
         });
         await db.from("checkins").insert({
           org_id: org.id,

@@ -11,6 +11,9 @@
  */
 import { useEffect, useState } from "react";
 import { api, apiConfigured, type ApiComplianceRecord, type ApiNoticeAck } from "@/lib/api";
+import { db } from "@/lib/db";
+import { isMockMode } from "@/lib/supabase";
+import type { User } from "@/lib/types";
 
 export const NOTICE_VERSION = "2026-08-v1";
 
@@ -50,25 +53,60 @@ type LegalRecords = {
 /**
  * Reads both legal records once the caller has a tenant to read them for.
  * Gates fail closed: a record that has not arrived yet is not a record.
+ *
+ * The Fastify API is one store. Supabase is the other: the attestation lives
+ * on organizations.settings and the notice ack on the user's notification
+ * prefs, which is a column that already exists in production.
  */
-export function useLegalGates(enabled = true): LegalGates {
-  const enforced = apiConfigured();
+export function useLegalGates(user: User | null): LegalGates {
+  const enforced = apiConfigured() || !isMockMode;
   const [records, setRecords] = useState<LegalRecords | null>(null);
 
   useEffect(() => {
-    if (!enabled || !enforced) return;
+    if (!user?.org_id || !enforced) return;
     let cancelled = false;
     void (async () => {
-      const [compliance, notice] = await Promise.all([
-        fetchCompliance(),
-        fetchNoticeAck(),
-      ]);
-      if (!cancelled) setRecords({ compliance, notice });
+      if (apiConfigured()) {
+        const [compliance, notice] = await Promise.all([
+          fetchCompliance(),
+          fetchNoticeAck(),
+        ]);
+        if (!cancelled) setRecords({ compliance, notice });
+        return;
+      }
+      const org = await db.getOrg(user.org_id);
+      const stored = org?.settings.compliance;
+      const version = stored?.employee_notice_version ?? NOTICE_VERSION;
+      const ackedAt = user.notification_prefs.notice_acknowledged_at;
+      const ackedVersion = user.notification_prefs.notice_acknowledged_version;
+      if (cancelled) return;
+      setRecords({
+        compliance: stored
+          ? {
+              tenantId: user.org_id,
+              attestedByUserId: null,
+              attestedAt: stored.attested_at,
+              lawfulBasis: stored.lawful_basis,
+              high_risk_use_prohibited: true,
+              payload: {
+                dpoEmail: stored.dpo_email,
+                dpiaCompleted: stored.dpia_completed,
+                worksCouncilRequired: stored.works_council_required,
+                worksCouncilConsulted: stored.works_council_consulted,
+                employeeNoticeVersion: stored.employee_notice_version,
+              },
+            }
+          : null,
+        notice:
+          ackedAt && ackedVersion === version
+            ? { userId: user.id, at: ackedAt, version: ackedVersion }
+            : null,
+      });
     })();
     return () => {
       cancelled = true;
     };
-  }, [enabled, enforced]);
+  }, [user, enforced]);
 
   if (!enforced) {
     return {
@@ -83,7 +121,7 @@ export function useLegalGates(enabled = true): LegalGates {
 
   if (!records) {
     return {
-      loading: enabled,
+      loading: Boolean(user?.org_id),
       enforced: true,
       compliance: null,
       notice: null,

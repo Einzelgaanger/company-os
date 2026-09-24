@@ -8,6 +8,7 @@
 import { store } from "./store";
 import { nowIso, uuid } from "./utils";
 import { messagingLinked } from "./messaging";
+import { pickEscalationRecipient } from "./escalationRouting";
 import { clearanceFor, SENSITIVITY_LABEL, SENSITIVITY_RANK } from "./types";
 import {
   buildDigestBuckets,
@@ -247,18 +248,7 @@ export function buildGovernedContext(
 }
 
 function routeOwner(commitment: Commitment, map: OwnershipMapEntry[], users: User[]): User | undefined {
-  // Prefer an ownership-map category that matches a tag name on the commitment.
-  const tagNames = new Set(
-    (commitment.tag_ids ?? [])
-      .map((id) => store.all("tags").find((t) => t.id === id)?.name)
-      .filter(Boolean) as string[]
-  );
-  const entry =
-    map.find((m) => tagNames.has(m.category.toLowerCase())) ??
-    map.find((m) => m.category.toLowerCase() === "default") ??
-    map[0];
-  const targetId = entry?.primary_owner_id;
-  return users.find((u) => u.id === targetId) ?? users.find((u) => u.role === "owner" || u.role === "admin");
+  return pickEscalationRecipient(commitment, map, users, store.all("tags"));
 }
 
 /** Escalate commitments that are overdue or stalled after a nudge. */

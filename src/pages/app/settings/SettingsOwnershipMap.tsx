@@ -148,6 +148,7 @@ export default function SettingsOwnershipMap() {
                   <TableHead>Keywords</TableHead>
                   <TableHead>Scope</TableHead>
                   <TableHead>Primary</TableHead>
+                  <TableHead>Backup</TableHead>
                   <TableHead>SLA</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
@@ -212,6 +213,30 @@ export default function SettingsOwnershipMap() {
                               {u.full_name}
                             </SelectItem>
                           ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={e.backup_owner_id ?? "none"}
+                        onValueChange={(v) => {
+                          const backup = v === "none" ? null : v;
+                          patchLocal(e.id, { backup_owner_id: backup });
+                          void persist({ ...e, backup_owner_id: backup });
+                        }}
+                      >
+                        <SelectTrigger className="w-36">
+                          <SelectValue placeholder="None" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          {users
+                            .filter((u) => u.id !== e.primary_owner_id)
+                            .map((u) => (
+                              <SelectItem key={u.id} value={u.id}>
+                                {u.full_name}
+                              </SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                     </TableCell>

@@ -155,11 +155,6 @@ export interface ProviderMeta {
   docsUrl: string;
   /** Offered during onboarding; the rest live on /integrations. */
   core?: boolean;
-  /**
-   * Held behind FEATURE_EMAIL_INGESTION until the CASA assessment lands
-   * (docs/design/09_CONNECTORS.md §9.1). Shows as "Available after review".
-   */
-  gated?: boolean;
 }
 
 export const PROVIDERS: ProviderMeta[] = [
@@ -173,7 +168,6 @@ export const PROVIDERS: ProviderMeta[] = [
     scopesNote: "gmail.readonly",
     icon: "logos:google-gmail",
     docsUrl: "https://developers.google.com/gmail/api/auth/scopes",
-    gated: true,
   },
   {
     id: "outlook",
@@ -184,7 +178,6 @@ export const PROVIDERS: ProviderMeta[] = [
     scopesNote: "Mail.Read",
     icon: "thesvg-color:microsoft-outlook",
     docsUrl: "https://learn.microsoft.com/graph/permissions-reference",
-    gated: true,
   },
   {
     id: "front",

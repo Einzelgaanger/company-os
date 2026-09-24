@@ -13,7 +13,7 @@ export async function sendEmail(input: {
   const from =
     input.from ||
     (await getSecret("REPORT_FROM_ADDRESS")) ||
-    "Company OS <noreply@prodg.studio>";
+    "Company OS <noreply@os.jabali.studio>";
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",

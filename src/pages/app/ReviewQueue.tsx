@@ -59,6 +59,7 @@ export default function ReviewQueue() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [reassignId, setReassignId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   async function load() {
     if (!user) return;
@@ -109,6 +110,37 @@ export default function ReviewQueue() {
 
   const userMap = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
   const canReview = user ? roleAtLeast(user.role, "manager") : false;
+
+  function toggleSelected(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function applySelected(kind: "confirm" | "discard") {
+    if (!user || selected.size === 0) return;
+    const ids = [...selected];
+    setBusyId("bulk");
+    try {
+      for (const id of ids) {
+        if (kind === "confirm") {
+          if (apiConfigured()) await api.confirmReview(id);
+          else await db.approveReview(user, id);
+        } else if (apiConfigured()) await api.rejectReview(id);
+        else await db.discardReview(user, id);
+      }
+      setSelected(new Set());
+      toast(kind === "confirm" ? `Confirmed ${ids.length}.` : `Discarded ${ids.length}.`, "success");
+      await load();
+    } catch {
+      toast(t("C-ERR-GENERIC"), "error");
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   async function confirm(id: string) {
     if (!user) return;
@@ -190,7 +222,29 @@ export default function ReviewQueue() {
       />
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate">Needs confirming</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate">Needs confirming</h2>
+          {canReview && items.length > 0 ? (
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={selected.size === 0 || busyId === "bulk"}
+                onClick={() => void applySelected("confirm")}
+              >
+                Confirm selected{selected.size ? ` (${selected.size})` : ""}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={selected.size === 0 || busyId === "bulk"}
+                onClick={() => void applySelected("discard")}
+              >
+                Discard selected
+              </Button>
+            </div>
+          ) : null}
+        </div>
         {items.length === 0 ? (
           <EmptyState
             illustration={<ShieldQuestion className="h-10 w-10 text-slate" />}
@@ -209,6 +263,15 @@ export default function ReviewQueue() {
                   <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0 space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
+                        {canReview ? (
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 accent-[#0E1F1A]"
+                            checked={selected.has(c.id)}
+                            aria-label={`Select ${c.title}`}
+                            onChange={() => toggleSelected(c.id)}
+                          />
+                        ) : null}
                         <Link to={`/commitments/${c.id}`} className="font-medium text-ink hover:underline">
                           {c.title}
                         </Link>

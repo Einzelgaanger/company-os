@@ -81,7 +81,7 @@ export default function OnbCoordination() {
 
   return (
     <OnboardingLayout
-      step={1}
+      step={2}
       title="How your team coordinates"
       description="Three questions. They set how often Company OS checks in, how quickly it escalates, and the words it uses."
     >

@@ -24,7 +24,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
 export function RequireOnboarding({ children }: { children: ReactNode }) {
   const { user, isOnboarded, loading } = useAuth();
-  const gates = useLegalGates(Boolean(user?.org_id));
+  const gates = useLegalGates(user);
   if (loading || gates.loading) return <FullPageSpinner />;
   if (!user) return <Navigate to="/login" replace />;
   if (!user.org_id) return <Navigate to="/onboarding/organization" replace />;
@@ -55,13 +55,26 @@ export function RequireOnboarding({ children }: { children: ReactNode }) {
 export function RequireRole({ min, children }: { min: Role; children: ReactNode }) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  if (!roleAtLeast(user.role, min)) return <Navigate to="/flow" replace />;
+  if (!roleAtLeast(user.role, min)) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center gap-3 bg-bg px-6 text-center">
+        <Logo />
+        <h1 className="text-lg font-semibold text-ink">You don't have access to this page</h1>
+        <p className="max-w-md text-sm text-slate">
+          It is limited to {min}s and above. Your role is {user.role}.
+        </p>
+        <a href="/flow" className="text-sm font-semibold underline">
+          Back to Flow
+        </a>
+      </div>
+    );
+  }
   return <>{children}</>;
 }
 
 export function RedirectIfAuthed({ children }: { children: ReactNode }) {
   const { user, loading, isOnboarded } = useAuth();
-  const gates = useLegalGates(Boolean(user?.org_id));
+  const gates = useLegalGates(user);
   if (loading || gates.loading) return <FullPageSpinner />;
   if (user) {
     if (!user.org_id) return <Navigate to="/onboarding/organization" replace />;

@@ -259,6 +259,22 @@ export interface OrgSettings {
   coordination_mode?: CoordinationMode;
   coordination_mode_source?: CoordinationModeSource;
   coordination_mode_set_at?: string;
+  /** Org attestation. Present once an admin clears the compliance gate. */
+  compliance?: ComplianceAttestation;
+}
+
+export interface ComplianceAttestation {
+  attested_at: string;
+  lawful_basis: string;
+  dpo_email: string;
+  dpia_completed: boolean;
+  lia_completed: boolean;
+  works_council_required: boolean;
+  works_council_consulted: boolean;
+  employee_notice_published: boolean;
+  employee_notice_version: string;
+  acknowledged_not_for_hr_decisions: boolean;
+  high_risk_use_prohibited: true;
 }
 
 export interface Organization {
@@ -282,6 +298,8 @@ export interface NotificationPrefs {
    * Telegram/WhatsApp. Telegram/WhatsApp only used when linked + ready.
    */
   preferred_channel?: PreferredMessagingChannel;
+  notice_acknowledged_at?: string | null;
+  notice_acknowledged_version?: string | null;
 }
 
 export interface User {
@@ -347,6 +365,8 @@ export interface Project {
   last_progress_at?: string | null;
   pulse_enabled?: boolean;
   pulse_interval_days?: number;
+  /** Explicit fever-chart buffer, in working days. Absent means the 10-day demo buffer. */
+  buffer_days?: number | null;
 }
 
 export type ProjectRole = "lead" | "contributor" | "reviewer" | "observer";

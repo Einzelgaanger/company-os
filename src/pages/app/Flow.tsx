@@ -280,7 +280,7 @@ export default function Flow() {
                     {e.reason} · raised {timeAgo(e.created_at)}
                   </div>
                 </div>
-                <Button size="sm" variant="outline" onClick={() => navigate(`/escalations`)}>
+                <Button size="sm" variant="outline" onClick={() => navigate(`/escalations/${e.id}`)}>
                   Open
                 </Button>
               </div>

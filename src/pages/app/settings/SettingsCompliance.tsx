@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { api, apiConfigured, type ApiComplianceRecord } from "@/lib/api";
+import { db } from "@/lib/db";
 import { fetchCompliance, NOTICE_VERSION } from "@/lib/legalRecords";
 
 /**
@@ -11,7 +12,7 @@ import { fetchCompliance, NOTICE_VERSION } from "@/lib/legalRecords";
  * Everything on this page is read from `tenant_compliance` over the API.
  */
 export default function SettingsCompliance() {
-  const { org } = useAuth();
+  const { org, refresh } = useAuth();
   const { toast } = useToast();
   const [record, setRecord] = useState<ApiComplianceRecord | null>(null);
   const [busy, setBusy] = useState(false);
@@ -20,19 +21,44 @@ export default function SettingsCompliance() {
     void fetchCompliance().then(setRecord);
   }, [org?.id]);
 
+  const stored = org?.settings.compliance;
+  const attestedAt = record?.attestedAt ?? stored?.attested_at ?? null;
+  const lawfulBasis = record?.lawfulBasis ?? stored?.lawful_basis ?? null;
   const payload = (record?.payload ?? {}) as Record<string, unknown>;
-  const noticeVer = String(payload.employeeNoticeVersion ?? NOTICE_VERSION);
+  const dpo = String(payload.dpoEmail ?? stored?.dpo_email ?? "—");
+  const dpia = payload.dpiaCompleted ?? stored?.dpia_completed;
+  const noticeVer = String(payload.employeeNoticeVersion ?? stored?.employee_notice_version ?? NOTICE_VERSION);
 
   async function publish() {
-    if (!apiConfigured()) {
-      toast("Connect the API to publish a notice version.", "error");
-      return;
-    }
+    if (!org) return;
     setBusy(true);
     try {
       const next = `2026-08-v${Date.now().toString().slice(-4)}`;
-      await api.publishNotice(next);
-      setRecord(await fetchCompliance());
+      if (apiConfigured()) {
+        await api.publishNotice(next);
+        setRecord(await fetchCompliance());
+      } else if (stored) {
+        await db.updateOrg(org.id, {
+          settings: {
+            ...org.settings,
+            compliance: { ...stored, employee_notice_version: next },
+          },
+        });
+        const people = await db.listUsers(org.id);
+        for (const person of people) {
+          await db.updateUser(person.id, {
+            notification_prefs: {
+              ...person.notification_prefs,
+              notice_acknowledged_at: null,
+              notice_acknowledged_version: null,
+            },
+          });
+        }
+        await refresh();
+      } else {
+        toast("Attest first, from onboarding, before publishing a new notice.", "error");
+        return;
+      }
       toast("Notice published. Everyone must re-acknowledge on next visit.", "success");
     } catch (err) {
       toast(err instanceof Error ? err.message : "Could not publish the notice.", "error");
@@ -59,23 +85,23 @@ export default function SettingsCompliance() {
           </div>
         </header>
         <div className="portal-section__body--pad space-y-2 text-sm">
-          {record?.attestedAt ? (
+          {attestedAt ? (
             <>
               <p>
                 <span className="text-[10px] font-semibold uppercase text-[#5B6560]">Attested at </span>
-                {new Date(record.attestedAt).toLocaleString()}
+                {new Date(attestedAt).toLocaleString()}
               </p>
               <p>
                 <span className="text-[10px] font-semibold uppercase text-[#5B6560]">Lawful basis </span>
-                {record.lawfulBasis}
+                {lawfulBasis}
               </p>
               <p>
                 <span className="text-[10px] font-semibold uppercase text-[#5B6560]">DPO </span>
-                {String(payload.dpoEmail ?? "—")}
+                {dpo}
               </p>
               <p>
                 <span className="text-[10px] font-semibold uppercase text-[#5B6560]">DPIA </span>
-                {payload.dpiaCompleted ? "Completed" : "Not completed"}
+                {dpia ? "Completed" : "Not completed"}
               </p>
               <p>
                 <span className="text-[10px] font-semibold uppercase text-[#5B6560]">Works council </span>

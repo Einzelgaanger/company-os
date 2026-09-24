@@ -37,3 +37,36 @@ verify_jwt = false          # peek/accept are public; send checks the caller's J
 
 [functions.email-dispatch]
 verify_jwt = true           # cron / service role retry sweep
+
+[functions.notify-email]
+verify_jwt = true           # caller JWT; same-org check inside the function
+
+[functions.send-digest]
+verify_jwt = true
+
+# Auth mail (welcome, reset, magic link, invite, email change, reauth).
+# Local `supabase start` reads these. Hosted projects need the same HTML
+# in Authentication → Emails, or a config push of these paths.
+[auth.email.template.confirmation]
+subject = "Confirm your email for Company OS"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Reset your Company OS password"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.magic_link]
+subject = "Your Company OS sign-in link"
+content_path = "./supabase/templates/magic_link.html"
+
+[auth.email.template.invite]
+subject = "You are invited to Company OS"
+content_path = "./supabase/templates/invite.html"
+
+[auth.email.template.email_change]
+subject = "Confirm your new Company OS email"
+content_path = "./supabase/templates/email_change.html"
+
+[auth.email.template.reauthentication]
+subject = "Your Company OS verification code"
+content_path = "./supabase/templates/reauthentication.html"

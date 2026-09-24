@@ -30,7 +30,7 @@ export const EDGE_CONNECTORS: Record<string, EdgeConnector> = {
     "clientIdSecret": "GOOGLE_OAUTH_CLIENT_ID",
     "clientSecretSecret": "GOOGLE_OAUTH_CLIENT_SECRET",
     "instanceSecret": null,
-    "featureFlag": "FEATURE_EMAIL_INGESTION",
+    "featureFlag": null,
     "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth",
     "tokenUrl": "https://oauth2.googleapis.com/token",
     "scopes": [
@@ -58,7 +58,7 @@ export const EDGE_CONNECTORS: Record<string, EdgeConnector> = {
     "clientIdSecret": "MICROSOFT_OAUTH_CLIENT_ID",
     "clientSecretSecret": "MICROSOFT_OAUTH_CLIENT_SECRET",
     "instanceSecret": null,
-    "featureFlag": "FEATURE_EMAIL_INGESTION",
+    "featureFlag": null,
     "authorizeUrl": "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize",
     "tokenUrl": "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token",
     "scopes": [

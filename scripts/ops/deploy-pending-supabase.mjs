@@ -27,7 +27,7 @@ loadEnv();
 const PROJECT_REF = process.env.SUPABASE_PROJECT_REF ?? "pkxnfkubgpbdbftvtgvf";
 const MIG_DIR = resolve(process.cwd(), "supabase/archive/migrations");
 
-/** Already recorded as live in docs/ops/PRODUCTION.md. */
+/** Already on the linked project (PRODUCTION.md plus the last successful run). */
 const ALREADY_LIVE = new Set([
   "0001_schema.sql",
   "0002_rls.sql",
@@ -36,7 +36,15 @@ const ALREADY_LIVE = new Set([
   "0006_cron.sql",
   "0007_action_item_quality.sql",
   "0008_app_secrets.sql",
+  "0009_production_infra.sql",
+  "0010_cron_calendar.sql",
   "0011_telegram.sql",
+  "0012_surveys.sql",
+  "0013_teams_projects.sql",
+  "0014_escalations_email.sql",
+  "0015_tag_audiences_and_ingestion_labels.sql",
+  "0016_live_invites_and_members.sql",
+  "0017_meeting_privacy_hold.sql",
 ]);
 
 const pending = readdirSync(MIG_DIR)

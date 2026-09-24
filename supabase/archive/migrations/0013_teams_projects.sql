@@ -195,6 +195,16 @@ alter table project_members           enable row level security;
 alter table project_pulses            enable row level security;
 alter table project_progress_snapshots enable row level security;
 
+drop policy if exists teams_select on teams;
+drop policy if exists teams_write_manager on teams;
+drop policy if exists team_members_select on team_members;
+drop policy if exists team_members_write_manager on team_members;
+drop policy if exists project_members_select on project_members;
+drop policy if exists project_members_write_manager on project_members;
+drop policy if exists project_pulses_select on project_pulses;
+drop policy if exists project_pulses_update_self on project_pulses;
+drop policy if exists project_progress_select on project_progress_snapshots;
+
 create policy teams_select on teams for select
   using (org_id = auth_org_id());
 create policy teams_write_manager on teams for all

@@ -280,7 +280,22 @@ export function AppLayout() {
           </header>
 
           <header className="hidden h-14 items-center justify-between border-b border-[rgba(14,31,26,0.06)] bg-white px-4 lg:flex">
-            <div className="text-sm font-semibold text-[#5B6560]">{org?.name ?? BRAND.name}</div>
+            <form
+              className="flex min-w-0 flex-1 items-center gap-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const data = new FormData(e.currentTarget);
+                const q = String(data.get("q") ?? "").trim();
+                navigate(q ? `/commitments?q=${encodeURIComponent(q)}` : "/commitments");
+              }}
+            >
+              <div className="truncate text-sm font-semibold text-[#5B6560]">{org?.name ?? BRAND.name}</div>
+              <input
+                name="q"
+                placeholder="Search commitments"
+                className="h-8 w-full max-w-xs rounded-md border border-[rgba(14,31,26,0.12)] bg-[#F8F8F7] px-3 text-sm outline-none focus:border-[#0E1F1A]"
+              />
+            </form>
             <div className="flex items-center gap-2">
               <AutonomyPill />
               <Link

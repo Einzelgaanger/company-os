@@ -57,9 +57,12 @@ describe("connector registry", () => {
     expect(availability.missing).toContain("SLACK_OAUTH_CLIENT_ID");
   });
 
-  it("keeps email connectors gated until the feature flag flips", () => {
+  it("offers email connectors without a review flag", () => {
     delete process.env.FEATURE_EMAIL_INGESTION;
-    expect(connectorAvailability(connector("gmail")!).missing).toContain(
+    expect(connectorAvailability(connector("gmail")!).missing).not.toContain(
+      "FEATURE_EMAIL_INGESTION=true",
+    );
+    expect(connectorAvailability(connector("outlook")!).missing).not.toContain(
       "FEATURE_EMAIL_INGESTION=true",
     );
   });

@@ -13,6 +13,8 @@ import { useAuth } from "@/context/AuthContext";
 import { db, visibleCommitments, PRIORITY_RANK } from "@/lib/db";
 import { roleAtLeast, type Commitment, type Project, type User } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { pageOf, Pager } from "@/components/shared/Pager";
 
 const STATUS_ORDER: Record<string, number> = {
   escalated: 0,
@@ -37,6 +39,9 @@ export default function Commitments() {
   const priorityFilter = params.get("priority") ?? "all";
   const projectFilter = params.get("project") ?? "all";
   const reviewFilter = params.get("review") ?? "all";
+  const query = (params.get("q") ?? "").trim().toLowerCase();
+  const resolvedWindow = params.get("resolved");
+  const [page, setPage] = useState(0);
 
   async function load() {
     if (!user) return;
@@ -79,6 +84,17 @@ export default function Commitments() {
         if (reviewFilter === "live") return !c.needs_review;
         return true;
       })
+      .filter((c) => {
+        if (!query) return true;
+        const project = c.project_id ? projectMap.get(c.project_id)?.name ?? "" : "";
+        return `${c.title} ${c.description ?? ""} ${project}`.toLowerCase().includes(query);
+      })
+      .filter((c) => {
+        if (resolvedWindow !== "7d") return true;
+        if (c.status !== "done") return false;
+        const when = new Date(c.resolved_at ?? c.updated_at).getTime();
+        return Date.now() - when <= 7 * 86_400_000;
+      })
       .sort((a, b) => {
         const s = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
         if (s !== 0) return s;
@@ -86,13 +102,14 @@ export default function Commitments() {
         if (p !== 0) return p;
         return (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999");
       });
-  }, [commitments, statusFilter, priorityFilter, projectFilter, reviewFilter]);
+  }, [commitments, statusFilter, priorityFilter, projectFilter, reviewFilter, query, resolvedWindow, projectMap]);
 
   function setFilter(key: string, value: string) {
     const next = new URLSearchParams(params);
     if (value === "all") next.delete(key);
     else next.set(key, value);
     setParams(next);
+    setPage(0);
   }
 
   if (!user) return null;
@@ -114,7 +131,25 @@ export default function Commitments() {
         }
       />
 
+      {resolvedWindow === "7d" ? (
+        <p className="text-sm text-slate">
+          Showing items marked done in the last 7 days.{" "}
+          <button type="button" className="underline" onClick={() => setFilter("resolved", "all")}>
+            Show everything
+          </button>
+        </p>
+      ) : null}
+
       <div className="portal-toolbar flex-wrap">
+        <Input
+          value={params.get("q") ?? ""}
+          placeholder="Search title or project"
+          className="input-glass max-w-xs"
+          onChange={(e) => {
+            setFilter("q", e.target.value.trim() ? e.target.value : "all");
+            setPage(0);
+          }}
+        />
         <div className="portal-filter">
           <Select value={statusFilter} onValueChange={(v) => setFilter("status", v)}>
             <SelectTrigger>
@@ -189,8 +224,9 @@ export default function Commitments() {
           }
         />
       ) : (
+        <div className="space-y-3">
         <DataTable
-          rows={filtered}
+          rows={pageOf(filtered, page, 25)}
           onRowClick={(c) => navigate(`/commitments/${c.id}`)}
           columns={[
             {
@@ -236,6 +272,8 @@ export default function Commitments() {
             },
           ]}
         />
+        <Pager page={page} pageSize={25} total={filtered.length} onPage={setPage} />
+        </div>
       )}
     </div>
   );

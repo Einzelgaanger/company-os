@@ -98,6 +98,10 @@ create table if not exists email_suppressions (
 alter table email_messages    enable row level security;
 alter table email_suppressions enable row level security;
 
+drop policy if exists email_messages_select on email_messages;
+drop policy if exists email_suppressions_select_admin on email_suppressions;
+drop policy if exists email_suppressions_write_admin on email_suppressions;
+
 -- People can see their own mail trail; admins see the org's for deliverability
 -- debugging. Nobody writes from the client — Edge Functions use the service role.
 create policy email_messages_select on email_messages for select

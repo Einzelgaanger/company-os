@@ -37,7 +37,7 @@ export default function OnbTeam() {
 
   return (
     <OnboardingLayout
-      step={4}
+      step={5}
       title="Invite your team"
       description="Add teammates now, or invite them later from Settings."
       footer={

@@ -114,6 +114,11 @@ async function notify(n: Omit<AppNotification, "id" | "created_at" | "read_at">)
     body: n.body,
     link: n.link,
   });
+  await client()
+    .functions.invoke("notify-email", {
+      body: { user_id: n.user_id, kind: n.kind, title: n.title, body: n.body, link: n.link },
+    })
+    .catch(() => undefined);
 }
 
 function one<T>(data: T | T[] | null): T | undefined {
@@ -714,6 +719,35 @@ export const supabaseDb = {
       });
     }
     await audit(actor.org_id, actor.id, "escalation.acknowledged", "escalation", id);
+    return data as Escalation;
+  },
+
+  async escalateNow(actor: User, commitmentId: string, toUserId: string, reason: string): Promise<Escalation> {
+    const commitment = await supabaseDb.getCommitment(commitmentId);
+    const { data, error } = await client()
+      .from("escalations")
+      .insert({
+        org_id: actor.org_id,
+        commitment_id: commitmentId,
+        escalated_to_id: toUserId,
+        reason,
+        context_snapshot: { commitment: commitment ?? null, reason, sla_hours_elapsed: 0 },
+        status: "open",
+        project_id: commitment?.project_id ?? null,
+      })
+      .select("*")
+      .single();
+    if (error) throw error;
+    if (commitment) await supabaseDb.updateCommitment(commitmentId, { status: "escalated" });
+    await notify({
+      org_id: actor.org_id,
+      user_id: toUserId,
+      kind: "escalation",
+      title: "New escalation",
+      body: commitment?.title ?? reason,
+      link: `/escalations/${data.id}`,
+    });
+    await audit(actor.org_id, actor.id, "escalation.created", "escalation", data.id);
     return data as Escalation;
   },
 

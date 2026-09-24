@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/db";
 import { isMockMode } from "@/lib/supabase";
+import { edgeFunctionsConfigured, oauthStartUrl } from "@/lib/launch";
 import { CORE_PROVIDERS, PROVIDERS, type ProviderMeta } from "@/lib/providers";
 import { roleAtLeast, type Connection } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -42,9 +43,9 @@ export default function OnbConnections() {
 
   return (
     <OnboardingLayout
-      step={3}
+      step={4}
       title="Connect your tools"
-      description="Company OS reads from these sources to detect commitments. Read-only access only."
+      description="Connect opens that app's sign-in so Company OS can read it. Read-only access only."
       footer={
         <Button variant="ghost" onClick={next}>
           Skip for now
@@ -57,12 +58,23 @@ export default function OnbConnections() {
           return (
             <button
               key={meta.id}
-              disabled={!isMockMode || connected}
-              onClick={() => void connect(meta)}
+              disabled={connected}
+              onClick={() => {
+                if (!user) return;
+                if (isMockMode) {
+                  void connect(meta);
+                  return;
+                }
+                if (meta.auth === "oauth2" && edgeFunctionsConfigured()) {
+                  window.location.assign(oauthStartUrl(meta.id, user.org_id, user.id));
+                  return;
+                }
+                navigate("/integrations");
+              }}
               className={cn(
                 "flex items-start gap-2.5 rounded-lg border p-3 text-left transition-colors",
                 connected ? "border-green/40 bg-green/5" : "border-border",
-                !connected && isMockMode && "hover:border-teal/50",
+                !connected && "hover:border-teal/50",
               )}
             >
               <ProviderIcon
@@ -82,7 +94,7 @@ export default function OnbConnections() {
                     </span>
                   ) : (
                     <span className="shrink-0 text-xs font-medium text-slate">
-                      {isMockMode ? "Connect (demo)" : "Set up later"}
+                      Connect
                     </span>
                   )}
                 </span>
@@ -93,9 +105,7 @@ export default function OnbConnections() {
         })}
       </div>
       <p className="mt-4 text-xs text-slate">
-        {isMockMode
-          ? `These are the sources most pilots start with. The other ${PROVIDERS.length - CORE_PROVIDERS.length} live on Integrations.`
-          : `Provider OAuth is not configured for this deployment yet. Continue and connect all ${PROVIDERS.length} sources later from Integrations.`}
+        {`These are the sources most workspaces start with. The other ${PROVIDERS.length - CORE_PROVIDERS.length} are on Integrations.`}
       </p>
       <div className="mt-6">
         <Button onClick={next}>Continue</Button>

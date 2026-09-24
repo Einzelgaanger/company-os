@@ -106,13 +106,28 @@ export default function Integrations() {
     const connected = searchParams.get("connected");
     const failure = searchParams.get("error");
     if (!connected && !failure) return;
-    if (connected) {
-      const meta = PROVIDERS.find((p) => p.id === connected);
-      toast(`${meta?.name ?? connected} connected.`, "success");
+    const named =
+      PROVIDERS.find((p) => p.id === (connected ?? searchParams.get("provider")))?.name ??
+      "That app";
+    if (connected) toast(`${named} connected.`, "success");
+    if (failure) {
+      const declined = failure === "access_denied" || failure === "consent_required";
+      const unavailable =
+        failure === "oauth_not_configured" || failure === "token_encryption_not_configured";
+      toast(
+        declined
+          ? `${named} access was declined.`
+          : unavailable
+            ? `${named} isn't available to connect yet.`
+            : failure === "invalid_state"
+              ? "That connection expired. Click Connect again."
+              : `Couldn't connect ${named}. Try again.`,
+        "error",
+      );
     }
-    if (failure) toast(`Connection failed: ${failure}`, "error");
     searchParams.delete("connected");
     searchParams.delete("error");
+    searchParams.delete("provider");
     setSearchParams(searchParams, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
@@ -146,27 +161,23 @@ export default function Integrations() {
 
   async function startOAuth(meta: ProviderMeta) {
     if (!user) return;
+    // Live workspaces use the Supabase OAuth function. Clicking Connect leaves
+    // for that provider's consent screen and returns here when it finishes.
+    if (!isMockMode && edgeFunctionsConfigured()) {
+      window.location.assign(oauthStartUrl(meta.id, user.org_id, user.id));
+      return;
+    }
     if (apiConfigured()) {
       try {
         const res = await api.authorizeConnection(meta.id);
-        window.location.href = res.authUrl;
+        window.location.assign(res.authUrl);
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "oauth_not_configured";
-        toast(
-          msg.includes("oauth_not_configured") || msg.includes("token_encryption")
-            ? `${meta.name} needs provider credentials. Set them in .env and restart the API.`
-            : msg,
-          "error",
-        );
+        toast(e instanceof Error ? e.message : `Couldn't connect ${meta.name}.`, "error");
       }
       return;
     }
-    if (edgeFunctionsConfigured()) {
-      window.location.href = oauthStartUrl(meta.id, user.org_id, user.id);
-      return;
-    }
     if (isMockMode) return connectInDemoStore(meta);
-    toast(`${meta.name} OAuth is not configured for this deployment.`, "default");
+    toast(`${meta.name} can't be connected from this browser.`, "error");
   }
 
   async function createWebhook(meta: ProviderMeta) {
@@ -272,8 +283,6 @@ export default function Integrations() {
     const connected = status === "connected";
     const needsReconnect = status === "expired" || status === "error";
     const health = connectionHealthLocal(status, conn?.last_synced_at ?? null);
-    const entry = catalog[meta.id];
-    const blockedByEnv = Boolean(entry && !entry.configured);
     const adminOnly = meta.orgLevel && !isAdmin;
 
     return (
@@ -298,10 +307,6 @@ export default function Integrations() {
         </p>
 
         <div className="mt-auto space-y-2">
-          <div className="font-mono text-[10px] uppercase tracking-wide text-[#5B6560]">
-            {meta.scopesNote}
-          </div>
-
           {connected && conn?.external_account_email && (
             <div className="text-[11px] font-medium text-[#5B6560]">
               {conn.external_account_email}
@@ -313,17 +318,6 @@ export default function Integrations() {
               No sync in over 6 hours — reconnect or wait for the next cycle.
             </p>
           )}
-          {meta.gated && !connected && (
-            <p className="text-[11px] font-medium text-[#5B6560]">
-              Available once the email ingestion review completes.
-            </p>
-          )}
-          {blockedByEnv && !connected && !meta.gated && (
-            <p className="text-[11px] font-medium text-[#5B6560]">
-              Needs setup: {entry!.missing.join(", ")}
-            </p>
-          )}
-
           <div className="flex flex-wrap items-center gap-2">
             {connected ? (
               <Button
@@ -337,7 +331,7 @@ export default function Integrations() {
               <Button
                 size="sm"
                 variant={needsReconnect ? "destructive" : "default"}
-                disabled={adminOnly || (meta.gated && !isMockMode)}
+                disabled={adminOnly}
                 title={adminOnly ? "An admin connects workspace sources" : undefined}
                 onClick={() => connect(meta)}
               >
@@ -350,14 +344,6 @@ export default function Integrations() {
                       : "Connect"}
               </Button>
             )}
-            <a
-              href={meta.docsUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="text-[11px] font-semibold text-forest underline underline-offset-2"
-            >
-              Setup guide
-            </a>
           </div>
         </div>
       </div>

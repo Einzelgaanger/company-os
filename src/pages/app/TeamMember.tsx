@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -56,15 +56,6 @@ export default function TeamMember() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, id]);
 
-  const trend = useMemo(() => {
-    const outbound = checkins.filter((c) => c.direction === "outbound").slice(0, 5);
-    const inbound = checkins.filter((c) => c.direction === "inbound");
-    const answered = outbound.filter((o) =>
-      inbound.some((i) => i.commitment_id === o.commitment_id && i.created_at >= o.created_at)
-    ).length;
-    return { answered, total: outbound.length };
-  }, [checkins]);
-
   if (loading) return <TableSkeleton />;
   if (error || !member) return <ErrorState onRetry={load} />;
 
@@ -113,13 +104,6 @@ export default function TeamMember() {
           </div>
         </CardContent>
       </Card>
-
-      {trend.total > 0 && (
-        <p className="text-sm text-[#5B6560]">
-          Responded to {trend.answered} of {trend.total} check-ins in the last batch — a coordination fact, not an
-          evaluation (C-1).
-        </p>
-      )}
 
       <Card>
         <CardHeader>

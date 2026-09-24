@@ -2,10 +2,10 @@ import type { ReactNode } from "react";
 import { Logo } from "@/components/brand/Logo";
 import { cn } from "@/lib/utils";
 
-const STEPS = ["Organization", "Compliance", "Profile", "Connections", "Team"];
+const STEPS = ["Organization", "Compliance", "Coordination", "Profile", "Connections", "Team"];
 
-function ProgressRing({ step }: { step: number }) {
-  const total = STEPS.length;
+function ProgressRing({ step, steps }: { step: number; steps: string[] }) {
+  const total = steps.length;
   const pct = ((step + 1) / total) * 100;
   const r = 20;
   const c = 2 * Math.PI * r;
@@ -34,11 +34,11 @@ function ProgressRing({ step }: { step: number }) {
           fontWeight={600}
           fill="#0E1F1A"
         >
-          {step + 1}/{total}
+          {Math.min(step + 1, total)}/{total}
         </text>
       </svg>
       <div className="text-sm">
-        <div className="font-semibold text-[#0E1F1A]">{STEPS[step]}</div>
+        <div className="font-semibold text-[#0E1F1A]">{steps[step] ?? "Done"}</div>
         <div className="text-[11px] font-medium text-[#5B6560]">
           Step {step + 1} of {total}
         </div>
@@ -53,12 +53,15 @@ export function OnboardingLayout({
   description,
   children,
   footer,
+  steps = STEPS,
 }: {
   step: number;
   title: string;
   description?: string;
   children: ReactNode;
   footer?: ReactNode;
+  /** Override the rail when this page is not on the admin wizard (the notice). */
+  steps?: string[];
 }) {
   return (
     <div className="min-h-[100dvh] bg-[#EFEFEE]">
@@ -68,9 +71,9 @@ export function OnboardingLayout({
       <div className="flex justify-center px-4 pb-16">
         <div className="w-full max-w-xl animate-fade-in">
           <div className="mb-5 flex items-center justify-between">
-            <ProgressRing step={step} />
+            <ProgressRing step={step} steps={steps} />
             <div className="hidden gap-1 sm:flex">
-              {STEPS.map((s, i) => (
+              {steps.map((s, i) => (
                 <span
                   key={s}
                   className={cn("h-1.5 w-8 rounded-full", i <= step ? "bg-[#D3F36B]" : "bg-[rgba(14,31,26,0.1)]")}

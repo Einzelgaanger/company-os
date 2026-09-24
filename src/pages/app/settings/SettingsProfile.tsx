@@ -18,6 +18,15 @@ import {
 import type { PreferredMessagingChannel } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+const EMAIL_TOGGLES: { id: string; label: string; blurb: string }[] = [
+  { id: "escalation", label: "Escalations", blurb: "When something is routed to you." },
+  { id: "survey", label: "Daily questions", blurb: "The morning note that today's five questions are ready." },
+  { id: "report", label: "Weekly team pulse", blurb: "The Monday summary for your line." },
+  { id: "project_pulse", label: "Project follow-ups", blurb: "Questions about a specific project you are on." },
+  { id: "digest", label: "Morning digest", blurb: "Overdue, due today, and what is coming up." },
+  { id: "checkin", label: "Check-in copies", blurb: "An email copy of a check-in that also goes to Chat." },
+];
+
 const CHANNELS: {
   id: PreferredMessagingChannel;
   title: string;
@@ -52,6 +61,7 @@ export default function SettingsProfile() {
   const [otpBusy, setOtpBusy] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
+  const [emailPrefs, setEmailPrefs] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (user) {
@@ -60,8 +70,26 @@ export default function SettingsProfile() {
       setCheckinsOn(user.notification_prefs.whatsapp_checkins);
       setDigest(user.notification_prefs.daily_digest !== false);
       setChannel(preferredChannel(user));
+      setEmailPrefs(user.email_prefs ?? {});
     }
   }, [user]);
+
+  function openTelegram() {
+    const command = `LINK ${phone.trim() || "+yourphone"}`;
+    const bot = String(import.meta.env.VITE_TELEGRAM_BOT_USERNAME ?? "").replace(/^@/, "");
+    if (bot) {
+      window.open(`https://t.me/${bot}?text=${encodeURIComponent(command)}`, "_blank", "noopener");
+      return;
+    }
+    void navigator.clipboard.writeText(command);
+    toast("Copied the LINK command. Paste it to your Company OS bot.", "success");
+  }
+
+  function restoreBanners() {
+    localStorage.removeItem("companyos.banner.telegram.dismissed");
+    localStorage.removeItem("companyos.banner.connection.dismissed");
+    window.location.reload();
+  }
 
   if (!user) return null;
 
@@ -70,6 +98,7 @@ export default function SettingsProfile() {
 
   async function save() {
     if (!user) return;
+    await db.updateEmailPrefs(user.id, emailPrefs);
     const patch: Parameters<typeof db.updateUser>[1] = {
       full_name: fullName.trim(),
       phone_number: phone.trim() || null,
@@ -235,6 +264,9 @@ export default function SettingsProfile() {
               </li>
               <li>Select Telegram as preferred and Save.</li>
             </ol>
+            <Button type="button" size="sm" variant="outline" className="mt-2" onClick={() => openTelegram()}>
+              {import.meta.env.VITE_TELEGRAM_BOT_USERNAME ? "Open Telegram" : "Copy LINK command"}
+            </Button>
             {telegramOk && (
               <p className="mt-2 text-green">
                 Telegram linked
@@ -316,6 +348,43 @@ export default function SettingsProfile() {
               With check-ins off, Company OS won&apos;t ping you about commitments.
             </p>
           )}
+          <div className="border-t border-[rgba(14,31,26,0.08)] pt-4">
+            <div className="mb-2 text-sm font-medium text-ink">Email</div>
+            <p className="mb-3 text-sm text-slate">
+              Account and security mail always sends. Everything else you can turn off.
+            </p>
+            <div className="space-y-3">
+              {EMAIL_TOGGLES.map((item) => (
+                <div key={item.id} className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm text-ink">{item.label}</div>
+                    <div className="text-[12px] text-slate">{item.blurb}</div>
+                  </div>
+                  <Switch
+                    checked={emailPrefs[item.id] !== false}
+                    onCheckedChange={(on) =>
+                      setEmailPrefs((current) => ({ ...current, [item.id]: on }))
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Banners</CardTitle>
+          <CardDescription>
+            Dismissed notices stay hidden on this browser. Show them again if you want the Telegram or connection
+            alerts back.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button type="button" variant="outline" onClick={restoreBanners}>
+            Show dismissed banners again
+          </Button>
         </CardContent>
       </Card>
 

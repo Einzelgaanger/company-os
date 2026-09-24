@@ -24,6 +24,11 @@ import {
   type WaitingRow,
 } from "@/lib/flow";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
+import { db } from "@/lib/db";
+import { pickEscalationRecipient } from "@/lib/escalationRouting";
+import { roleAtLeast } from "@/lib/types";
 
 /**
  * /waiting — the waiting register (08_PAGES §8.5).
@@ -35,8 +40,7 @@ import { cn } from "@/lib/utils";
  * carries rather than by refetching: the payload includes both groupings, so a
  * regroup is instant and the totals never disagree with the rows.
  *
- * Nudge, escalate, reassign and export land with the nudge engine. Until the
- * send path exists a "Nudge" button would be a promise the app cannot keep.
+ * Managers can nudge the holder or escalate through the ownership map.
  */
 
 type Group = "holder" | "project";
@@ -59,6 +63,8 @@ function anchorId(key: string): string {
 
 export default function Waiting() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const canAct = user ? roleAtLeast(user.role, "manager") : false;
   const [params, setParams] = useSearchParams();
 
   const allowedScopes = useMemo(
@@ -116,6 +122,42 @@ export default function Waiting() {
   function toggleType(kind: WaitingKind) {
     const next = types.includes(kind) ? types.filter((k) => k !== kind) : [...types, kind];
     patch({ types: next.length ? next.join(",") : null });
+  }
+
+  async function nudge(row: WaitingRow) {
+    if (!user || !row.holderUserId) {
+      toast("Nobody inside the team is holding this, so there is no one to nudge.", "error");
+      return;
+    }
+    await db.sendCheckin(
+      user,
+      row.holderUserId,
+      row.id,
+      `Checking in on "${row.title}". What's the latest?`,
+    );
+    toast(`Nudge sent to ${row.holderLabel}.`, "success");
+  }
+
+  async function escalateRow(row: WaitingRow) {
+    if (!user) return;
+    const [map, tags, people, commitment] = await Promise.all([
+      db.listOwnershipMap(user.org_id),
+      db.listTags(user.org_id),
+      db.listUsers(user.org_id),
+      db.getCommitment(row.id),
+    ]);
+    if (!commitment) {
+      toast("That item is no longer on the register.", "error");
+      return;
+    }
+    const recipient = pickEscalationRecipient(commitment, map, people, tags);
+    if (!recipient) {
+      toast("Nobody is on the ownership map for this.", "error");
+      return;
+    }
+    await db.escalateNow(user, commitment.id, recipient.id, "Escalated from the waiting register.");
+    toast(`Escalated to ${recipient.full_name}.`, "success");
+    await load();
   }
 
   const rows = useMemo(() => {
@@ -371,7 +413,22 @@ export default function Waiting() {
                             </span>
                           </div>
                         </div>
-                        <div className="flex shrink-0 items-center gap-2">
+                        <div className="flex shrink-0 flex-wrap items-center gap-2">
+                          {canAct ? (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={!row.holderUserId}
+                                onClick={() => void nudge(row)}
+                              >
+                                Nudge
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => void escalateRow(row)}>
+                                Escalate
+                              </Button>
+                            </>
+                          ) : null}
                           <CostOfDelayBadge band={row.costOfDelayBand} />
                           <StatusChip
                             state={row.flowState}

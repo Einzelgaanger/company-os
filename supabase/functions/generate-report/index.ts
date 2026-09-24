@@ -4,7 +4,7 @@
 // deno-lint-ignore-file no-explicit-any
 import { adminClient, json, corsHeaders } from "../_shared/supabase.ts";
 import { claude } from "../_shared/anthropic.ts";
-import { sendEmail } from "../_shared/email.ts";
+import { emailTemplates, sendTemplatedEmail } from "../_shared/emailer.ts";
 import { uploadReportPdf, renderMarkdownPdf } from "../_shared/s3.ts";
 
 function periodBounds(type: "daily" | "weekly") {
@@ -108,10 +108,23 @@ async function generateForOrg(db: any, org: any, type: "daily" | "weekly") {
     const { data: recipient } = await db.from("users").select("email, full_name").eq("id", uid).maybeSingle();
     if (recipient?.email) {
       try {
-        await sendEmail({
-          to: recipient.email,
-          subject: `Company OS ${type} report — ${org.name}`,
-          html: `<p>Hi ${recipient.full_name ?? ""},</p><p>Your ${type} report is ready.</p><pre style="white-space:pre-wrap">${content_md.replace(/</g, "&lt;")}</pre>${pdf_url ? `<p><a href="${pdf_url}">Download PDF</a></p>` : ""}`,
+        const mail = emailTemplates.report_ready({
+          recipient: { email: recipient.email, full_name: recipient.full_name },
+          orgName: org.name,
+          type,
+          bodyMarkdown: content_md,
+          reportId: report.id,
+          pdfUrl: pdf_url,
+        });
+        await sendTemplatedEmail(db, {
+          orgId: org.id,
+          to: { id: uid, email: recipient.email, full_name: recipient.full_name },
+          category: "report",
+          template: "report_ready",
+          subject: mail.subject,
+          html: mail.html,
+          relatedType: "report",
+          relatedId: report.id,
         });
       } catch {
         /* email optional */

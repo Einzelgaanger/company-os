@@ -5,6 +5,7 @@
 import { adminClient, json, corsHeaders } from "../_shared/supabase.ts";
 import { sendOutbound } from "../_shared/whatsapp.ts";
 import { templates } from "../_shared/templates.ts";
+import { emailUserNotice } from "../_shared/emailer.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -41,6 +42,16 @@ Deno.serve(async (req) => {
       org_id: user.org_id,
       user_id: user.id,
       kind: "system",
+      title: "Company OS checked in",
+      body: manual.text,
+      link: "/inbox",
+    });
+    await emailUserNotice(db, {
+      orgId: user.org_id,
+      userId: user.id,
+      kind: "system",
+      category: "checkin",
+      template: "checkin",
       title: "Company OS checked in",
       body: manual.text,
       link: "/inbox",
@@ -94,6 +105,16 @@ Deno.serve(async (req) => {
         org_id: c.org_id,
         user_id: owner.id,
         kind: "system",
+        title: "Company OS checked in",
+        body: `Status needed on "${c.title}".`,
+        link: "/inbox",
+      });
+      await emailUserNotice(db, {
+        orgId: c.org_id,
+        userId: owner.id,
+        kind: "system",
+        category: "checkin",
+        template: "checkin",
         title: "Company OS checked in",
         body: `Status needed on "${c.title}".`,
         link: "/inbox",
