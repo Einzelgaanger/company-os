@@ -4,6 +4,23 @@ import type { CoordinationMode, CoordinationModeSource } from "./coordination";
 
 export type Role = "owner" | "admin" | "manager" | "member";
 export type UserStatus = "invited" | "active" | "disabled";
+
+export interface OrgInvite {
+  token: string;
+  org_id: string;
+  email: string;
+  role: Role;
+  manager_id: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface InviteSendResult {
+  user: User;
+  invite_url: string;
+  emailed: boolean;
+  email_via: "resend" | "supabase" | null;
+}
 export type OrgPlan = "pilot" | "starter" | "pro";
 
 /** Connector ids come from the catalog so the two cannot drift. */
@@ -281,6 +298,10 @@ export interface User {
   status: UserStatus;
   avatar_url: string | null;
   notification_prefs: NotificationPrefs;
+  /** Survey scope when someone is not on a project (0012). */
+  department?: string | null;
+  /** Per-category email opt-outs (0014). Absent categories default to on. */
+  email_prefs?: Record<string, boolean> | null;
   created_at: string;
   last_active_at: string | null;
 }

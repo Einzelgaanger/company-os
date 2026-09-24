@@ -27,12 +27,18 @@ import type {
   OwnershipMapEntry,
   Priority,
   Project,
+  ProjectMember,
+  ProjectRole,
   Report,
   Role,
   Sensitivity,
   StatusHistoryChannel,
   SurveyAnswer,
   SurveyCycle,
+  DailySurveyCycle,
+  DailySurveyQuestion,
+  MySurveyResponse,
+  SurveyAggregate,
   Tag,
   User,
   TenantHoliday,
@@ -40,8 +46,8 @@ import type {
   IngestionLabelRule,
   MessageApproval,
 } from "../types";
-import { clearanceFor, DEFAULT_TAG_AUDIENCE, roleAtLeast, SENSITIVITY_RANK } from "../types";
-import { tagsAllow } from "../tagAccess";
+import { DEFAULT_TAG_AUDIENCE, roleAtLeast, SENSITIVITY_RANK } from "../types";
+import { itemAllows } from "../tagAccess";
 import { labelIngestedItem, type IngestedItem, type LabelDecision } from "../ingestionPolicy";
 
 // Small async wrapper so pages can `await` and later swap in a Supabase adapter
@@ -49,6 +55,8 @@ import { labelIngestedItem, type IngestedItem, type LabelDecision } from "../ing
 function ok<T>(value: T): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(value), 120));
 }
+
+let mockProjectMembers: ProjectMember[] = [];
 
 function audit(
   orgId: string,
@@ -149,7 +157,7 @@ export const mockDb = {
     email: string,
     role: Role,
     managerId: string | null
-  ): Promise<User> {
+  ) {
     const user: User = {
       id: uuid(),
       org_id: actor.org_id,
@@ -167,7 +175,29 @@ export const mockDb = {
     };
     store.set("users", [...store.all("users"), user]);
     audit(actor.org_id, actor.id, "user.invited", "user", user.id, { email, role });
-    return ok(user);
+    return ok({
+      user,
+      invite_url: `${typeof window !== "undefined" ? window.location.origin : ""}/invite/${user.id}`,
+      emailed: false,
+      email_via: null as "resend" | "supabase" | null,
+    });
+  },
+
+  async listInvites(orgId: string) {
+    return ok(
+      store
+        .all("users")
+        .filter((u) => u.org_id === orgId && u.status === "invited")
+        .map((u) => ({
+          token: u.id,
+          org_id: u.org_id,
+          email: u.email,
+          role: u.role,
+          manager_id: u.manager_id,
+          created_by: null,
+          created_at: u.created_at,
+        })),
+    );
   },
 
   // --- Projects ------------------------------------------------------------
@@ -178,6 +208,38 @@ export const mockDb = {
 
   async getProject(id: string): Promise<Project | undefined> {
     return ok(store.all("projects").find((p) => p.id === id));
+  },
+
+  async listProjectMembers(projectId: string): Promise<ProjectMember[]> {
+    return ok(mockProjectMembers.filter((m) => m.project_id === projectId));
+  },
+
+  async addProjectMember(input: {
+    org_id: string;
+    project_id: string;
+    user_id: string;
+    role_in_project?: ProjectRole;
+    allocation_pct?: number;
+  }): Promise<void> {
+    mockProjectMembers = mockProjectMembers.filter(
+      (m) => !(m.project_id === input.project_id && m.user_id === input.user_id),
+    );
+    mockProjectMembers.push({
+      org_id: input.org_id,
+      project_id: input.project_id,
+      user_id: input.user_id,
+      role_in_project: input.role_in_project ?? "contributor",
+      allocation_pct: input.allocation_pct ?? 100,
+      added_at: nowIso(),
+    });
+    return ok(undefined);
+  },
+
+  async removeProjectMember(projectId: string, userId: string): Promise<void> {
+    mockProjectMembers = mockProjectMembers.filter(
+      (m) => !(m.project_id === projectId && m.user_id === userId),
+    );
+    return ok(undefined);
   },
 
   async createProject(input: Omit<Project, "id" | "created_at">): Promise<Project> {
@@ -938,6 +1000,161 @@ export const mockDb = {
     return ok(cycles.find((c) => c.id === cycleId)!);
   },
 
+  // --- Daily scoped surveys (0012) -------------------------------------------
+  // Signatures match db.supabase.ts. On Supabase the respondent is taken from
+  // the auth session and the userId argument is ignored; here there is no
+  // session, so the caller passes it.
+
+  async getMyLiveSurvey(userId: string): Promise<DailySurveyCycle | undefined> {
+    const user = store.all("users").find((u) => u.id === userId);
+    if (!user) return ok(undefined);
+
+    // Stand-in for survey_deliveries: a person belongs to a project cycle if
+    // they own work on it, otherwise to their department cycle.
+    const myProjects = new Set(
+      store
+        .all("commitments")
+        .filter((c) => c.owner_id === userId && c.project_id)
+        .map((c) => c.project_id as string),
+    );
+
+    const live = store
+      .all("daily_survey_cycles")
+      .filter((c) => c.org_id === user.org_id && c.status === "live")
+      .sort((a, b) => b.survey_date.localeCompare(a.survey_date));
+
+    const cycle =
+      live.find((c) => c.scope_type === "project" && myProjects.has(c.scope_key)) ??
+      live.find((c) => c.scope_type === "department" && c.scope_key === user.department) ??
+      live.find((c) => c.scope_type === "org");
+    if (!cycle) return ok(undefined);
+
+    return ok({
+      ...cycle,
+      questions: store
+        .all("daily_survey_questions")
+        .filter((q) => q.cycle_id === cycle.id && q.approved !== false)
+        .sort((a, b) => a.sort_order - b.sort_order),
+    });
+  },
+
+  async hasRespondedToSurvey(cycleId: string, userId?: string): Promise<boolean> {
+    return ok(
+      store
+        .all("daily_survey_responses")
+        .some((r) => r.cycle_id === cycleId && r.user_id === userId),
+    );
+  },
+
+  async submitDailySurvey(
+    cycleId: string,
+    answers: Record<string, string>,
+    userId?: string,
+  ): Promise<number> {
+    const written = Object.entries(answers)
+      .filter(([, text]) => text.trim().length > 0)
+      .map(([question_id, text]) => ({
+        cycle_id: cycleId,
+        question_id,
+        user_id: userId ?? "",
+        answer_text: text.trim(),
+        created_at: nowIso(),
+      }));
+    if (!written.length) return ok(0);
+
+    store.set("daily_survey_responses", [...store.all("daily_survey_responses"), ...written]);
+    store.set(
+      "daily_survey_cycles",
+      store
+        .all("daily_survey_cycles")
+        .map((c) =>
+          c.id === cycleId ? { ...c, respondent_count: c.respondent_count + 1 } : c,
+        ),
+    );
+    return ok(written.length);
+  },
+
+  async listDailySurveyCycles(orgId: string, days = 30): Promise<DailySurveyCycle[]> {
+    const since = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+    return ok(
+      store
+        .all("daily_survey_cycles")
+        .filter((c) => c.org_id === orgId && c.survey_date >= since)
+        .sort((a, b) => b.survey_date.localeCompare(a.survey_date)),
+    );
+  },
+
+  async getSurveyCycleQuestions(cycleId: string): Promise<DailySurveyQuestion[]> {
+    return ok(
+      store
+        .all("daily_survey_questions")
+        .filter((q) => q.cycle_id === cycleId)
+        .sort((a, b) => a.sort_order - b.sort_order),
+    );
+  },
+
+  async reviewDailySurveyQuestion(
+    questionId: string,
+    approved: boolean,
+    _actorId?: string,
+  ): Promise<void> {
+    store.set(
+      "daily_survey_questions",
+      store
+        .all("daily_survey_questions")
+        .map((q) => (q.id === questionId ? { ...q, approved } : q)),
+    );
+    return ok(undefined);
+  },
+
+  async publishDailySurveyCycle(cycleId: string): Promise<void> {
+    store.set(
+      "daily_survey_cycles",
+      store
+        .all("daily_survey_cycles")
+        .map((c) =>
+          c.id === cycleId ? { ...c, status: "live" as const, opened_at: nowIso() } : c,
+        ),
+    );
+    return ok(undefined);
+  },
+
+  async listSurveyAggregates(orgId: string, weeks = 8): Promise<SurveyAggregate[]> {
+    const since = new Date(Date.now() - weeks * 7 * 86_400_000).toISOString().slice(0, 10);
+    return ok(
+      store
+        .all("survey_aggregates")
+        .filter((a) => a.org_id === orgId && a.period_end >= since)
+        .sort((a, b) => b.period_end.localeCompare(a.period_end)),
+    );
+  },
+
+  async listMySurveyResponses(userId?: string): Promise<MySurveyResponse[]> {
+    const cycles = new Map(store.all("daily_survey_cycles").map((c) => [c.id, c]));
+    const questions = new Map(store.all("daily_survey_questions").map((q) => [q.id, q]));
+    return ok(
+      store
+        .all("daily_survey_responses")
+        .filter((r) => r.user_id === userId)
+        .map((r) => ({
+          cycle_id: r.cycle_id,
+          scope_label: cycles.get(r.cycle_id)?.scope_label ?? "Unknown",
+          survey_date: cycles.get(r.cycle_id)?.survey_date ?? r.created_at.slice(0, 10),
+          question_text: questions.get(r.question_id)?.question_text ?? "Question withdrawn",
+          answer_text: r.answer_text,
+          created_at: r.created_at,
+        }))
+        .sort((a, b) => b.created_at.localeCompare(a.created_at)),
+    );
+  },
+
+  async deleteMySurveyResponses(cycleId: string, userId?: string): Promise<number> {
+    const rows = store.all("daily_survey_responses");
+    const kept = rows.filter((r) => !(r.cycle_id === cycleId && r.user_id === userId));
+    store.set("daily_survey_responses", kept);
+    return ok(rows.length - kept.length);
+  },
+
   async listDsrRequests(orgId: string): Promise<DsrRequest[]> {
     return ok(store.all("dsr_requests").filter((d) => d.org_id === orgId));
   },
@@ -1246,11 +1463,9 @@ export interface TagContext {
 }
 
 /**
- * Can this user access this data? Two gates, both of which must pass:
- * clearance (role vs sensitivity) and tag audience (the named people on every
- * tag the item carries). Owner and requester keep need-to-know on clearance,
- * but a tag audience still applies to them — that is the point of a tag whose
- * audience is "only these 3 people".
+ * Can this user access this data? Delegates to `itemAllows` so that the
+ * "who will see this" preview in the classify dialog and the filtering done on
+ * read are the same rule, not two copies of it.
  */
 export function canAccess(
   user: User,
@@ -1259,10 +1474,11 @@ export function canAccess(
   requesterId?: string | null,
   tagContext?: TagContext
 ): boolean {
-  if (tagContext && !tagsAllow(tagContext.tagIds, tagContext.tags, user)) return false;
-  const s = sensitivity ?? "internal";
-  if (user.id === ownerId || user.id === requesterId) return true;
-  return SENSITIVITY_RANK[s] <= SENSITIVITY_RANK[clearanceFor(user.role)];
+  return itemAllows(
+    { sensitivity, tagIds: tagContext?.tagIds, ownerId, requesterId },
+    tagContext?.tags ?? [],
+    user
+  );
 }
 
 export interface GovernanceStats {

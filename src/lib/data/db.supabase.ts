@@ -11,6 +11,8 @@ import type {
   CommitmentStatusHistory,
   Connection,
   ConnectionProvider,
+  InviteSendResult,
+  OrgInvite,
   DataAccessAction,
   DataAccessLogEntry,
   Escalation,
@@ -164,36 +166,49 @@ export const supabaseDb = {
     return supabaseDb.updateUser(userId, { manager_id: managerId });
   },
 
-  async inviteUser(actor: User, email: string, role: Role, managerId: string | null): Promise<User> {
-    const { data: inv, error } = await client()
-      .from("invites")
-      .insert({
+  async inviteUser(
+    actor: User,
+    email: string,
+    role: Role,
+    managerId: string | null,
+  ): Promise<InviteSendResult> {
+    const { data, error } = await client().functions.invoke("invite", {
+      body: { action: "send", email, role, manager_id: managerId },
+    });
+    if (error) throw new Error(error.message);
+    if (data?.error) throw new Error(String(data.error));
+    const token = String(data.token ?? "");
+    const inviteUrl = String(data.invite_url ?? `${window.location.origin}/invite/${token}`);
+    return {
+      user: {
+        id: token,
         org_id: actor.org_id,
-        email: email.toLowerCase(),
+        full_name: email.split("@")[0],
+        email,
+        phone_number: null,
+        phone_verified_at: null,
         role,
         manager_id: managerId,
-        created_by: actor.id,
-      })
-      .select("*")
-      .single();
-    if (error) throw error;
-    await audit(actor.org_id, actor.id, "user.invited", "invite", inv.token, { email, role });
-    // Placeholder row shape for the UI; real users row is created on accept.
-    return {
-      id: inv.token,
-      org_id: actor.org_id,
-      full_name: email.split("@")[0],
-      email,
-      phone_number: null,
-      phone_verified_at: null,
-      role,
-      manager_id: managerId,
-      status: "invited",
-      avatar_url: null,
-      notification_prefs: { whatsapp_checkins: true, preferred_channel: "in_app" },
-      created_at: inv.created_at,
-      last_active_at: null,
+        status: "invited",
+        avatar_url: null,
+        notification_prefs: { whatsapp_checkins: true, preferred_channel: "in_app" },
+        created_at: nowIso(),
+        last_active_at: null,
+      },
+      invite_url: inviteUrl,
+      emailed: Boolean(data.emailed),
+      email_via: data.email_via ?? null,
     };
+  },
+
+  async listInvites(orgId: string): Promise<OrgInvite[]> {
+    const { data, error } = await client()
+      .from("invites")
+      .select("*")
+      .eq("org_id", orgId)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as OrgInvite[];
   },
 
   async bootstrapOrganization(name: string, fullName?: string): Promise<string> {
@@ -1130,14 +1145,19 @@ export const supabaseDb = {
     };
   },
 
-  async hasRespondedToSurvey(cycleId: string): Promise<boolean> {
+  /** userId is accepted for parity with the mock plane; here it comes from auth. */
+  async hasRespondedToSurvey(cycleId: string, _userId?: string): Promise<boolean> {
     const { data, error } = await client().rpc("survey_has_responded", { p_cycle: cycleId });
     if (error) throw error;
     return Boolean(data);
   },
 
   /** Answers are {question_id: text}. Blank entries are skipped server-side. */
-  async submitDailySurvey(cycleId: string, answers: Record<string, string>): Promise<number> {
+  async submitDailySurvey(
+    cycleId: string,
+    answers: Record<string, string>,
+    _userId?: string,
+  ): Promise<number> {
     const { data, error } = await client().rpc("submit_survey_response", {
       p_cycle: cycleId,
       p_answers: answers,
@@ -1171,12 +1191,24 @@ export const supabaseDb = {
   async reviewDailySurveyQuestion(
     questionId: string,
     approved: boolean,
-    actorId: string,
+    actorId?: string,
   ): Promise<void> {
     const { error } = await client()
       .from("survey_questions")
-      .update({ approved, approved_by_user_id: actorId, approved_at: nowIso() })
+      .update({ approved, approved_by_user_id: actorId ?? null, approved_at: nowIso() })
       .eq("id", questionId);
+    if (error) throw error;
+  },
+
+  /**
+   * Releases a reviewed cycle. send-survey picks it up on the next hourly pass
+   * and delivers it to everyone in scope at their local send hour.
+   */
+  async publishDailySurveyCycle(cycleId: string): Promise<void> {
+    const { error } = await client()
+      .from("survey_cycles")
+      .update({ status: "live", opened_at: nowIso() })
+      .eq("id", cycleId);
     if (error) throw error;
   },
 
@@ -1197,13 +1229,13 @@ export const supabaseDb = {
   },
 
   /** Transparency page: a person reads back their own answers, verbatim. */
-  async listMySurveyResponses(): Promise<MySurveyResponse[]> {
+  async listMySurveyResponses(_userId?: string): Promise<MySurveyResponse[]> {
     const { data, error } = await client().rpc("my_survey_responses");
     if (error) throw error;
     return (data ?? []) as MySurveyResponse[];
   },
 
-  async deleteMySurveyResponses(cycleId: string): Promise<number> {
+  async deleteMySurveyResponses(cycleId: string, _userId?: string): Promise<number> {
     const { data, error } = await client().rpc("delete_my_survey_responses", { p_cycle: cycleId });
     if (error) throw error;
     return Number(data ?? 0);

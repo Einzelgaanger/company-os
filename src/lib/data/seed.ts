@@ -21,6 +21,10 @@ import type {
   Report,
   SurveyAnswer,
   SurveyCycle,
+  DailySurveyCycle,
+  DailySurveyQuestion,
+  SurveyAggregate,
+  SurveyTopic,
   Tag,
   TenantHoliday,
   IngestionExclusion,
@@ -56,6 +60,21 @@ function dateOnly(daysFromNow: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/**
+ * Mock-only survey response. Production deliberately has no user_id on
+ * survey_responses — it stores an unreversible respondent_hash instead. The
+ * demo store keys by user purely so it can answer "have I already responded?"
+ * without reimplementing HMAC in the browser. Nothing reads answer_text back
+ * against a person.
+ */
+export interface DailySurveyResponseMock {
+  cycle_id: string;
+  question_id: string;
+  user_id: string;
+  answer_text: string;
+  created_at: string;
+}
+
 export interface SeedData {
   organizations: Organization[];
   users: User[];
@@ -78,6 +97,10 @@ export interface SeedData {
   milestones: Milestone[];
   survey_cycles: SurveyCycle[];
   survey_answers: SurveyAnswer[];
+  daily_survey_cycles: DailySurveyCycle[];
+  daily_survey_questions: DailySurveyQuestion[];
+  daily_survey_responses: DailySurveyResponseMock[];
+  survey_aggregates: SurveyAggregate[];
   dsr_requests: DsrRequest[];
   messaging_metrics: MessagingMetrics[];
   org_teams: OrgTeam[];
@@ -132,6 +155,7 @@ export function buildSeed(): SeedData {
       org_id: ORG,
       full_name: "Alfred Maweu",
       email: "alfred@prodg.studio",
+      department: "Leadership",
       phone_number: "+254700000001",
       phone_verified_at: iso(-39),
       role: "owner",
@@ -147,6 +171,7 @@ export function buildSeed(): SeedData {
       org_id: ORG,
       full_name: "Grace Otieno",
       email: "grace@prodg.studio",
+      department: "Operations",
       phone_number: "+254700000002",
       phone_verified_at: iso(-38),
       role: "admin",
@@ -162,6 +187,7 @@ export function buildSeed(): SeedData {
       org_id: ORG,
       full_name: "Wanjiru Kamau",
       email: "wanjiru@prodg.studio",
+      department: "Delivery",
       phone_number: "+254700000003",
       phone_verified_at: iso(-30),
       role: "manager",
@@ -177,6 +203,7 @@ export function buildSeed(): SeedData {
       org_id: ORG,
       full_name: "Kayode Adeyemi",
       email: "kayode@prodg.studio",
+      department: "Engineering",
       phone_number: "+254700000004",
       phone_verified_at: iso(-29),
       role: "member",
@@ -192,6 +219,7 @@ export function buildSeed(): SeedData {
       org_id: ORG,
       full_name: "Brian Njoroge",
       email: "brian@prodg.studio",
+      department: "Engineering",
       phone_number: "+254700000005",
       phone_verified_at: null,
       role: "member",
@@ -207,6 +235,7 @@ export function buildSeed(): SeedData {
       org_id: ORG,
       full_name: "Amina Hassan",
       email: "amina@prodg.studio",
+      department: "Operations",
       phone_number: null,
       phone_verified_at: null,
       role: "member",
@@ -916,6 +945,268 @@ export function buildSeed(): SeedData {
     },
   ];
 
+  // --- Daily scoped surveys (0012) -------------------------------------------
+  // Two live cycles on different scopes, one closed, one awaiting review. The
+  // aggregates below are what managers actually read; the raw responses exist
+  // only so the demo can show a cycle filling up.
+
+  const daily_survey_cycles: DailySurveyCycle[] = [
+    {
+      id: "dsc-vgg-today",
+      org_id: ORG,
+      scope_type: "project",
+      scope_key: "p-vgg",
+      scope_label: "VGG Data Platform",
+      survey_date: dateOnly(0),
+      theme: "Handoffs and dependency waits",
+      generation_rationale:
+        "Three commitments on this project went overdue this week and two replies mentioned waiting on another team, so today probes dependencies and blockers rather than clarity.",
+      status: "live",
+      invited_count: 7,
+      respondent_count: 4,
+      created_at: iso(0, 3),
+      opened_at: iso(0, 9),
+      closed_at: null,
+    },
+    {
+      id: "dsc-ops-today",
+      org_id: ORG,
+      scope_type: "department",
+      scope_key: "Operations",
+      scope_label: "Operations",
+      survey_date: dateOnly(0),
+      theme: "Tooling friction",
+      generation_rationale:
+        "Tooling has not been probed in 11 days and two escalations last week cited access delays.",
+      status: "live",
+      invited_count: 6,
+      respondent_count: 5,
+      created_at: iso(0, 3),
+      opened_at: iso(0, 9),
+      closed_at: null,
+    },
+    {
+      id: "dsc-org-today",
+      org_id: ORG,
+      scope_type: "org",
+      scope_key: ORG,
+      scope_label: "Whole company",
+      survey_date: dateOnly(0),
+      theme: "General performance and trajectory",
+      generation_rationale:
+        "Catch-all cycle for anyone not currently attached to a project or department cycle. These answers are what the weekly company roll-up is built from.",
+      status: "live",
+      invited_count: 9,
+      respondent_count: 6,
+      created_at: iso(0, 3),
+      opened_at: iso(0, 9),
+      closed_at: null,
+    },
+    {
+      id: "dsc-vgg-yesterday",
+      org_id: ORG,
+      scope_type: "project",
+      scope_key: "p-vgg",
+      scope_label: "VGG Data Platform",
+      survey_date: dateOnly(-1),
+      theme: "Priority clarity",
+      generation_rationale:
+        "Scope changed on Monday and no clarity signal has been collected since.",
+      status: "closed",
+      invited_count: 7,
+      respondent_count: 6,
+      created_at: iso(-1, 3),
+      opened_at: iso(-1, 9),
+      closed_at: iso(-1, 23),
+    },
+    {
+      id: "dsc-vgg-tomorrow",
+      org_id: ORG,
+      scope_type: "project",
+      scope_key: "p-vgg",
+      scope_label: "VGG Data Platform",
+      survey_date: dateOnly(1),
+      theme: "Workload sustainability",
+      generation_rationale:
+        "Commitment load per person rose 40% week over week with no corresponding change in headcount.",
+      status: "pending_review",
+      invited_count: 7,
+      respondent_count: 0,
+      created_at: iso(0, 3),
+      opened_at: null,
+      closed_at: null,
+    },
+  ];
+
+  function q(
+    cycle_id: string,
+    sort_order: number,
+    topic: SurveyTopic,
+    question_text: string,
+    probe_reason: string,
+    approved: boolean | null = true,
+  ): DailySurveyQuestion {
+    return {
+      id: `dsq-${cycle_id}-${sort_order}`,
+      cycle_id,
+      sort_order,
+      question_text,
+      topic,
+      probe_reason,
+      generated_by: "ai",
+      approved,
+    };
+  }
+
+  const daily_survey_questions: DailySurveyQuestion[] = [
+    q("dsc-vgg-today", 1, "dependencies", "What are you waiting on from another team right now, and how long has it been?", "3 commitments overdue with blocked replies"),
+    q("dsc-vgg-today", 2, "blockers", "If VGG slipped a week, what would you say caused it?", "Delivery rate trailing plan"),
+    q("dsc-vgg-today", 3, "process", "Where does work on this project sit idle waiting for a decision?", "Two commitments idle >5 days"),
+    q("dsc-vgg-today", 4, "information", "What did you need to know this week that you had to go hunting for?", "Information not probed in 9 days"),
+    q("dsc-vgg-today", 5, "resources", "What would you need to move faster that you do not have today?", "Escalations mention access delays"),
+
+    q("dsc-ops-today", 1, "tooling", "Which tool slowed you down most this week, and at what point exactly?", "Tooling last probed 11 days ago"),
+    q("dsc-ops-today", 2, "process", "What step in your routine work feels heavier than it should be?", "Process signal stale"),
+    q("dsc-ops-today", 3, "resources", "What access or permission have you had to ask for more than once?", "2 escalations cited access"),
+    q("dsc-ops-today", 4, "workload", "How does this week's volume compare with what feels sustainable?", "Workload unprobed this cycle"),
+    q("dsc-ops-today", 5, "information", "What do you wish you were told earlier this week?", "Information gap score high"),
+
+    q("dsc-org-today", 1, "clarity", "What is the most important thing for the company to get right this month?", "Company trajectory probe, asked weekly"),
+    q("dsc-org-today", 2, "blockers", "What slows work down here that has become normal?", "Standing blocker probe"),
+    q("dsc-org-today", 3, "process", "Where do you see effort being duplicated across teams?", "Duplicate-work theme recurring 3 weeks"),
+    q("dsc-org-today", 4, "information", "What do you not know about how the company is doing that you'd like to?", "Information gap score high org-wide"),
+    q("dsc-org-today", 5, "resources", "If you could add one thing to help the company perform better, what would it be?", "Open trajectory probe"),
+
+    q("dsc-vgg-yesterday", 1, "clarity", "What is the single most important thing for you to finish this week?", "Scope changed Monday"),
+    q("dsc-vgg-yesterday", 2, "clarity", "Where are you unsure who owns a piece of work?", "Ownership questions in replies"),
+    q("dsc-vgg-yesterday", 3, "blockers", "What is slowing you down that nobody has asked about?", "Standing blocker probe"),
+    q("dsc-vgg-yesterday", 4, "dependencies", "Which handoff into your work is least predictable?", "Dependency chain on VGG"),
+    q("dsc-vgg-yesterday", 5, "process", "What would you change about how this project runs?", "Open-ended process probe"),
+
+    q("dsc-vgg-tomorrow", 1, "workload", "How sustainable is your current pace over the next month?", "Load per person up 40%", null),
+    q("dsc-vgg-tomorrow", 2, "workload", "What would you drop first if you had to drop something?", "Prioritisation under load", null),
+    q("dsc-vgg-tomorrow", 3, "blockers", "What is taking longer than you expected, and why?", "Velocity below forecast", null),
+    q("dsc-vgg-tomorrow", 4, "resources", "Where is the team thinnest right now?", "Capacity signal missing", null),
+    q("dsc-vgg-tomorrow", 5, "information", "What decision are you waiting on to plan your week?", "Decision latency rising", null),
+  ];
+
+  const daily_survey_responses: DailySurveyResponseMock[] = [
+    { cycle_id: "dsc-vgg-today", question_id: "dsq-dsc-vgg-today-1", user_id: U.brian, answer_text: "Still waiting on the SharePoint migration sign-off. Eight days now.", created_at: iso(0, 10) },
+    { cycle_id: "dsc-vgg-today", question_id: "dsq-dsc-vgg-today-2", user_id: U.brian, answer_text: "Data validation is taking far longer than anyone scoped.", created_at: iso(0, 10) },
+    { cycle_id: "dsc-vgg-today", question_id: "dsq-dsc-vgg-today-1", user_id: U.amina, answer_text: "Blocked on finance approving the vendor contract.", created_at: iso(0, 11) },
+  ];
+
+  const survey_aggregates: SurveyAggregate[] = [
+    {
+      id: "sag-vgg-w1",
+      org_id: ORG,
+      scope_type: "project",
+      scope_key: "p-vgg",
+      scope_label: "VGG Data Platform",
+      period_start: dateOnly(-7),
+      period_end: dateOnly(-1),
+      respondent_count: 7,
+      response_count: 31,
+      invited_count: 7,
+      themes: [
+        { theme: "Waiting on sign-off from outside the team", mentionCount: 9, exampleParaphrase: "Several people described approvals sitting with finance or legal for over a week." },
+        { theme: "Data validation scoped too optimistically", mentionCount: 6, exampleParaphrase: "The validation step is consistently described as larger than planned." },
+        { theme: "Unclear ownership of the cutover checklist", mentionCount: 4, exampleParaphrase: "More than one person believes someone else owns the final checklist." },
+        { theme: "Environment access requested repeatedly", mentionCount: 3, exampleParaphrase: "Access requests are being re-submitted because the first request went unanswered." },
+      ],
+      questions_asked: [
+        { question: "What are you waiting on from another team right now?", topic: "dependencies", answers: 7 },
+        { question: "What is the single most important thing for you to finish this week?", topic: "clarity", answers: 7 },
+        { question: "What is slowing you down that nobody has asked about?", topic: "blockers", answers: 6 },
+        { question: "Which handoff into your work is least predictable?", topic: "dependencies", answers: 6 },
+        { question: "What would you change about how this project runs?", topic: "process", answers: 5 },
+      ],
+      sentiment_positive_pct: 21,
+      sentiment_neutral_pct: 42,
+      sentiment_negative_pct: 37,
+      created_at: iso(-1, 7),
+    },
+    {
+      id: "sag-ops-w1",
+      org_id: ORG,
+      scope_type: "department",
+      scope_key: "Operations",
+      scope_label: "Operations",
+      period_start: dateOnly(-7),
+      period_end: dateOnly(-1),
+      respondent_count: 6,
+      response_count: 24,
+      invited_count: 6,
+      themes: [
+        { theme: "Manual reconciliation between two systems", mentionCount: 8, exampleParaphrase: "The same records are being keyed twice because the systems do not talk." },
+        { theme: "Approval chains longer than the work itself", mentionCount: 5, exampleParaphrase: "Short tasks are described as waiting days for a one-line approval." },
+        { theme: "Reporting requests arriving without notice", mentionCount: 4 },
+      ],
+      questions_asked: [
+        { question: "Which tool slowed you down most this week?", topic: "tooling", answers: 6 },
+        { question: "What step in your routine work feels heavier than it should be?", topic: "process", answers: 6 },
+        { question: "What access have you had to ask for more than once?", topic: "resources", answers: 6 },
+        { question: "How does this week's volume compare with what feels sustainable?", topic: "workload", answers: 6 },
+      ],
+      sentiment_positive_pct: 29,
+      sentiment_neutral_pct: 46,
+      sentiment_negative_pct: 25,
+      created_at: iso(-1, 7),
+    },
+    {
+      id: "sag-org-w1",
+      org_id: ORG,
+      scope_type: "org",
+      scope_key: ORG,
+      scope_label: "Whole company",
+      period_start: dateOnly(-7),
+      period_end: dateOnly(-1),
+      respondent_count: 19,
+      response_count: 78,
+      invited_count: 22,
+      themes: [
+        { theme: "Cross-team approvals are the dominant source of delay", mentionCount: 17, exampleParaphrase: "Approvals outside the immediate team are the most frequently named blocker company-wide." },
+        { theme: "Duplicate manual entry across systems", mentionCount: 11 },
+        { theme: "Ownership unclear at project boundaries", mentionCount: 8 },
+        { theme: "Planning assumptions not revisited after scope change", mentionCount: 6 },
+      ],
+      questions_asked: [
+        { question: "What are you waiting on from another team right now?", topic: "dependencies", answers: 19 },
+        { question: "What is slowing you down that nobody has asked about?", topic: "blockers", answers: 18 },
+        { question: "What would you need to move faster that you do not have today?", topic: "resources", answers: 17 },
+      ],
+      sentiment_positive_pct: 26,
+      sentiment_neutral_pct: 44,
+      sentiment_negative_pct: 30,
+      created_at: iso(-1, 7),
+    },
+    {
+      id: "sag-vgg-w2",
+      org_id: ORG,
+      scope_type: "project",
+      scope_key: "p-vgg",
+      scope_label: "VGG Data Platform",
+      period_start: dateOnly(-14),
+      period_end: dateOnly(-8),
+      respondent_count: 6,
+      response_count: 27,
+      invited_count: 7,
+      themes: [
+        { theme: "Waiting on sign-off from outside the team", mentionCount: 5 },
+        { theme: "Test data does not reflect production", mentionCount: 5 },
+        { theme: "Meeting load crowding out delivery time", mentionCount: 3 },
+      ],
+      questions_asked: [
+        { question: "What are you waiting on from another team right now?", topic: "dependencies", answers: 6 },
+        { question: "Is meeting load helping or hurting delivery?", topic: "workload", answers: 6 },
+      ],
+      sentiment_positive_pct: 30,
+      sentiment_neutral_pct: 44,
+      sentiment_negative_pct: 26,
+      created_at: iso(-8, 7),
+    },
+  ];
+
   const dsr_requests: DsrRequest[] = [
     {
       id: "dsr-1",
@@ -1126,6 +1417,10 @@ export function buildSeed(): SeedData {
     milestones,
     survey_cycles,
     survey_answers,
+    daily_survey_cycles,
+    daily_survey_questions,
+    daily_survey_responses,
+    survey_aggregates,
     dsr_requests,
     messaging_metrics,
     org_teams,

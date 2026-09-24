@@ -38,6 +38,7 @@ import ReportDetail from "@/pages/app/ReportDetail";
 import ReportSettings from "@/pages/app/ReportSettings";
 import Surveys from "@/pages/app/Surveys";
 import SurveyCurrent from "@/pages/app/SurveyCurrent";
+import SurveyMine from "@/pages/app/SurveyMine";
 import SurveyReview from "@/pages/app/SurveyReview";
 import Chat from "@/pages/app/Chat";
 import Integrations from "@/pages/app/Integrations";
@@ -118,8 +119,9 @@ export default function App() {
         <Route path="/escalations" element={<Escalations />} />
         <Route path="/escalations/:id" element={<EscalationDetail />} />
         <Route path="/reports" element={<RequireRole min="manager"><Reports /></RequireRole>} />
-        <Route path="/surveys" element={<RequireRole min="admin"><Surveys /></RequireRole>} />
+        <Route path="/surveys" element={<RequireRole min="manager"><Surveys /></RequireRole>} />
         <Route path="/surveys/current" element={<SurveyCurrent />} />
+        <Route path="/surveys/mine" element={<SurveyMine />} />
         <Route path="/surveys/:id/review" element={<RequireRole min="admin"><SurveyReview /></RequireRole>} />
         <Route path="/reports/settings" element={<Navigate to="/settings/reports" replace />} />
         <Route path="/reports/:id" element={<RequireRole min="manager"><ReportDetail /></RequireRole>} />
