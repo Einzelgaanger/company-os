@@ -6,17 +6,9 @@ export type Role = "owner" | "admin" | "manager" | "member";
 export type UserStatus = "invited" | "active" | "disabled";
 export type OrgPlan = "pilot" | "starter" | "pro";
 
-export type ConnectionProvider =
-  | "gmail"
-  | "outlook"
-  | "google_calendar"
-  | "microsoft_calendar"
-  | "google_drive"
-  | "onedrive"
-  | "slack"
-  | "teams"
-  | "fathom"
-  | "whatsapp";
+/** Connector ids come from the catalog so the two cannot drift. */
+import type { ConnectionProvider } from "./providers";
+export type { ConnectionProvider };
 
 export type ConnectionStatus = "connected" | "disconnected" | "error" | "expired";
 
@@ -125,6 +117,37 @@ export function clearanceFor(role: Role): Sensitivity {
   }
 }
 
+/**
+ * Who can see data carrying a tag.
+ * - `everyone`  — anyone in the org cleared for the sensitivity
+ * - `only`      — just the named members
+ * - `except`    — everyone in the org apart from the named members
+ * - `role`      — everyone at or above `min_role`
+ */
+export type TagAudienceMode = "everyone" | "only" | "except" | "role";
+
+export interface TagAudience {
+  mode: TagAudienceMode;
+  /** Members named by `only` / `except`. Unused for `everyone` / `role`. */
+  member_ids: string[];
+  /** Floor role for `role` mode. */
+  min_role: Role;
+  /**
+   * Owners/admins keep break-glass access to data carrying this tag. Turn off
+   * for tags whose audience must hold even against org admins (e.g. HR cases
+   * an admin is the subject of). Access is written to the data access log
+   * either way.
+   */
+  admin_override: boolean;
+}
+
+export const DEFAULT_TAG_AUDIENCE: TagAudience = {
+  mode: "everyone",
+  member_ids: [],
+  min_role: "member",
+  admin_override: true,
+};
+
 export interface Tag {
   id: string;
   org_id: string;
@@ -133,6 +156,52 @@ export interface Tag {
   classification: Sensitivity; // default sensitivity this tag implies
   pii: boolean; // tag marks personally-identifiable / regulated data
   description: string | null;
+  /** Optional for backward-compat with rows written before audiences existed. */
+  audience?: TagAudience;
+  created_at: string;
+}
+
+// --- Ingestion labelling (what connected apps pull in) --------------------
+
+/** Kinds of content a connected source can hand to Company OS. */
+export type IngestionContentKind =
+  | "email"
+  | "calendar_event"
+  | "meeting"
+  | "chat_message"
+  | "file";
+
+export const INGESTION_CONTENT_LABEL: Record<IngestionContentKind, string> = {
+  email: "Emails",
+  calendar_event: "Calendar events",
+  meeting: "Meeting transcripts",
+  chat_message: "Chat messages",
+  file: "Files & documents",
+};
+
+/** How a rule decides whether an incoming item is its business. */
+export type IngestionMatchType = "all" | "keyword" | "from_domain";
+
+/**
+ * A rule that stamps a classification (and tags) onto everything a connected
+ * app pulls in. The org-wide `default_classification` applies when nothing
+ * matches; rules layer on top of it and the most restrictive match wins.
+ */
+export interface IngestionLabelRule {
+  id: string;
+  org_id: string;
+  name: string;
+  /** null = every connected source. */
+  provider: ConnectionProvider | null;
+  /** null = every kind of content from that source. */
+  content_kind: IngestionContentKind | null;
+  match_type: IngestionMatchType;
+  /** Keyword or domain for `keyword` / `from_domain`; null for `all`. */
+  match_value: string | null;
+  sensitivity: Sensitivity;
+  tag_ids: string[];
+  enabled: boolean;
+  sort_order: number;
   created_at: string;
 }
 
@@ -157,7 +226,7 @@ export interface OrgSettings {
   report_channels?: { email: boolean; in_app: boolean; whatsapp: boolean; telegram?: boolean };
   report_recipient_ids?: string[];
   // Governance
-  default_classification?: Sensitivity;
+  default_classification?: Sensitivity; // floor applied to everything connected apps pull in
   require_classification?: boolean; // block sharing/escalation of untagged data
   // Autonomy engine
   autonomy_enabled?: boolean;
@@ -183,10 +252,18 @@ export interface Organization {
   created_at: string;
 }
 
+/** Where Company OS delivers check-ins for this person (one channel, not both). */
+export type PreferredMessagingChannel = "in_app" | "telegram" | "whatsapp";
+
 export interface NotificationPrefs {
-  /** Master switch for outbound check-ins (Telegram primary, WhatsApp fallback). */
+  /** Master switch for outbound check-ins (any channel). */
   whatsapp_checkins: boolean;
   daily_digest?: boolean;
+  /**
+   * Preferred delivery channel. Default `in_app` so teams can launch without
+   * Telegram/WhatsApp. Telegram/WhatsApp only used when linked + ready.
+   */
+  preferred_channel?: PreferredMessagingChannel;
 }
 
 export interface User {

@@ -39,6 +39,7 @@ import ReportSettings from "@/pages/app/ReportSettings";
 import Surveys from "@/pages/app/Surveys";
 import SurveyCurrent from "@/pages/app/SurveyCurrent";
 import SurveyReview from "@/pages/app/SurveyReview";
+import Chat from "@/pages/app/Chat";
 import Integrations from "@/pages/app/Integrations";
 import Notifications from "@/pages/app/Notifications";
 import Governance from "@/pages/app/Governance";
@@ -101,6 +102,7 @@ export default function App() {
         <Route path="/flow" element={<Flow />} />
         <Route path="/waiting" element={<Waiting />} />
         <Route path="/my-work" element={<MyWork />} />
+        <Route path="/chat" element={<Chat />} />
         {/* 08_PAGES §8.1 — /dashboard and /inbox are gone, not renamed. */}
         <Route path="/dashboard" element={<Navigate to="/flow" replace />} />
         <Route path="/inbox" element={<Navigate to="/my-work" replace />} />

@@ -1,20 +1,23 @@
 /**
- * OAuth authorize + callback (Google Calendar / Microsoft Graph).
- * PKCE + signed state JWT. Fails with oauth_not_configured when env missing.
+ * OAuth engine for every connector in providerRegistry.ts.
+ *
+ * PKCE wherever the provider supports it, a signed single-use state JWT with a
+ * 10-minute TTL carrying tenant / user / provider / nonce, and a hard failure
+ * (`oauth_not_configured`) when client credentials are absent — never a partially
+ * working handshake (docs/design/09_CONNECTORS.md §9.2).
  */
 import { createHash, randomBytes } from "node:crypto";
 import { SignJWT, jwtVerify } from "jose";
+import {
+  connector,
+  connectorAvailability,
+  resolveUrl,
+  type ConnectorDefinition,
+  type OAuthConfig,
+} from "./providerRegistry.js";
 
-export type OAuthProvider =
-  | "google_calendar"
-  | "microsoft_calendar"
-  | "gmail"
-  | "outlook";
-
-const GOOGLE_AUTH = "https://accounts.google.com/o/oauth2/v2/auth";
-const GOOGLE_TOKEN = "https://oauth2.googleapis.com/token";
-const MS_AUTH = "https://login.microsoftonline.com";
-const MS_TOKEN_PATH = "/oauth2/v2.0/token";
+/** Any connector id. Validated against the registry, not the type system. */
+export type OAuthProvider = string;
 
 export function appBaseUrl(): string {
   return (
@@ -32,6 +35,10 @@ export function apiPublicUrl(): string {
   );
 }
 
+export function redirectUriFor(provider: string): string {
+  return `${apiPublicUrl()}/connections/${provider}/callback`;
+}
+
 function stateSecret(): Uint8Array {
   const s = process.env.JWT_ACCESS_SECRET;
   if (!s || s.length < 16) throw new Error("JWT_ACCESS_SECRET required for OAuth state");
@@ -42,22 +49,36 @@ export function oauthEnvStatus(provider: OAuthProvider): {
   configured: boolean;
   missing: string[];
 } {
-  if (provider === "gmail" || provider === "outlook") {
-    return {
-      configured: false,
-      missing: ["FEATURE_EMAIL_INGESTION must be true (email OAuth is gated)"],
-    };
+  const def = connector(provider);
+  if (!def) return { configured: false, missing: ["unknown_provider"] };
+  return connectorAvailability(def);
+}
+
+/** Registry entry plus its OAuth block, or a typed failure. */
+function oauthDef(provider: string): {
+  def: ConnectorDefinition;
+  oauth: OAuthConfig;
+} {
+  const def = connector(provider);
+  if (!def) throw new Error("unknown_provider");
+  if (def.auth !== "oauth2" || !def.oauth) throw new Error("not_an_oauth_provider");
+  const availability = connectorAvailability(def);
+  if (!availability.configured) {
+    const err = new Error("oauth_not_configured") as Error & { missing?: string[] };
+    err.missing = availability.missing;
+    throw err;
   }
-  if (provider === "google_calendar") {
-    const missing: string[] = [];
-    if (!process.env.GOOGLE_OAUTH_CLIENT_ID?.trim()) missing.push("GOOGLE_OAUTH_CLIENT_ID");
-    if (!process.env.GOOGLE_OAUTH_CLIENT_SECRET?.trim()) missing.push("GOOGLE_OAUTH_CLIENT_SECRET");
-    return { configured: missing.length === 0, missing };
-  }
-  const missing: string[] = [];
-  if (!process.env.MICROSOFT_OAUTH_CLIENT_ID?.trim()) missing.push("MICROSOFT_OAUTH_CLIENT_ID");
-  if (!process.env.MICROSOFT_OAUTH_CLIENT_SECRET?.trim()) missing.push("MICROSOFT_OAUTH_CLIENT_SECRET");
-  return { configured: missing.length === 0, missing };
+  return { def, oauth: def.oauth };
+}
+
+function clientCredentials(def: ConnectorDefinition): {
+  id: string;
+  secret: string;
+} {
+  return {
+    id: process.env[def.clientIdEnv ?? ""]?.trim() ?? "",
+    secret: process.env[def.clientSecretEnv ?? ""]?.trim() ?? "",
+  };
 }
 
 function pkcePair(): { verifier: string; challenge: string } {
@@ -71,14 +92,10 @@ export async function buildAuthorizeUrl(input: {
   tenantId: string;
   userId: string;
 }): Promise<{ authUrl: string; state: string }> {
-  const env = oauthEnvStatus(input.provider);
-  if (!env.configured) {
-    const err = new Error("oauth_not_configured") as Error & { missing?: string[] };
-    err.missing = env.missing;
-    throw err;
-  }
-
+  const { def, oauth } = oauthDef(input.provider);
+  const { id: clientId } = clientCredentials(def);
   const { verifier, challenge } = pkcePair();
+
   const state = await new SignJWT({
     tid: input.tenantId,
     uid: input.userId,
@@ -91,36 +108,23 @@ export async function buildAuthorizeUrl(input: {
     .setExpirationTime("10m")
     .sign(stateSecret());
 
-  const redirectUri = `${apiPublicUrl()}/connections/${input.provider}/callback`;
-
-  if (input.provider === "google_calendar") {
-    const params = new URLSearchParams({
-      client_id: process.env.GOOGLE_OAUTH_CLIENT_ID!,
-      redirect_uri: redirectUri,
-      response_type: "code",
-      scope: "https://www.googleapis.com/auth/calendar.readonly",
-      access_type: "offline",
-      prompt: "consent",
-      state,
-      code_challenge: challenge,
-      code_challenge_method: "S256",
-    });
-    return { authUrl: `${GOOGLE_AUTH}?${params}`, state };
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUriFor(input.provider),
+    response_type: "code",
+    state,
+  });
+  if (oauth.scopes.length > 0) params.set("scope", oauth.scopes.join(" "));
+  for (const [k, v] of Object.entries(oauth.authorizeParams ?? {})) {
+    params.set(k, resolveUrl(v, def));
+  }
+  if (oauth.pkce) {
+    params.set("code_challenge", challenge);
+    params.set("code_challenge_method", "S256");
   }
 
-  const tenant = process.env.MICROSOFT_TENANT_ID?.trim() || "common";
-  const params = new URLSearchParams({
-    client_id: process.env.MICROSOFT_OAUTH_CLIENT_ID!,
-    redirect_uri: redirectUri,
-    response_type: "code",
-    response_mode: "query",
-    scope: "offline_access Calendars.Read User.Read",
-    state,
-    code_challenge: challenge,
-    code_challenge_method: "S256",
-  });
   return {
-    authUrl: `${MS_AUTH}/${tenant}/oauth2/v2.0/authorize?${params}`,
+    authUrl: `${resolveUrl(oauth.authorizeUrl, def)}?${params}`,
     state,
   };
 }
@@ -147,7 +151,7 @@ export async function verifyOAuthState(state: string): Promise<OAuthStatePayload
     return {
       tid: payload.tid,
       uid: payload.uid,
-      provider: payload.provider as OAuthProvider,
+      provider: payload.provider,
       nonce: String(payload.nonce ?? ""),
       verifier: payload.verifier,
     };
@@ -164,103 +168,233 @@ export type TokenBundle = {
   scopes: string[];
 };
 
+type TokenResponse = {
+  access_token?: string;
+  refresh_token?: string;
+  expires_in?: number;
+  scope?: string;
+  /** Slack returns ok:false with a 200. */
+  ok?: boolean;
+  error?: string;
+  [key: string]: unknown;
+};
+
+function basicHeader(id: string, secret: string): string {
+  return `Basic ${Buffer.from(`${id}:${secret}`).toString("base64")}`;
+}
+
+/** Walks a dotted path through a JSON response; array indices are numeric keys. */
+function pick(source: unknown, path: string[] | undefined): string | null {
+  if (!path || path.length === 0) return null;
+  let node: unknown = source;
+  for (const key of path) {
+    if (node == null || typeof node !== "object") return null;
+    node = (node as Record<string, unknown>)[key];
+  }
+  return typeof node === "string" && node.trim() ? node : null;
+}
+
+async function postTokenRequest(
+  def: ConnectorDefinition,
+  oauth: OAuthConfig,
+  body: URLSearchParams,
+): Promise<TokenResponse> {
+  const { id, secret } = clientCredentials(def);
+  const headers: Record<string, string> = {
+    "Content-Type": "application/x-www-form-urlencoded",
+  };
+  if (oauth.jsonAccept) headers.Accept = "application/json";
+  if (oauth.clientAuth === "basic") {
+    headers.Authorization = basicHeader(id, secret);
+  } else {
+    body.set("client_id", id);
+    body.set("client_secret", secret);
+  }
+
+  const res = await fetch(resolveUrl(oauth.tokenUrl, def), {
+    method: "POST",
+    headers,
+    body,
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(
+      `token_exchange_failed:${def.id}:${res.status}:${text.slice(0, 200)}`,
+    );
+  }
+  let json: TokenResponse;
+  try {
+    json = JSON.parse(text) as TokenResponse;
+  } catch {
+    // Some providers answer form-encoded unless asked for JSON.
+    json = Object.fromEntries(new URLSearchParams(text)) as TokenResponse;
+  }
+  if (json.ok === false) {
+    throw new Error(`token_exchange_failed:${def.id}:${json.error ?? "provider_error"}`);
+  }
+  if (!json.access_token) {
+    throw new Error(`token_exchange_failed:${def.id}:no_access_token`);
+  }
+  return json;
+}
+
+/** Identity probe is best effort — a connection is still valid without a label. */
+async function resolveAccountLabel(
+  def: ConnectorDefinition,
+  oauth: OAuthConfig,
+  accessToken: string,
+  tokenResponse: TokenResponse,
+): Promise<string | null> {
+  const fromToken = pick(tokenResponse, oauth.identityFromToken);
+  if (fromToken) return fromToken;
+  if (!oauth.identityUrl) return null;
+  try {
+    const res = await fetch(resolveUrl(oauth.identityUrl, def), {
+      headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as unknown;
+    return (
+      pick(json, oauth.identityPath) ??
+      pick(json, ["email"]) ??
+      pick(json, ["userPrincipalName"]) ??
+      null
+    );
+  } catch {
+    return null;
+  }
+}
+
+function toBundle(
+  json: TokenResponse,
+  oauth: OAuthConfig,
+  externalAccount: string | null,
+  previousRefresh: string | null = null,
+): TokenBundle {
+  return {
+    accessToken: json.access_token!,
+    refreshToken: json.refresh_token ?? previousRefresh,
+    expiresAt: json.expires_in
+      ? new Date(Date.now() + json.expires_in * 1000).toISOString()
+      : null,
+    externalAccount,
+    scopes: (json.scope ?? oauth.scopes.join(" ")).split(" ").filter(Boolean),
+  };
+}
+
 export async function exchangeAuthorizationCode(input: {
   provider: OAuthProvider;
   code: string;
   verifier: string;
 }): Promise<TokenBundle> {
-  const redirectUri = `${apiPublicUrl()}/connections/${input.provider}/callback`;
-
-  if (input.provider === "google_calendar") {
-    const body = new URLSearchParams({
-      client_id: process.env.GOOGLE_OAUTH_CLIENT_ID!,
-      client_secret: process.env.GOOGLE_OAUTH_CLIENT_SECRET!,
-      code: input.code,
-      grant_type: "authorization_code",
-      redirect_uri: redirectUri,
-      code_verifier: input.verifier,
-    });
-    const res = await fetch(GOOGLE_TOKEN, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body,
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`google_token_exchange_failed:${res.status}:${text.slice(0, 200)}`);
-    }
-    const json = (await res.json()) as {
-      access_token: string;
-      refresh_token?: string;
-      expires_in?: number;
-      scope?: string;
-    };
-    let email: string | null = null;
-    try {
-      const ui = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
-        headers: { Authorization: `Bearer ${json.access_token}` },
-      });
-      if (ui.ok) {
-        const u = (await ui.json()) as { email?: string };
-        email = u.email ?? null;
-      }
-    } catch {
-      /* optional */
-    }
-    return {
-      accessToken: json.access_token,
-      refreshToken: json.refresh_token ?? null,
-      expiresAt: json.expires_in
-        ? new Date(Date.now() + json.expires_in * 1000).toISOString()
-        : null,
-      externalAccount: email,
-      scopes: (json.scope ?? "").split(" ").filter(Boolean),
-    };
-  }
-
-  const tenant = process.env.MICROSOFT_TENANT_ID?.trim() || "common";
+  const { def, oauth } = oauthDef(input.provider);
   const body = new URLSearchParams({
-    client_id: process.env.MICROSOFT_OAUTH_CLIENT_ID!,
-    client_secret: process.env.MICROSOFT_OAUTH_CLIENT_SECRET!,
-    code: input.code,
     grant_type: "authorization_code",
-    redirect_uri: redirectUri,
-    code_verifier: input.verifier,
+    code: input.code,
+    redirect_uri: redirectUriFor(input.provider),
   });
-  const res = await fetch(`${MS_AUTH}/${tenant}${MS_TOKEN_PATH}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
+  if (oauth.pkce) body.set("code_verifier", input.verifier);
+
+  const json = await postTokenRequest(def, oauth, body);
+  const account = await resolveAccountLabel(def, oauth, json.access_token!, json);
+  return toBundle(json, oauth, account);
+}
+
+/**
+ * Proactive refresh (housekeeping runs at 75% of token lifetime). Never called
+ * lazily on failure — a dead connector must surface, not retry silently.
+ */
+export async function refreshAccessToken(input: {
+  provider: OAuthProvider;
+  refreshToken: string;
+}): Promise<TokenBundle> {
+  const { def, oauth } = oauthDef(input.provider);
+  const body = new URLSearchParams({
+    grant_type: "refresh_token",
+    refresh_token: input.refreshToken,
   });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`microsoft_token_exchange_failed:${res.status}:${text.slice(0, 200)}`);
+  if (oauth.scopeOnRefresh && oauth.scopes.length > 0) {
+    body.set("scope", oauth.scopes.join(" "));
   }
-  const json = (await res.json()) as {
-    access_token: string;
-    refresh_token?: string;
-    expires_in?: number;
-    scope?: string;
-  };
-  let email: string | null = null;
+  const json = await postTokenRequest(def, oauth, body);
+  const account = await resolveAccountLabel(def, oauth, json.access_token!, json);
+  return toBundle(json, oauth, account, input.refreshToken);
+}
+
+/** Best-effort upstream revoke before the local row is cleared. */
+export async function revokeAccessToken(input: {
+  provider: OAuthProvider;
+  accessToken: string;
+}): Promise<boolean> {
+  let def: ConnectorDefinition;
+  let oauth: OAuthConfig;
   try {
-    const me = await fetch("https://graph.microsoft.com/v1.0/me", {
-      headers: { Authorization: `Bearer ${json.access_token}` },
-    });
-    if (me.ok) {
-      const u = (await me.json()) as { mail?: string; userPrincipalName?: string };
-      email = u.mail ?? u.userPrincipalName ?? null;
-    }
+    ({ def, oauth } = oauthDef(input.provider));
   } catch {
-    /* optional */
+    return false;
   }
-  return {
-    accessToken: json.access_token,
-    refreshToken: json.refresh_token ?? null,
-    expiresAt: json.expires_in
-      ? new Date(Date.now() + json.expires_in * 1000).toISOString()
-      : null,
-    externalAccount: email,
-    scopes: (json.scope ?? "").split(" ").filter(Boolean),
-  };
+  if (!oauth.revokeUrl) return false;
+  const { id, secret } = clientCredentials(def);
+  try {
+    const res = await fetch(resolveUrl(oauth.revokeUrl, def), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: basicHeader(id, secret),
+      },
+      body: new URLSearchParams({ token: input.accessToken }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+export type ApiKeyProbeResult = {
+  ok: boolean;
+  account: string | null;
+  /** Provider-side reason when ok is false. Safe to show an admin. */
+  detail?: string;
+};
+
+/**
+ * Validates a pasted credential before it is stored, so a typo fails at paste
+ * time instead of silently producing an empty connector.
+ * Composite credentials ("id:secret") are split for Basic auth.
+ */
+export async function probeApiKey(
+  provider: OAuthProvider,
+  credential: string,
+): Promise<ApiKeyProbeResult> {
+  const def = connector(provider);
+  if (!def || def.auth !== "api_key" || !def.apiKey) {
+    return { ok: false, account: null, detail: "not_an_api_key_provider" };
+  }
+  const cfg = def.apiKey;
+  if (cfg.probeAuth === "none" || !cfg.probeUrl) {
+    // No cheap read endpoint — accept the credential and let the first sync judge.
+    return { ok: true, account: null };
+  }
+
+  const url = cfg.probeUrl.replaceAll("{credential}", encodeURIComponent(credential));
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (cfg.probeAuth === "bearer") headers.Authorization = `Bearer ${credential}`;
+  if (cfg.probeAuth === "basic") {
+    const [user, pass = ""] = credential.split(":");
+    headers.Authorization = basicHeader(user, pass);
+  }
+  if (cfg.probeAuth === "header" && cfg.probeHeader) {
+    headers[cfg.probeHeader] = credential;
+  }
+
+  try {
+    const res = await fetch(url, { headers });
+    if (!res.ok) {
+      return { ok: false, account: null, detail: `provider_status_${res.status}` };
+    }
+    const json = (await res.json().catch(() => null)) as unknown;
+    return { ok: true, account: pick(json, cfg.identityPath) };
+  } catch {
+    return { ok: false, account: null, detail: "provider_unreachable" };
+  }
 }

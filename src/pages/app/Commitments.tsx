@@ -43,12 +43,13 @@ export default function Commitments() {
     setLoading(true);
     setError(false);
     try {
-      const [all, allUsers, allProjects] = await Promise.all([
+      const [all, allUsers, allProjects, allTags] = await Promise.all([
         db.listCommitments(user.org_id),
         db.listUsers(user.org_id),
         db.listProjects(user.org_id),
+        db.listTags(user.org_id),
       ]);
-      setCommitments(visibleCommitments(user, all, allUsers));
+      setCommitments(visibleCommitments(user, all, allUsers, allTags));
       setUsers(allUsers);
       setProjects(allProjects);
     } catch {

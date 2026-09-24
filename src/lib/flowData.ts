@@ -36,13 +36,14 @@ export function defaultScopeFor(role: Role): FlowScope {
 }
 
 async function mockInput(user: User, scope: FlowScope) {
-  const [allCommitments, users, projects] = await Promise.all([
+  const [allCommitments, users, projects, tags] = await Promise.all([
     db.listCommitments(user.org_id),
     db.listUsers(user.org_id),
     db.listProjects(user.org_id),
+    db.listTags(user.org_id),
   ]);
 
-  const visible = visibleCommitments(user, allCommitments, users);
+  const visible = visibleCommitments(user, allCommitments, users, tags);
   return {
     commitments: scopeFilter(visible, users, user, scope),
     users,

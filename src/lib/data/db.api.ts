@@ -43,7 +43,7 @@ function mapUser(u: {
     phone_number: null,
     phone_verified_at: null,
     avatar_url: null,
-    notification_prefs: { whatsapp_checkins: true },
+    notification_prefs: { whatsapp_checkins: true, preferred_channel: "in_app" },
     created_at: new Date().toISOString(),
     last_active_at: null,
   };

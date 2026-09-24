@@ -9,6 +9,7 @@ import { createHash, randomBytes } from "node:crypto";
 const {
   projects,
   connections,
+  connectionEvents,
   reports,
   tenantHolidays,
   ingestionExclusions,
@@ -73,22 +74,52 @@ export async function pgEnsurePilotProjects(tenantId: string): Promise<void> {
 
 // ── Connections ────────────────────────────────────────────────────────────
 
+/** Serializer shared by every connection read — tokens and keys stay in the row. */
+function publicConnection(c: {
+  id: string;
+  tenantId: string;
+  userId: string | null;
+  provider: string;
+  status: string;
+  lastSyncedAt: Date | null;
+  externalAccount: string | null;
+  scopes: string[] | null;
+  instance?: string | null;
+  webhookId?: string | null;
+  lastError?: string | null;
+}) {
+  return {
+    id: c.id,
+    tenantId: c.tenantId,
+    userId: c.userId,
+    provider: c.provider,
+    status: c.status as "connected" | "error" | "expired" | "disconnected",
+    lastSyncedAt: iso(c.lastSyncedAt),
+    externalAccountEmail: c.externalAccount,
+    scopes: c.scopes ?? [],
+    instance: c.instance ?? null,
+    webhookId: c.webhookId ?? null,
+    lastError: c.lastError ?? null,
+  };
+}
+
 export async function pgListConnections(tenantId: string) {
   return withTenantContext(tenantId, async (db) => {
     const rows = await db
       .select()
       .from(connections)
       .where(eq(connections.tenantId, tenantId));
-    return rows.map((c) => ({
-      id: c.id,
-      tenantId: c.tenantId,
-      userId: c.userId,
-      provider: c.provider,
-      status: c.status as "connected" | "error" | "expired" | "disconnected",
-      lastSyncedAt: iso(c.lastSyncedAt),
-      externalAccountEmail: c.externalAccount,
-      scopes: c.scopes ?? [],
-    }));
+    return rows.map(publicConnection);
+  });
+}
+
+export async function pgGetConnection(tenantId: string, id: string) {
+  return withTenantContext(tenantId, async (db) => {
+    const [row] = await db
+      .select()
+      .from(connections)
+      .where(and(eq(connections.tenantId, tenantId), eq(connections.id, id)));
+    return row ? publicConnection(row) : undefined;
   });
 }
 
@@ -100,8 +131,13 @@ export async function pgUpsertConnection(input: {
   externalAccountEmail: string | null;
   accessTokenEnc?: string | null;
   refreshTokenEnc?: string | null;
+  apiKeyEnc?: string | null;
   tokenExpiresAt?: string | null;
   scopes?: string[];
+  instance?: string | null;
+  webhookId?: string | null;
+  webhookSecretEnc?: string | null;
+  lastError?: string | null;
 }) {
   return withTenantContext(input.tenantId, async (db) => {
     const existing = await db
@@ -114,12 +150,12 @@ export async function pgUpsertConnection(input: {
         ),
       );
     const match = existing.find((c) => (c.userId ?? null) === (input.userId ?? null));
-    const encAccess = input.accessTokenEnc
-      ? Buffer.from(input.accessTokenEnc, "utf8")
-      : null;
-    const encRefresh = input.refreshTokenEnc
-      ? Buffer.from(input.refreshTokenEnc, "utf8")
-      : null;
+    const buf = (value?: string | null) =>
+      value ? Buffer.from(value, "utf8") : null;
+    const encAccess = buf(input.accessTokenEnc);
+    const encRefresh = buf(input.refreshTokenEnc);
+    const encApiKey = buf(input.apiKeyEnc);
+    const encWebhookSecret = buf(input.webhookSecretEnc);
     if (match) {
       const [row] = await db
         .update(connections)
@@ -128,23 +164,20 @@ export async function pgUpsertConnection(input: {
           externalAccount: input.externalAccountEmail,
           accessTokenEnc: encAccess ?? match.accessTokenEnc,
           refreshTokenEnc: encRefresh ?? match.refreshTokenEnc,
+          apiKeyEnc: encApiKey ?? match.apiKeyEnc,
           tokenExpiresAt: input.tokenExpiresAt ? new Date(input.tokenExpiresAt) : null,
           scopes: input.scopes ?? match.scopes,
+          instance: input.instance ?? match.instance,
+          webhookId: input.webhookId ?? match.webhookId,
+          webhookSecretEnc: encWebhookSecret ?? match.webhookSecretEnc,
+          lastError: input.lastError ?? null,
+          lastErrorAt: input.lastError ? new Date() : null,
           connectedAt: input.status === "connected" ? new Date() : match.connectedAt,
           lastSyncedAt: new Date(),
         })
         .where(eq(connections.id, match.id))
         .returning();
-      return {
-        id: row!.id,
-        tenantId: row!.tenantId,
-        userId: row!.userId,
-        provider: row!.provider,
-        status: row!.status as "connected" | "error" | "expired" | "disconnected",
-        lastSyncedAt: iso(row!.lastSyncedAt),
-        externalAccountEmail: row!.externalAccount,
-        scopes: row!.scopes ?? [],
-      };
+      return publicConnection(row!);
     }
     const [row] = await db
       .insert(connections)
@@ -156,22 +189,64 @@ export async function pgUpsertConnection(input: {
         externalAccount: input.externalAccountEmail,
         accessTokenEnc: encAccess,
         refreshTokenEnc: encRefresh,
+        apiKeyEnc: encApiKey,
         tokenExpiresAt: input.tokenExpiresAt ? new Date(input.tokenExpiresAt) : null,
         scopes: input.scopes ?? [],
+        instance: input.instance ?? null,
+        webhookId: input.webhookId ?? null,
+        webhookSecretEnc: encWebhookSecret,
+        lastError: input.lastError ?? null,
+        lastErrorAt: input.lastError ? new Date() : null,
         connectedAt: input.status === "connected" ? new Date() : null,
         lastSyncedAt: new Date(),
       })
       .returning();
-    return {
-      id: row!.id,
-      tenantId: row!.tenantId,
-      userId: row!.userId,
-      provider: row!.provider,
-      status: row!.status as "connected" | "error" | "expired" | "disconnected",
-      lastSyncedAt: iso(row!.lastSyncedAt),
-      externalAccountEmail: row!.externalAccount,
-      scopes: row!.scopes ?? [],
-    };
+    return publicConnection(row!);
+  });
+}
+
+export async function pgRecordConnectionEvent(input: {
+  tenantId: string;
+  connectionId?: string | null;
+  provider: string;
+  event: string;
+  actorUserId?: string | null;
+  detail?: string | null;
+}) {
+  return withTenantContext(input.tenantId, async (db) => {
+    const [row] = await db
+      .insert(connectionEvents)
+      .values({
+        tenantId: input.tenantId,
+        connectionId: input.connectionId ?? null,
+        provider: input.provider,
+        event: input.event,
+        actorUserId: input.actorUserId ?? null,
+        detail: input.detail ?? null,
+      })
+      .returning();
+    return row!;
+  });
+}
+
+export async function pgListConnectionEvents(tenantId: string, limit = 50) {
+  return withTenantContext(tenantId, async (db) => {
+    const rows = await db
+      .select()
+      .from(connectionEvents)
+      .where(eq(connectionEvents.tenantId, tenantId))
+      .orderBy(desc(connectionEvents.createdAt))
+      .limit(limit);
+    return rows.map((e) => ({
+      id: e.id,
+      tenantId: e.tenantId,
+      connectionId: e.connectionId,
+      provider: e.provider,
+      event: e.event,
+      actorUserId: e.actorUserId,
+      detail: e.detail,
+      createdAt: iso(e.createdAt) ?? new Date().toISOString(),
+    }));
   });
 }
 
@@ -183,6 +258,8 @@ export async function pgDisconnectConnection(tenantId: string, id: string): Prom
         status: "disconnected",
         accessTokenEnc: null,
         refreshTokenEnc: null,
+        apiKeyEnc: null,
+        webhookSecretEnc: null,
       })
       .where(and(eq(connections.id, id), eq(connections.tenantId, tenantId)))
       .returning();

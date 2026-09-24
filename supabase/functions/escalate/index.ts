@@ -6,6 +6,8 @@
 import { adminClient, json, corsHeaders, audit } from "../_shared/supabase.ts";
 import { sendOutbound } from "../_shared/whatsapp.ts";
 import { templates } from "../_shared/templates.ts";
+import { sendTemplatedEmail, emailTemplates } from "../_shared/emailer.ts";
+import { scoreUrgency } from "../_shared/escalationUrgency.ts";
 
 const SENS_RANK: Record<string, number> = { public: 0, internal: 1, confidential: 2, restricted: 3 };
 const clearanceRank = (role: string) => (role === "owner" || role === "admin" ? 3 : role === "manager" ? 2 : 1);
@@ -90,6 +92,40 @@ async function escalateOne(db: any, commitment_id: string, reason: string): Prom
     target.sla
   );
 
+  // Repeats count every prior escalation on this commitment, including closed
+  // ones — a commitment that keeps coming back is the strongest signal that the
+  // ladder is not resolving it.
+  const { count: priorCount } = await db
+    .from("escalations")
+    .select("id", { count: "exact", head: true })
+    .eq("commitment_id", commitment_id);
+  const repeatCount = (priorCount ?? 0) + 1;
+
+  const { count: dependentCount } = await db
+    .from("commitment_dependencies")
+    .select("id", { count: "exact", head: true })
+    .eq("blocked_by_id", commitment_id);
+
+  const { data: project } = commitment.project_id
+    ? await db.from("projects").select("health").eq("id", commitment.project_id).maybeSingle()
+    : { data: null };
+
+  const createdAt = new Date().toISOString();
+  const dueBy = new Date(Date.now() + target.sla * 3_600_000).toISOString();
+
+  const urgency = scoreUrgency({
+    createdAt,
+    dueBy,
+    slaHours: target.sla,
+    commitmentPriority: commitment.priority,
+    commitmentDueDate: commitment.due_date,
+    repeatCount,
+    dependentCount: dependentCount ?? 0,
+    projectHealth: project?.health ?? null,
+    sensitivity: commitment.sensitivity,
+    acknowledged: false,
+  });
+
   const { data: escalation } = await db
     .from("escalations")
     .insert({
@@ -99,6 +135,14 @@ async function escalateOne(db: any, commitment_id: string, reason: string): Prom
       reason,
       context_snapshot: snapshot,
       status: "open",
+      project_id: commitment.project_id ?? null,
+      sla_hours: target.sla,
+      due_by: dueBy,
+      repeat_count: repeatCount,
+      urgency_score: urgency.score,
+      urgency_band: urgency.band,
+      urgency_rationale: urgency.rationale,
+      urgency_computed_at: createdAt,
     })
     .select("id")
     .single();
@@ -124,14 +168,37 @@ async function escalateOne(db: any, commitment_id: string, reason: string): Prom
         blocker_text: reason,
       }),
     );
+
+    const mail = emailTemplates.escalation_assigned({
+      recipient: target_user,
+      commitmentTitle: commitment.title,
+      ownerName: owner?.full_name ?? commitment.owner_external_name ?? "the owner",
+      requesterName: requester?.full_name ?? "the requester",
+      dueDate: commitment.due_date ?? "unscheduled",
+      blocker: reason,
+      urgencyBand: urgency.band,
+      urgencyRationale: urgency.rationale,
+      escalationId: escalation.id,
+    });
+    await sendTemplatedEmail(db, {
+      orgId: commitment.org_id,
+      to: target_user,
+      category: "escalation",
+      template: "escalation_assigned",
+      subject: mail.subject,
+      html: mail.html,
+      relatedType: "escalation",
+      relatedId: escalation.id,
+      idempotencyKey: `escalation_assigned:${escalation.id}`,
+    });
   }
 
   await db.from("notifications").insert({
     org_id: commitment.org_id,
     user_id: target.id,
     kind: "escalation",
-    title: "Escalation assigned to you",
-    body: `${commitment.title} needs your help to unblock.`,
+    title: `Escalation assigned to you — ${urgency.band}`,
+    body: `${commitment.title} needs your help to unblock. ${urgency.rationale}.`,
     link: `/escalations/${escalation.id}`,
   });
 

@@ -23,10 +23,13 @@ import type {
   Role,
   Sensitivity,
   StatusHistoryChannel,
+  IngestionLabelRule,
   Tag,
+  TagAudienceMode,
   User,
 } from "../types";
-import { SENSITIVITY_RANK } from "../types";
+import { DEFAULT_TAG_AUDIENCE, SENSITIVITY_RANK } from "../types";
+import { labelIngestedItem, type IngestedItem, type LabelDecision } from "../ingestionPolicy";
 
 function client() {
   if (!supabase) throw new Error("Supabase is not configured.");
@@ -49,6 +52,39 @@ async function audit(
     target_id: targetId,
     metadata,
   });
+}
+
+// Tag audiences live in flat columns so Postgres RLS can evaluate them; the app
+// works with the nested `audience` object.
+interface TagRow extends Omit<Tag, "audience"> {
+  audience_mode?: TagAudienceMode | null;
+  audience_member_ids?: string[] | null;
+  audience_min_role?: Role | null;
+  audience_admin_override?: boolean | null;
+}
+
+function rowToTag(row: TagRow): Tag {
+  return {
+    ...(row as Omit<Tag, "audience">),
+    audience: {
+      mode: row.audience_mode ?? DEFAULT_TAG_AUDIENCE.mode,
+      member_ids: row.audience_member_ids ?? [],
+      min_role: row.audience_min_role ?? DEFAULT_TAG_AUDIENCE.min_role,
+      admin_override: row.audience_admin_override ?? DEFAULT_TAG_AUDIENCE.admin_override,
+    },
+  };
+}
+
+function tagToRow(tag: Partial<Tag>): Record<string, unknown> {
+  const { audience, ...rest } = tag;
+  if (!audience) return rest;
+  return {
+    ...rest,
+    audience_mode: audience.mode,
+    audience_member_ids: audience.member_ids,
+    audience_min_role: audience.min_role,
+    audience_admin_override: audience.admin_override,
+  };
 }
 
 async function notify(n: Omit<AppNotification, "id" | "created_at" | "read_at">) {
@@ -144,7 +180,7 @@ export const supabaseDb = {
       manager_id: managerId,
       status: "invited",
       avatar_url: null,
-      notification_prefs: { whatsapp_checkins: true },
+      notification_prefs: { whatsapp_checkins: true, preferred_channel: "in_app" },
       created_at: inv.created_at,
       last_active_at: null,
     };
@@ -434,9 +470,44 @@ export const supabaseDb = {
       .from("checkins")
       .select("*")
       .eq("user_id", userId)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: true });
     if (error) throw error;
     return (data ?? []) as Checkin[];
+  },
+
+  /**
+   * In-app Chat reply — runs Edge classify/escalate (same as Telegram/WhatsApp).
+   * Falls back to a local inbound checkin if the function is unavailable.
+   */
+  async sendChatMessage(
+    actor: User,
+    text: string,
+    opts: { commitmentId?: string | null; targetUserId?: string } = {},
+  ): Promise<Checkin> {
+    const targetUserId = opts.targetUserId ?? actor.id;
+    const { data: fnData, error: fnError } = await client().functions.invoke("chat-inbound", {
+      body: {
+        message_text: text,
+        commitment_id: opts.commitmentId ?? null,
+        target_user_id: targetUserId,
+      },
+    });
+    if (!fnError && fnData && (fnData as { ok?: boolean }).ok !== false) {
+      const rows = await supabaseDb.listCheckinsForUser(targetUserId);
+      const last = [...rows].reverse().find((c) => c.direction === "inbound" && c.message_text === text);
+      if (last) return last;
+    }
+    return supabaseDb.createInboundCheckin({
+      org_id: actor.org_id,
+      user_id: targetUserId,
+      commitment_id: opts.commitmentId ?? null,
+      direction: "inbound",
+      channel: "in_app",
+      message_type: "progress_ping",
+      message_text: text,
+      parsed_status: null,
+      parsed_blocker: null,
+    });
   },
 
   async sendCheckin(actor: User, targetUserId: string, commitmentId: string | null, text: string) {
@@ -668,25 +739,121 @@ export const supabaseDb = {
   async listTags(orgId: string): Promise<Tag[]> {
     const { data, error } = await client().from("tags").select("*").eq("org_id", orgId);
     if (error) throw error;
-    return (data ?? []) as Tag[];
+    return (data ?? []).map(rowToTag);
   },
 
   async createTag(input: Omit<Tag, "id" | "created_at">): Promise<Tag> {
-    const { data, error } = await client().from("tags").insert(input).select("*").single();
+    const { data, error } = await client().from("tags").insert(tagToRow(input)).select("*").single();
     if (error) throw error;
-    await audit(data.org_id, "system", "tag.created", "tag", data.id, { name: data.name });
-    return data as Tag;
+    await audit(data.org_id, "system", "tag.created", "tag", data.id, {
+      name: data.name,
+      audience: input.audience ?? DEFAULT_TAG_AUDIENCE,
+    });
+    return rowToTag(data);
   },
 
-  async updateTag(id: string, patch: Partial<Tag>): Promise<Tag> {
-    const { data, error } = await client().from("tags").update(patch).eq("id", id).select("*").single();
+  async updateTag(id: string, patch: Partial<Tag>, actor?: User): Promise<Tag> {
+    const { data: before } = await client().from("tags").select("*").eq("id", id).maybeSingle();
+    const { data, error } = await client()
+      .from("tags")
+      .update(tagToRow(patch))
+      .eq("id", id)
+      .select("*")
+      .single();
     if (error) throw error;
-    return data as Tag;
+    const tag = rowToTag(data);
+    if (patch.audience) {
+      await audit(tag.org_id, actor?.id ?? "system", "tag.audience_changed", "tag", id, {
+        name: tag.name,
+        from: before ? rowToTag(before).audience : null,
+        to: patch.audience,
+      });
+    } else {
+      await audit(tag.org_id, actor?.id ?? "system", "tag.updated", "tag", id, { name: tag.name });
+    }
+    return tag;
   },
 
   async deleteTag(id: string): Promise<void> {
     const { error } = await client().from("tags").delete().eq("id", id);
     if (error) throw error;
+  },
+
+  // --- Governance: ingestion labelling -------------------------------------
+
+  async listIngestionRules(orgId: string): Promise<IngestionLabelRule[]> {
+    const { data, error } = await client()
+      .from("ingestion_label_rules")
+      .select("*")
+      .eq("org_id", orgId)
+      .order("sort_order", { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as IngestionLabelRule[];
+  },
+
+  async createIngestionRule(
+    actor: User,
+    input: Omit<IngestionLabelRule, "id" | "created_at" | "sort_order"> & { sort_order?: number },
+  ): Promise<IngestionLabelRule> {
+    const { data: last } = await client()
+      .from("ingestion_label_rules")
+      .select("sort_order")
+      .eq("org_id", input.org_id)
+      .order("sort_order", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const { data, error } = await client()
+      .from("ingestion_label_rules")
+      .insert({ ...input, sort_order: input.sort_order ?? ((last?.sort_order ?? 0) + 10) })
+      .select("*")
+      .single();
+    if (error) throw error;
+    await audit(data.org_id, actor.id, "ingestion_rule.created", "ingestion_label_rule", data.id, {
+      name: data.name,
+      sensitivity: data.sensitivity,
+    });
+    return data as IngestionLabelRule;
+  },
+
+  async updateIngestionRule(
+    actor: User,
+    id: string,
+    patch: Partial<IngestionLabelRule>,
+  ): Promise<IngestionLabelRule> {
+    const { data, error } = await client()
+      .from("ingestion_label_rules")
+      .update(patch)
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) throw error;
+    await audit(data.org_id, actor.id, "ingestion_rule.updated", "ingestion_label_rule", id, {
+      name: data.name,
+    });
+    return data as IngestionLabelRule;
+  },
+
+  async deleteIngestionRule(actor: User, id: string): Promise<void> {
+    const { data: rule } = await client()
+      .from("ingestion_label_rules")
+      .select("org_id,name")
+      .eq("id", id)
+      .maybeSingle();
+    const { error } = await client().from("ingestion_label_rules").delete().eq("id", id);
+    if (error) throw error;
+    if (rule) {
+      await audit(rule.org_id, actor.id, "ingestion_rule.deleted", "ingestion_label_rule", id, {
+        name: rule.name,
+      });
+    }
+  },
+
+  async previewIngestionLabel(orgId: string, item: IngestedItem): Promise<LabelDecision> {
+    const [org, rules] = await Promise.all([
+      supabaseDb.getOrg(orgId),
+      supabaseDb.listIngestionRules(orgId),
+    ]);
+    return labelIngestedItem(item, rules, org?.settings.default_classification ?? "internal");
   },
 
   async classifyCommitment(

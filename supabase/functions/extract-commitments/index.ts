@@ -140,7 +140,15 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
     const body = await req.json();
-    const { org_id, text, source_type = "meeting", source_meeting_id = null } = body;
+    const {
+      org_id,
+      text,
+      source_type = "meeting",
+      source_meeting_id = null,
+      // Resolved upstream by _shared/projectRouting.ts so everything extracted
+      // from one meeting lands on the same project.
+      project_id = null,
+    } = body;
     if (!org_id || !text) return json({ error: "org_id and text required" }, 400);
 
     const db = adminClient();
@@ -205,6 +213,7 @@ Deno.serve(async (req) => {
         .from("commitments")
         .insert({
           org_id,
+          project_id,
           title: it.title.trim(),
           description: it.description ?? null,
           owner_id,

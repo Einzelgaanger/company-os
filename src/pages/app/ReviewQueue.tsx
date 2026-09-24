@@ -72,12 +72,13 @@ export default function ReviewQueue() {
         setUsers([]);
         setSource("api");
       } else {
-        const [queue, allUsers, allC] = await Promise.all([
+        const [queue, allUsers, allC, allTags] = await Promise.all([
           db.listReviewQueue(user.org_id),
           db.listUsers(user.org_id),
           db.listCommitments(user.org_id),
+          db.listTags(user.org_id),
         ]);
-        setItems(visibleCommitments(user, queue, allUsers));
+        setItems(visibleCommitments(user, queue, allUsers, allTags));
         setUsers(allUsers);
         setStale(
           allC

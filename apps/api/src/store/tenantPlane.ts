@@ -24,6 +24,15 @@ export async function listConnectionsPlane(tenantId: string) {
   return m.pgListConnections(tenantId);
 }
 
+export async function getConnectionPlane(tenantId: string, id: string) {
+  if (!isPg()) {
+    const row = mem.getConnection(tenantId, id);
+    return row ? mem.serializeConnection(row) : undefined;
+  }
+  const m = await pg();
+  return m.pgGetConnection(tenantId, id);
+}
+
 export async function upsertConnectionPlane(
   input: Parameters<typeof mem.upsertConnection>[0],
 ) {
@@ -36,6 +45,20 @@ export async function disconnectConnectionPlane(tenantId: string, id: string) {
   if (!isPg()) return mem.disconnectConnection(tenantId, id);
   const m = await pg();
   return m.pgDisconnectConnection(tenantId, id);
+}
+
+export async function recordConnectionEventPlane(
+  input: Parameters<typeof mem.recordConnectionEvent>[0],
+) {
+  if (!isPg()) return mem.recordConnectionEvent(input);
+  const m = await pg();
+  return m.pgRecordConnectionEvent(input);
+}
+
+export async function listConnectionEventsPlane(tenantId: string, limit = 50) {
+  if (!isPg()) return mem.listConnectionEvents(tenantId, limit);
+  const m = await pg();
+  return m.pgListConnectionEvents(tenantId, limit);
 }
 
 export async function listReportsPlane(tenantId: string) {

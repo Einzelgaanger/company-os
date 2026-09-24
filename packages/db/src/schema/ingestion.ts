@@ -32,10 +32,36 @@ export const connections = pgTable("connections", {
   externalAccount: text("external_account"),
   accessTokenEnc: bytea("access_token_enc"),
   refreshTokenEnc: bytea("refresh_token_enc"),
+  /** Pasted read credential for api_key connectors. Same envelope as tokens. */
+  apiKeyEnc: bytea("api_key_enc"),
   tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }),
   connectedAt: timestamp("connected_at", { withTimezone: true }),
   lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
   lastError: text("last_error"),
+  lastErrorAt: timestamp("last_error_at", { withTimezone: true }),
+  /** Per-customer host: Zendesk subdomain, Shopify shop, Okta org, self-hosted GitLab. */
+  instance: text("instance"),
+  /** Opaque per-tenant id in the inbound webhook path (09_CONNECTORS §9.3). */
+  webhookId: text("webhook_id"),
+  webhookSecretEnc: bytea("webhook_secret_enc"),
+  /** Provider paging cursor so ingestion resumes instead of refetching. */
+  syncCursor: jsonb("sync_cursor"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Connector audit trail — connect, disconnect, refresh, failure. Kept separate
+ * from `connections` so a revoked row still explains what happened.
+ */
+export const connectionEvents = pgTable("connection_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull(),
+  connectionId: uuid("connection_id"),
+  provider: text("provider").notNull(),
+  // CHECK event IN ('authorized','connected','refreshed','refresh_failed','disconnected','revoked','sync_failed')
+  event: text("event").notNull(),
+  actorUserId: uuid("actor_user_id"),
+  detail: text("detail"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

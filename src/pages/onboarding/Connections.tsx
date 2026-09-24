@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, Plug } from "lucide-react";
+import { Check } from "lucide-react";
 import { OnboardingLayout } from "@/components/layout/OnboardingLayout";
+import { ProviderIcon } from "@/components/ProviderIcon";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/db";
 import { isMockMode } from "@/lib/supabase";
-import { PROVIDERS } from "@/lib/providers";
-import { roleAtLeast, type Connection, type ConnectionProvider } from "@/lib/types";
+import { CORE_PROVIDERS, PROVIDERS, type ProviderMeta } from "@/lib/providers";
+import { roleAtLeast, type Connection } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export default function OnbConnections() {
@@ -20,12 +21,17 @@ export default function OnbConnections() {
   };
   useEffect(reload, [user]);
 
-  const isConnected = (p: ConnectionProvider) =>
-    connections.some((c) => c.provider === p && c.status === "connected");
+  const isConnected = (meta: ProviderMeta) =>
+    connections.some((c) => c.provider === meta.id && c.status === "connected");
 
-  async function connect(p: ConnectionProvider) {
+  async function connect(meta: ProviderMeta) {
     if (!user) return;
-    await db.connectProvider(user.org_id, user.id, p, user.email);
+    await db.connectProvider(
+      user.org_id,
+      meta.orgLevel ? null : user.id,
+      meta.id,
+      user.email,
+    );
     reload();
   }
 
@@ -45,44 +51,52 @@ export default function OnbConnections() {
         </Button>
       }
     >
-      <div className="grid grid-cols-2 gap-3">
-        {PROVIDERS.map((p) => {
-          const connected = isConnected(p.id);
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {CORE_PROVIDERS.map((meta) => {
+          const connected = isConnected(meta);
           return (
             <button
-              key={p.id}
+              key={meta.id}
               disabled={!isMockMode || connected}
-              onClick={() => connect(p.id)}
+              onClick={() => void connect(meta)}
               className={cn(
-                "flex flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors",
+                "flex items-start gap-2.5 rounded-lg border p-3 text-left transition-colors",
                 connected ? "border-green/40 bg-green/5" : "border-border",
-                !connected && isMockMode && "hover:border-teal/50"
+                !connected && isMockMode && "hover:border-teal/50",
               )}
             >
-              <div className="flex w-full items-center justify-between">
-                <Plug className="h-4 w-4 text-slate" />
-                {connected ? (
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-green">
-                    <Check className="h-3.5 w-3.5" /> Connected
+              <ProviderIcon
+                id={meta.id}
+                name={meta.name}
+                mark={meta.icon}
+                size="sm"
+              />
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center justify-between gap-2">
+                  <span className="truncate text-sm font-bold text-ink">
+                    {meta.name}
                   </span>
-                ) : (
-                  <span className="text-xs font-medium text-slate">
-                    {isMockMode ? "Connect (demo)" : "OAuth not configured"}
-                  </span>
-                )}
-              </div>
-              <div className="font-medium text-ink">{p.name}</div>
-              <div className="text-xs text-slate">{p.category}</div>
+                  {connected ? (
+                    <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-green">
+                      <Check className="h-3.5 w-3.5" /> Connected
+                    </span>
+                  ) : (
+                    <span className="shrink-0 text-xs font-medium text-slate">
+                      {isMockMode ? "Connect (demo)" : "Set up later"}
+                    </span>
+                  )}
+                </span>
+                <span className="mt-0.5 block text-xs text-slate">{meta.category}</span>
+              </span>
             </button>
           );
         })}
       </div>
-      {!isMockMode && (
-        <p className="mt-4 text-xs text-slate">
-          Provider OAuth is not configured for this deployment, so no source can be connected yet. Continue and
-          connect them later from Integrations.
-        </p>
-      )}
+      <p className="mt-4 text-xs text-slate">
+        {isMockMode
+          ? `These are the sources most pilots start with. The other ${PROVIDERS.length - CORE_PROVIDERS.length} live on Integrations.`
+          : `Provider OAuth is not configured for this deployment yet. Continue and connect all ${PROVIDERS.length} sources later from Integrations.`}
+      </p>
       <div className="mt-6">
         <Button onClick={next}>Continue</Button>
       </div>

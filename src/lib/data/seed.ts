@@ -24,6 +24,7 @@ import type {
   Tag,
   TenantHoliday,
   IngestionExclusion,
+  IngestionLabelRule,
   NudgeTrigger,
   MessageApproval,
   User,
@@ -69,6 +70,7 @@ export interface SeedData {
   audit_log: AuditLogEntry[];
   notifications: AppNotification[];
   tags: Tag[];
+  ingestion_label_rules: IngestionLabelRule[];
   data_access_log: DataAccessLogEntry[];
   commitment_dependencies: CommitmentDependency[];
   commitment_feedback: CommitmentFeedback[];
@@ -136,7 +138,7 @@ export function buildSeed(): SeedData {
       manager_id: null,
       status: "active",
       avatar_url: null,
-      notification_prefs: { whatsapp_checkins: true },
+      notification_prefs: { whatsapp_checkins: true, preferred_channel: "in_app" },
       created_at: iso(-40),
       last_active_at: iso(0, 8),
     },
@@ -151,7 +153,7 @@ export function buildSeed(): SeedData {
       manager_id: U.alfred,
       status: "active",
       avatar_url: null,
-      notification_prefs: { whatsapp_checkins: true },
+      notification_prefs: { whatsapp_checkins: true, preferred_channel: "in_app" },
       created_at: iso(-38),
       last_active_at: iso(0, 7),
     },
@@ -166,7 +168,7 @@ export function buildSeed(): SeedData {
       manager_id: U.alfred,
       status: "active",
       avatar_url: null,
-      notification_prefs: { whatsapp_checkins: true },
+      notification_prefs: { whatsapp_checkins: true, preferred_channel: "in_app" },
       created_at: iso(-30),
       last_active_at: iso(-1, 16),
     },
@@ -181,7 +183,7 @@ export function buildSeed(): SeedData {
       manager_id: U.wanjiru,
       status: "active",
       avatar_url: null,
-      notification_prefs: { whatsapp_checkins: true },
+      notification_prefs: { whatsapp_checkins: true, preferred_channel: "in_app" },
       created_at: iso(-29),
       last_active_at: iso(-1, 11),
     },
@@ -196,7 +198,7 @@ export function buildSeed(): SeedData {
       manager_id: U.wanjiru,
       status: "active",
       avatar_url: null,
-      notification_prefs: { whatsapp_checkins: true },
+      notification_prefs: { whatsapp_checkins: true, preferred_channel: "in_app" },
       created_at: iso(-20),
       last_active_at: iso(-2, 14),
     },
@@ -211,7 +213,7 @@ export function buildSeed(): SeedData {
       manager_id: U.grace,
       status: "invited",
       avatar_url: null,
-      notification_prefs: { whatsapp_checkins: true },
+      notification_prefs: { whatsapp_checkins: true, preferred_channel: "in_app" },
       created_at: iso(-3),
       last_active_at: null,
     },
@@ -665,13 +667,74 @@ export function buildSeed(): SeedData {
   ];
 
   const tags: Tag[] = [
-    { id: TAG.client, org_id: ORG, name: "client data", color: "teal", classification: "confidential", pii: false, description: "Data belonging to or about a client.", created_at: iso(-39) },
-    { id: TAG.financials, org_id: ORG, name: "financials", color: "amber", classification: "confidential", pii: false, description: "Revenue, invoices, budgets, pricing.", created_at: iso(-39) },
-    { id: TAG.engineering, org_id: ORG, name: "engineering", color: "slate", classification: "internal", pii: false, description: "Specs, APIs, infrastructure.", created_at: iso(-39) },
-    { id: TAG.pii, org_id: ORG, name: "pii", color: "red", classification: "restricted", pii: true, description: "Personally identifiable information.", created_at: iso(-39) },
-    { id: TAG.hr, org_id: ORG, name: "hr", color: "red", classification: "restricted", pii: true, description: "People, payroll, performance.", created_at: iso(-39) },
-    { id: TAG.legal, org_id: ORG, name: "legal", color: "amber", classification: "confidential", pii: false, description: "Contracts, NDAs, compliance.", created_at: iso(-39) },
-    { id: TAG.credentials, org_id: ORG, name: "credentials", color: "red", classification: "restricted", pii: false, description: "Secrets, keys, passwords.", created_at: iso(-39) },
+    { id: TAG.client, org_id: ORG, name: "client data", color: "teal", classification: "confidential", pii: false, description: "Data belonging to or about a client.", audience: { mode: "everyone", member_ids: [], min_role: "member", admin_override: true }, created_at: iso(-39) },
+    { id: TAG.financials, org_id: ORG, name: "financials", color: "amber", classification: "confidential", pii: false, description: "Revenue, invoices, budgets, pricing.", audience: { mode: "only", member_ids: [U.alfred, U.grace, U.amina], min_role: "member", admin_override: true }, created_at: iso(-39) },
+    { id: TAG.engineering, org_id: ORG, name: "engineering", color: "slate", classification: "internal", pii: false, description: "Specs, APIs, infrastructure.", audience: { mode: "everyone", member_ids: [], min_role: "member", admin_override: true }, created_at: iso(-39) },
+    { id: TAG.pii, org_id: ORG, name: "pii", color: "red", classification: "restricted", pii: true, description: "Personally identifiable information.", audience: { mode: "role", member_ids: [], min_role: "admin", admin_override: true }, created_at: iso(-39) },
+    { id: TAG.hr, org_id: ORG, name: "hr", color: "red", classification: "restricted", pii: true, description: "People, payroll, performance.", audience: { mode: "only", member_ids: [U.grace], min_role: "member", admin_override: false }, created_at: iso(-39) },
+    { id: TAG.legal, org_id: ORG, name: "legal", color: "amber", classification: "confidential", pii: false, description: "Contracts, NDAs, compliance.", audience: { mode: "role", member_ids: [], min_role: "manager", admin_override: true }, created_at: iso(-39) },
+    { id: TAG.credentials, org_id: ORG, name: "credentials", color: "red", classification: "restricted", pii: false, description: "Secrets, keys, passwords.", audience: { mode: "except", member_ids: [U.brian], min_role: "member", admin_override: true }, created_at: iso(-39) },
+  ];
+
+  // Everything connected apps pull in is "internal" (org default) unless a rule
+  // below raises it. Ordered most-general first; the strictest match wins.
+  const ingestion_label_rules: IngestionLabelRule[] = [
+    {
+      id: "ilr-email-confidential",
+      org_id: ORG,
+      name: "Email is confidential by default",
+      provider: null,
+      content_kind: "email",
+      match_type: "all",
+      match_value: null,
+      sensitivity: "confidential",
+      tag_ids: [],
+      enabled: true,
+      sort_order: 10,
+      created_at: iso(-39),
+    },
+    {
+      id: "ilr-client-domain",
+      org_id: ORG,
+      name: "Mail from VGG is client data",
+      provider: null,
+      content_kind: "email",
+      match_type: "from_domain",
+      match_value: "vggafrica.com",
+      sensitivity: "confidential",
+      tag_ids: [TAG.client],
+      enabled: true,
+      sort_order: 20,
+      created_at: iso(-30),
+    },
+    {
+      id: "ilr-payroll",
+      org_id: ORG,
+      name: "Payroll talk is restricted",
+      provider: null,
+      content_kind: null,
+      match_type: "keyword",
+      match_value: "payroll",
+      sensitivity: "restricted",
+      tag_ids: [TAG.hr, TAG.pii],
+      enabled: true,
+      sort_order: 30,
+      created_at: iso(-30),
+    },
+    {
+      id: "ilr-drive-files",
+      org_id: ORG,
+      name: "Drive files stay internal",
+      provider: "google_drive",
+      content_kind: "file",
+      match_type: "all",
+      match_value: null,
+      sensitivity: "internal",
+      tag_ids: [],
+      enabled: true,
+      sort_order: 40,
+      created_at: iso(-28),
+    },
   ];
 
   const data_access_log: DataAccessLogEntry[] = [
@@ -1055,6 +1118,7 @@ export function buildSeed(): SeedData {
     audit_log,
     notifications,
     tags,
+    ingestion_label_rules,
     data_access_log,
     commitment_dependencies,
     commitment_feedback,

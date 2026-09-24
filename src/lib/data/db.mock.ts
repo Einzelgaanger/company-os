@@ -37,9 +37,12 @@ import type {
   User,
   TenantHoliday,
   IngestionExclusion,
+  IngestionLabelRule,
   MessageApproval,
 } from "../types";
-import { clearanceFor, roleAtLeast, SENSITIVITY_RANK } from "../types";
+import { clearanceFor, DEFAULT_TAG_AUDIENCE, roleAtLeast, SENSITIVITY_RANK } from "../types";
+import { tagsAllow } from "../tagAccess";
+import { labelIngestedItem, type IngestedItem, type LabelDecision } from "../ingestionPolicy";
 
 // Small async wrapper so pages can `await` and later swap in a Supabase adapter
 // that shares this exact signature.
@@ -158,7 +161,7 @@ export const mockDb = {
       manager_id: managerId,
       status: "invited",
       avatar_url: null,
-      notification_prefs: { whatsapp_checkins: true },
+      notification_prefs: { whatsapp_checkins: true, preferred_channel: "in_app" },
       created_at: nowIso(),
       last_active_at: null,
     };
@@ -411,8 +414,45 @@ export const mockDb = {
       store
         .all("checkins")
         .filter((c) => c.user_id === userId)
-        .sort((a, b) => b.created_at.localeCompare(a.created_at))
+        .sort((a, b) => a.created_at.localeCompare(b.created_at)),
     );
+  },
+
+  async sendChatMessage(
+    actor: User,
+    text: string,
+    opts: { commitmentId?: string | null; targetUserId?: string } = {},
+  ): Promise<Checkin> {
+    const targetUserId = opts.targetUserId ?? actor.id;
+    const inbound = await mockDb.createInboundCheckin({
+      org_id: actor.org_id,
+      user_id: targetUserId,
+      commitment_id: opts.commitmentId ?? null,
+      direction: "inbound",
+      channel: "in_app",
+      message_type: "progress_ping",
+      message_text: text,
+      parsed_status: null,
+      parsed_blocker: null,
+    });
+    // Simple auto-ack so Chat feels live in mock mode.
+    const ack: Checkin = {
+      id: uuid(),
+      org_id: actor.org_id,
+      user_id: targetUserId,
+      commitment_id: opts.commitmentId ?? null,
+      direction: "outbound",
+      channel: "in_app",
+      message_type: "confirmation",
+      message_text:
+        "Got it (demo). When messaging is live, Company OS classifies replies and updates commitments here too.",
+      parsed_status: null,
+      parsed_blocker: null,
+      twilio_sid: `INAPP-${uuid().slice(0, 8)}`,
+      created_at: nowIso(),
+    };
+    store.set("checkins", [...store.all("checkins"), ack]);
+    return ok(inbound);
   },
 
   /** Mock "send check-in now" — records an outbound message (Phase 3 wires Twilio). */
@@ -423,12 +463,12 @@ export const mockDb = {
       user_id: targetUserId,
       commitment_id: commitmentId,
       direction: "outbound",
-      channel: "whatsapp",
+      channel: "in_app",
       message_type: commitmentId ? "direct_followup" : "progress_ping",
       message_text: text,
       parsed_status: null,
       parsed_blocker: null,
-      twilio_sid: `SM-mock-${uuid().slice(0, 8)}`,
+      twilio_sid: `INAPP-${uuid().slice(0, 8)}`,
       created_at: nowIso(),
     };
     store.set("checkins", [...store.all("checkins"), checkin]);
@@ -631,16 +671,37 @@ export const mockDb = {
   },
 
   async createTag(input: Omit<Tag, "id" | "created_at">): Promise<Tag> {
-    const tag: Tag = { ...input, id: uuid(), created_at: nowIso() };
+    const tag: Tag = {
+      ...input,
+      audience: { ...DEFAULT_TAG_AUDIENCE, ...(input.audience ?? {}) },
+      id: uuid(),
+      created_at: nowIso(),
+    };
     store.set("tags", [...store.all("tags"), tag]);
-    audit(tag.org_id, "system", "tag.created", "tag", tag.id, { name: tag.name });
+    audit(tag.org_id, "system", "tag.created", "tag", tag.id, {
+      name: tag.name,
+      audience: tag.audience,
+    });
     return ok(tag);
   },
 
-  async updateTag(id: string, patch: Partial<Tag>): Promise<Tag> {
+  async updateTag(id: string, patch: Partial<Tag>, actor?: User): Promise<Tag> {
+    const before = store.all("tags").find((t) => t.id === id);
     const rows = store.all("tags").map((t) => (t.id === id ? { ...t, ...patch } : t));
     store.set("tags", rows);
-    return ok(rows.find((t) => t.id === id)!);
+    const after = rows.find((t) => t.id === id)!;
+    // Audience edits change who can read existing data, so they are audited
+    // separately from cosmetic tag edits.
+    if (patch.audience && before) {
+      audit(after.org_id, actor?.id ?? "system", "tag.audience_changed", "tag", id, {
+        name: after.name,
+        from: before.audience ?? DEFAULT_TAG_AUDIENCE,
+        to: patch.audience,
+      });
+    } else {
+      audit(after.org_id, actor?.id ?? "system", "tag.updated", "tag", id, { name: after.name });
+    }
+    return ok(after);
   },
 
   async deleteTag(id: string): Promise<void> {
@@ -655,6 +716,65 @@ export const mockDb = {
       );
     }
     return ok(undefined);
+  },
+
+  // --- Governance: ingestion labelling -------------------------------------
+
+  async listIngestionRules(orgId: string): Promise<IngestionLabelRule[]> {
+    return ok(
+      store
+        .all("ingestion_label_rules")
+        .filter((r) => r.org_id === orgId)
+        .sort((a, b) => a.sort_order - b.sort_order)
+    );
+  },
+
+  async createIngestionRule(
+    actor: User,
+    input: Omit<IngestionLabelRule, "id" | "created_at" | "sort_order"> & { sort_order?: number }
+  ): Promise<IngestionLabelRule> {
+    const existing = store.all("ingestion_label_rules").filter((r) => r.org_id === input.org_id);
+    const rule: IngestionLabelRule = {
+      ...input,
+      sort_order: input.sort_order ?? (existing.reduce((m, r) => Math.max(m, r.sort_order), 0) + 10),
+      id: uuid(),
+      created_at: nowIso(),
+    };
+    store.set("ingestion_label_rules", [...store.all("ingestion_label_rules"), rule]);
+    audit(rule.org_id, actor.id, "ingestion_rule.created", "ingestion_label_rule", rule.id, {
+      name: rule.name,
+      sensitivity: rule.sensitivity,
+    });
+    return ok(rule);
+  },
+
+  async updateIngestionRule(
+    actor: User,
+    id: string,
+    patch: Partial<IngestionLabelRule>
+  ): Promise<IngestionLabelRule> {
+    const rows = store.all("ingestion_label_rules").map((r) => (r.id === id ? { ...r, ...patch } : r));
+    store.set("ingestion_label_rules", rows);
+    const rule = rows.find((r) => r.id === id)!;
+    audit(rule.org_id, actor.id, "ingestion_rule.updated", "ingestion_label_rule", id, { name: rule.name });
+    return ok(rule);
+  },
+
+  async deleteIngestionRule(actor: User, id: string): Promise<void> {
+    const rule = store.all("ingestion_label_rules").find((r) => r.id === id);
+    store.set("ingestion_label_rules", store.all("ingestion_label_rules").filter((r) => r.id !== id));
+    if (rule) audit(rule.org_id, actor.id, "ingestion_rule.deleted", "ingestion_label_rule", id, { name: rule.name });
+    return ok(undefined);
+  },
+
+  /**
+   * Label an item the way the ingestion pipeline would. Backs the Governance
+   * preview so admins can test a rule set before it touches real data.
+   */
+  async previewIngestionLabel(orgId: string, item: IngestedItem): Promise<LabelDecision> {
+    const org = store.all("organizations").find((o) => o.id === orgId);
+    const rules = store.all("ingestion_label_rules").filter((r) => r.org_id === orgId);
+    return ok(labelIngestedItem(item, rules, org?.settings.default_classification ?? "internal"));
   },
 
   // --- Governance: classification -----------------------------------------
@@ -1099,7 +1219,8 @@ export function scopedUserIds(viewer: User, allUsers: User[]): string[] {
 export function visibleCommitments(
   viewer: User,
   all: Commitment[],
-  allUsers: User[]
+  allUsers: User[],
+  allTags: Tag[] = []
 ): Commitment[] {
   const ids = new Set(scopedUserIds(viewer, allUsers));
   const roleScoped = roleAtLeast(viewer.role, "admin")
@@ -1111,18 +1232,34 @@ export function visibleCommitments(
       );
   // Governance overlay: hide items above the viewer's clearance unless they
   // personally own or requested them (need-to-know still applies).
-  return roleScoped.filter((c) => canAccess(viewer, c.sensitivity, c.owner_id, c.requested_by_id));
+  return roleScoped.filter((c) =>
+    canAccess(viewer, c.sensitivity, c.owner_id, c.requested_by_id, { tagIds: c.tag_ids, tags: allTags })
+  );
 }
 
 // --- Governance access control -------------------------------------------
 
-/** Can this user access data at the given sensitivity? Owner/requester always can. */
+/** Tags carried by the item plus the org's tag list, so audiences can be resolved. */
+export interface TagContext {
+  tagIds?: string[] | null;
+  tags: Tag[];
+}
+
+/**
+ * Can this user access this data? Two gates, both of which must pass:
+ * clearance (role vs sensitivity) and tag audience (the named people on every
+ * tag the item carries). Owner and requester keep need-to-know on clearance,
+ * but a tag audience still applies to them — that is the point of a tag whose
+ * audience is "only these 3 people".
+ */
 export function canAccess(
   user: User,
   sensitivity: Sensitivity | undefined,
   ownerId?: string | null,
-  requesterId?: string | null
+  requesterId?: string | null,
+  tagContext?: TagContext
 ): boolean {
+  if (tagContext && !tagsAllow(tagContext.tagIds, tagContext.tags, user)) return false;
   const s = sensitivity ?? "internal";
   if (user.id === ownerId || user.id === requesterId) return true;
   return SENSITIVITY_RANK[s] <= SENSITIVITY_RANK[clearanceFor(user.role)];

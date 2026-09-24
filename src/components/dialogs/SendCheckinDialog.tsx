@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { db } from "@/lib/db";
-import { messagingLinked } from "@/lib/messaging";
+import { channelReady, preferredChannel, preferredChannelLabel } from "@/lib/messaging";
 import type { User } from "@/lib/types";
 
 export function SendCheckinDialog({
@@ -44,6 +44,10 @@ export function SendCheckinDialog({
   const [busy, setBusy] = useState(false);
 
   const eligible = users.filter((u) => u.status === "active");
+  const selected = eligible.find((u) => u.id === target);
+  const pref = selected ? preferredChannel(selected) : "in_app";
+  const externalPending =
+    selected && (pref === "telegram" || pref === "whatsapp") && !channelReady(selected, pref);
 
   async function send() {
     if (!user || !target) return;
@@ -51,7 +55,12 @@ export function SendCheckinDialog({
     try {
       await db.sendCheckin(user, target, commitmentId, text.trim() || "Quick check-in — how's it going?");
       const name = users.find((u) => u.id === target)?.full_name ?? "them";
-      toast(`Check-in queued for ${name}.`, "success");
+      toast(
+        externalPending
+          ? `Check-in queued for ${name} (will deliver in Chat until ${preferredChannelLabel(pref)} is linked).`
+          : `Check-in queued for ${name}.`,
+        "success",
+      );
       setOpen(false);
       onSent?.();
     } finally {
@@ -72,7 +81,7 @@ export function SendCheckinDialog({
         <DialogHeader>
           <DialogTitle>Send a check-in now</DialogTitle>
           <DialogDescription>
-            Company OS will message this person on Telegram out of the normal cycle.
+            Delivers on each person&apos;s preferred channel (In-app Chat, Telegram, or WhatsApp). Always visible in Chat.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -84,15 +93,24 @@ export function SendCheckinDialog({
                   <SelectValue placeholder="Choose a person" />
                 </SelectTrigger>
                 <SelectContent>
-                  {eligible.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.full_name}
-                      {!messagingLinked(u) ? " (Telegram not linked)" : ""}
-                    </SelectItem>
-                  ))}
+                  {eligible.map((u) => {
+                    const p = preferredChannel(u);
+                    const ready = channelReady(u, p);
+                    return (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.full_name} · {preferredChannelLabel(p)}
+                        {!ready && p !== "in_app" ? " (not linked — Chat)" : ""}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
+          )}
+          {externalPending && (
+            <p className="text-xs text-amber">
+              {selected?.full_name} prefers {preferredChannelLabel(pref)} but isn&apos;t linked — this check-in will land in Chat.
+            </p>
           )}
           <div className="space-y-1.5">
             <Label>Message</Label>
@@ -103,7 +121,7 @@ export function SendCheckinDialog({
           <Button variant="ghost" onClick={() => setOpen(false)}>
             Cancel
           </Button>
-          <Button onClick={send} disabled={busy || !target}>
+          <Button onClick={() => void send()} disabled={busy || !target}>
             {busy ? "Sending…" : "Send check-in now"}
           </Button>
         </DialogFooter>

@@ -10,7 +10,7 @@ import { TableSkeleton, ErrorState } from "@/components/states";
 import { SendCheckinDialog } from "@/components/SendCheckinDialog";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/db";
-import { messagingLinked, messagingLinkLabel } from "@/lib/messaging";
+import { channelReady, preferredChannel, preferredChannelLabel } from "@/lib/messaging";
 import { roleAtLeast, type Checkin, type Commitment, type User } from "@/lib/types";
 import { formatDate, formatDateTime, initials } from "@/lib/utils";
 
@@ -94,15 +94,22 @@ export default function TeamMember() {
             <div className="text-sm text-slate">{member.email}</div>
           </div>
           <div className="text-sm">
-            {messagingLinked(member) ? (
-              <span className="inline-flex items-center gap-1 text-green">
-                <CheckCircle2 className="h-4 w-4" /> {messagingLinkLabel(member)}
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 text-amber">
-                <XCircle className="h-4 w-4" /> Messaging not linked
-              </span>
-            )}
+            {(() => {
+              const pref = preferredChannel(member);
+              const ready = channelReady(member, pref);
+              if (ready) {
+                return (
+                  <span className="inline-flex items-center gap-1 text-green">
+                    <CheckCircle2 className="h-4 w-4" /> {preferredChannelLabel(pref)}
+                  </span>
+                );
+              }
+              return (
+                <span className="inline-flex items-center gap-1 text-amber">
+                  <XCircle className="h-4 w-4" /> Prefers {preferredChannelLabel(pref)} (not linked — Chat)
+                </span>
+              );
+            })()}
           </div>
         </CardContent>
       </Card>

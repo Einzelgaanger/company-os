@@ -21,6 +21,7 @@ import {
   X,
   MoreHorizontal,
   BarChart3,
+  MessageSquare,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AutonomyPill } from "@/components/AutonomyPill";
@@ -28,7 +29,7 @@ import { BrandMark } from "@/components/brand/LoopMark";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/db";
 import { connectionHealthLocal } from "@/lib/connectionHealth";
-import { messagingLinked } from "@/lib/messaging";
+import { channelReady, preferredChannel } from "@/lib/messaging";
 import { roleAtLeast, type Role } from "@/lib/types";
 import { cn, initials } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
@@ -47,6 +48,7 @@ const NAV: NavItem[] = [
   { to: "/flow", label: "Flow", icon: Waves },
   { to: "/waiting", label: "Waiting", icon: Hourglass },
   { to: "/my-work", label: "My work", icon: Inbox, short: "My work" },
+  { to: "/chat", label: "Chat", icon: MessageSquare, short: "Chat" },
   { to: "/projects", label: "Projects", icon: FolderKanban },
   { to: "/commitments", label: "Commitments", icon: ListChecks },
   { to: "/review", label: "Review queue", icon: ShieldQuestion, minRole: "manager" },
@@ -115,13 +117,19 @@ export function AppLayout() {
     () => (user ? NAV.filter((n) => !n.minRole || roleAtLeast(user.role, n.minRole)) : []),
     [user]
   );
-  // Flow · Waiting · My work · More (§8.3).
-  const tabItems = items.slice(0, 3);
-  const moreItems = items.slice(3);
+  // Flow · Waiting · My work · Chat · More
+  const tabItems = items.slice(0, 4);
+  const moreItems = items.slice(4);
 
   if (!user) return null;
 
-  const showTelegramBanner = !messagingLinked(user) && !bannerDismissed;
+  const pref = preferredChannel(user);
+  const showChatLaunchBanner =
+    pref === "in_app" && !bannerDismissed;
+  const showLinkChannelBanner =
+    (pref === "telegram" || pref === "whatsapp") &&
+    !channelReady(user, pref) &&
+    !bannerDismissed;
   const showConnBanner = Boolean(connAlert) && !connBannerDismissed;
 
   function NavList({ dense = false }: { dense?: boolean }) {
@@ -323,10 +331,41 @@ export function AppLayout() {
             </div>
           )}
 
-          {showTelegramBanner && (
+          {showChatLaunchBanner && (
+            <div className="flex items-center justify-between gap-3 border-b border-[rgba(14,31,26,0.1)] bg-[#F4FBE3] px-4 py-2 text-xs font-medium text-[#0E1F1A]">
+              <span>
+                Using <strong>In-app Chat</strong> — open{" "}
+                <Link to="/chat" className="font-bold underline">
+                  Chat
+                </Link>{" "}
+                anytime. Connect Telegram or WhatsApp later in{" "}
+                <Link to="/settings/profile" className="font-bold underline">
+                  Profile
+                </Link>
+                .
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.setItem(BANNER_KEY, "true");
+                  setBannerDismissed(true);
+                }}
+                aria-label="Dismiss"
+                className="shrink-0 text-[#0E1F1A]/70 hover:text-[#0E1F1A]"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
+          {showLinkChannelBanner && (
             <div className="flex items-center justify-between gap-3 border-b border-status-waiting/40 bg-status-waiting-tint px-4 py-2 text-xs font-medium text-status-waiting-ink">
               <span>
-                Verify Telegram so Company OS can track your commitments.{" "}
+                You prefer {pref === "telegram" ? "Telegram" : "WhatsApp"} but it isn&apos;t linked yet — messages stay in{" "}
+                <Link to="/chat" className="font-bold underline">
+                  Chat
+                </Link>{" "}
+                until you connect.{" "}
                 <Link to="/settings/profile" className="font-bold underline">
                   Link in Profile
                 </Link>

@@ -107,6 +107,20 @@ export type ApiNoticeAck = {
   version: string | null;
 };
 
+export type ApiConnectorCatalogItem = {
+  id: string;
+  name: string;
+  auth: "oauth2" | "api_key" | "webhook";
+  orgLevel: boolean;
+  scopes: string[];
+  credentialHint: string | null;
+  /** False when the deployment is missing client credentials for this provider. */
+  configured: boolean;
+  missing: string[];
+  gated: boolean;
+  docs: string;
+};
+
 export type ApiMessageApproval = {
   id: string;
   tenantId: string;
@@ -303,9 +317,36 @@ export const api = {
       }>;
     }>("/projects"),
 
+  /** What the deployment can actually offer, and why not when it cannot. */
+  connectorCatalog: () =>
+    request<{
+      items: ApiConnectorCatalogItem[];
+      tokenEncryption: boolean;
+    }>("/connections/catalog"),
   authorizeConnection: (provider: string) =>
     request<{ authUrl: string; state: string; provider: string }>(
       `/connections/${provider}/authorize`,
+    ),
+  /** api_key connectors — the key is validated provider-side before storage. */
+  setConnectionCredential: (
+    provider: string,
+    body: { credential: string; instance?: string },
+  ) =>
+    request<{ connection: { id: string; provider: string; status: string } }>(
+      `/connections/${provider}/credentials`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  /** webhook connectors — signing secret is returned once and never again. */
+  createConnectionWebhook: (provider: string) =>
+    request<{
+      connection: { id: string; provider: string; status: string };
+      webhookUrl: string;
+      signingSecret: string;
+    }>(`/connections/${provider}/webhook`, { method: "POST" }),
+  reconnectConnection: (id: string) =>
+    request<{ authUrl: string; state: string; provider: string }>(
+      `/connections/${id}/reconnect`,
+      { method: "POST" },
     ),
   disconnectConnection: (id: string) =>
     request<{ disconnected: boolean }>(`/connections/${id}/disconnect`, {

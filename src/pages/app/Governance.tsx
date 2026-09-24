@@ -1,25 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, ShieldCheck, Trash2, TriangleAlert } from "lucide-react";
+import { Pencil, Plus, ShieldCheck, Trash2, TriangleAlert, Users } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { SensitivityBadge, TagChip } from "@/components/governance";
+import { IngestionRules } from "@/components/shared/IngestionRules";
+import { TagEditorDialog } from "@/components/dialogs/TagEditorDialog";
 import { TableSkeleton, ErrorState } from "@/components/states";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { db, governanceStats, visibleCommitments } from "@/lib/db";
+import { audienceCount, audienceSummary, isRestrictedAudience } from "@/lib/tagAccess";
 import {
   roleAtLeast,
   SENSITIVITY_LABEL,
   type Commitment,
   type DataAccessLogEntry,
+  type IngestionLabelRule,
+  type Organization,
   type Sensitivity,
   type Tag,
   type User,
@@ -43,27 +45,31 @@ export default function Governance() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [accessLog, setAccessLog] = useState<DataAccessLogEntry[]>([]);
+  const [rules, setRules] = useState<IngestionLabelRule[]>([]);
+  const [org, setOrg] = useState<Organization | undefined>();
 
-  // new-tag form
-  const [newName, setNewName] = useState("");
-  const [newClass, setNewClass] = useState<Sensitivity>("confidential");
-  const [newPii, setNewPii] = useState(false);
+  // null = closed; { tag: null } = creating a new tag
+  const [editing, setEditing] = useState<{ tag: Tag | null } | null>(null);
 
   async function load() {
     if (!user) return;
     setLoading(true);
     setError(false);
     try {
-      const [allC, allU, t, log] = await Promise.all([
+      const [allC, allU, t, log, r, o] = await Promise.all([
         db.listCommitments(user.org_id),
         db.listUsers(user.org_id),
         db.listTags(user.org_id),
         db.listDataAccessLog(user.org_id),
+        db.listIngestionRules(user.org_id),
+        db.getOrg(user.org_id),
       ]);
-      setCommitments(visibleCommitments(user, allC, allU));
+      setCommitments(visibleCommitments(user, allC, allU, t));
       setUsers(allU);
       setTags(t);
       setAccessLog(log);
+      setRules(r);
+      setOrg(o);
     } catch {
       setError(true);
     } finally {
@@ -84,19 +90,9 @@ export default function Governance() {
   if (loading) return <TableSkeleton />;
   if (error) return <ErrorState onRetry={load} />;
 
-  async function createTag() {
-    if (!user || !newName.trim()) return;
-    await db.createTag({
-      org_id: user.org_id,
-      name: newName.trim().toLowerCase(),
-      color: newClass === "restricted" ? "red" : newClass === "confidential" ? "amber" : "teal",
-      classification: newClass,
-      pii: newPii,
-      description: null,
-    });
-    setNewName("");
-    setNewPii(false);
-    toast("Saved.", "success");
+  async function removeTag(tag: Tag) {
+    await db.deleteTag(tag.id);
+    toast(`"${tag.name}" removed and detached from all data.`, "default");
     load();
   }
 
@@ -112,7 +108,8 @@ export default function Governance() {
       <Tabs defaultValue="overview">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="tags">Tags</TabsTrigger>
+          <TabsTrigger value="sources">Connected apps</TabsTrigger>
+          <TabsTrigger value="tags">Tags &amp; access</TabsTrigger>
           <TabsTrigger value="access">Access log</TabsTrigger>
         </TabsList>
 
@@ -211,38 +208,29 @@ export default function Governance() {
           )}
         </TabsContent>
 
+        <TabsContent value="sources">
+          <IngestionRules
+            rules={rules}
+            tags={tags}
+            defaultClassification={org?.settings.default_classification ?? "internal"}
+            canEdit={canEditTags}
+            onChanged={load}
+          />
+        </TabsContent>
+
         <TabsContent value="tags" className="space-y-4">
-          {canEditTags && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Add tag</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-wrap items-end gap-3">
-                <div className="space-y-1.5">
-                  <Label>Name</Label>
-                  <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. client data" className="w-48" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Default classification</Label>
-                  <Select value={newClass} onValueChange={(v) => setNewClass(v as Sensitivity)}>
-                    <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="public">Public</SelectItem>
-                      <SelectItem value="internal">Internal</SelectItem>
-                      <SelectItem value="confidential">Confidential</SelectItem>
-                      <SelectItem value="restricted">Restricted</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <label className="flex items-center gap-2 pb-2 text-sm">
-                  <Checkbox checked={newPii} onCheckedChange={(v) => setNewPii(Boolean(v))} /> PII / regulated
-                </label>
-                <Button onClick={createTag} disabled={!newName.trim()}>
-                  <Plus className="h-4 w-4" /> Add tag
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="max-w-2xl text-sm text-slate">
+              A tag classifies data <em>and</em> decides who can read it. Pick the audience the same
+              way you would on WhatsApp — everyone, only certain people, everyone except someone, or
+              by role — then use the tag to label an email, meeting, or commitment.
+            </p>
+            {canEditTags && (
+              <Button onClick={() => setEditing({ tag: null })}>
+                <Plus className="h-4 w-4" /> New tag
+              </Button>
+            )}
+          </div>
 
           <Card>
             <Table>
@@ -250,30 +238,57 @@ export default function Governance() {
                 <TableRow>
                   <TableHead>Tag</TableHead>
                   <TableHead>Default classification</TableHead>
+                  <TableHead>Who can see it</TableHead>
                   <TableHead>PII</TableHead>
-                  <TableHead>Description</TableHead>
                   {canEditTags && <TableHead></TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {tags.map((t) => (
                   <TableRow key={t.id}>
-                    <TableCell><TagChip tag={t} /></TableCell>
+                    <TableCell>
+                      <TagChip tag={t} />
+                      {t.description && (
+                        <div className="mt-1 text-xs text-slate">{t.description}</div>
+                      )}
+                    </TableCell>
                     <TableCell><SensitivityBadge sensitivity={t.classification} /></TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2 text-sm text-ink">
+                        <Users className="h-3.5 w-3.5 shrink-0 text-slate" />
+                        {audienceSummary(t, users)}
+                      </div>
+                      <div className="mt-1 flex items-center gap-2">
+                        <span className="text-xs text-slate">
+                          {audienceCount(t, users)} of {users.length} people
+                        </span>
+                        {isRestrictedAudience(t) && <Badge variant="amber">Limited</Badge>}
+                        {t.audience?.admin_override === false && (
+                          <Badge variant="red">Admins excluded</Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-slate">{t.pii ? "Yes" : "—"}</TableCell>
-                    <TableCell className="text-slate">{t.description ?? "—"}</TableCell>
                     {canEditTags && (
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={async () => {
-                            await db.deleteTag(t.id);
-                            load();
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Edit ${t.name}`}
+                            onClick={() => setEditing({ tag: t })}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Delete ${t.name}`}
+                            onClick={() => void removeTag(t)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     )}
                   </TableRow>
@@ -281,6 +296,14 @@ export default function Governance() {
               </TableBody>
             </Table>
           </Card>
+
+          <TagEditorDialog
+            open={editing !== null}
+            tag={editing?.tag ?? null}
+            users={users}
+            onOpenChange={(o) => !o && setEditing(null)}
+            onSaved={load}
+          />
         </TabsContent>
 
         <TabsContent value="access">

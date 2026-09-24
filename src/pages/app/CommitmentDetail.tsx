@@ -14,6 +14,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { api, apiConfigured } from "@/lib/api";
 import { canAccess, db } from "@/lib/db";
+import { blockingTags } from "@/lib/tagAccess";
 import type { FlowState } from "@/lib/flow";
 import { FLOW_STATE_LABEL } from "@/lib/flow";
 import {
@@ -122,12 +123,23 @@ export default function CommitmentDetail() {
   if (loading) return <TableSkeleton />;
   if (error || !commitment) return <ErrorState onRetry={load} />;
 
-  if (user && !canAccess(user, commitment.sensitivity, commitment.owner_id, commitment.requested_by_id)) {
+  if (
+    user &&
+    !canAccess(user, commitment.sensitivity, commitment.owner_id, commitment.requested_by_id, {
+      tagIds: commitment.tag_ids,
+      tags,
+    })
+  ) {
+    const blocked = user ? blockingTags(commitment.tag_ids, tags, user) : [];
     return (
       <EmptyState
         illustration={<Lock className="h-10 w-10 text-slate" />}
         title="Restricted by data governance"
-        description={`This item is classified ${commitment.sensitivity ?? "internal"}. Your role doesn't have clearance to view it. Ask an admin if you need access.`}
+        description={
+          blocked.length
+            ? `This item is tagged "${blocked.map((t) => t.name).join('", "')}", and you are not in that tag's audience. The tag owner can add you in Governance → Tags & access.`
+            : `This item is classified ${commitment.sensitivity ?? "internal"}. Your role doesn't have clearance to view it. Ask an admin if you need access.`
+        }
       />
     );
   }

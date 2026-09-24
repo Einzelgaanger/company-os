@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { db } from "@/lib/db";
-import { messagingLinked } from "@/lib/messaging";
+import { channelReady, preferredChannel, preferredChannelLabel } from "@/lib/messaging";
 import { api, apiConfigured, type ApiMessageApproval } from "@/lib/api";
 import type { MessagingMetrics } from "@/lib/types";
 
@@ -35,7 +35,7 @@ export default function SettingsMessaging() {
     notVerified: 0,
     optedOut: 0,
   });
-  const [people, setPeople] = useState<Array<{ name: string; status: string }>>([]);
+  const [people, setPeople] = useState<Array<{ name: string; status: string; channel: string }>>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -48,17 +48,23 @@ export default function SettingsMessaging() {
       let optedIn = 0;
       let notVerified = 0;
       let optedOut = 0;
-      const rows: Array<{ name: string; status: string }> = [];
+      const rows: Array<{ name: string; status: string; channel: string }> = [];
       for (const u of users.filter((x) => x.status === "active")) {
+        const pref = preferredChannel(u);
+        const channel = preferredChannelLabel(pref);
         if (!u.notification_prefs.whatsapp_checkins) {
           optedOut++;
-          rows.push({ name: u.full_name, status: "opted out" });
-        } else if (!messagingLinked(u)) {
+          rows.push({ name: u.full_name, status: "opted out", channel });
+        } else if (pref !== "in_app" && !channelReady(u, pref)) {
           notVerified++;
-          rows.push({ name: u.full_name, status: "not linked" });
+          rows.push({ name: u.full_name, status: "prefers " + channel + " (not linked)", channel });
         } else {
           optedIn++;
-          rows.push({ name: u.full_name, status: "opted in" });
+          rows.push({
+            name: u.full_name,
+            status: pref === "in_app" ? "In-app Chat" : channelReady(u, pref) ? channel + " ready" : channel,
+            channel,
+          });
         }
       }
       setOptInBreakdown({ optedIn, notVerified, optedOut });
@@ -155,7 +161,7 @@ export default function SettingsMessaging() {
     <div className="space-y-6">
       <PageHeader
         title="Messaging"
-        description="Telegram (primary), WhatsApp quality/caps, templates, and pilot approval queue."
+        description="Per-person channels (In-app Chat, Telegram, WhatsApp), quality/caps, templates, and pilot approval queue."
       />
 
       {metrics ? (
@@ -217,7 +223,11 @@ export default function SettingsMessaging() {
           {people.map((p) => (
             <li key={p.name} className="flex justify-between gap-2">
               <span className="text-[#0E1F1A]">{p.name}</span>
-              <span>{p.status}</span>
+              <span className="text-right">
+                <span className="text-[#0E1F1A]">{p.channel}</span>
+                {" · "}
+                {p.status}
+              </span>
             </li>
           ))}
         </ul>

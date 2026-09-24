@@ -45,6 +45,7 @@ export {
   PRIORITY_RANK,
   type GovernanceStats,
   type Health,
+  type TagContext,
 } from "./data/db.mock";
 
 export type { CommitmentStatus, Priority } from "./types";

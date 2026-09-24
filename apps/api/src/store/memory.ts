@@ -717,8 +717,16 @@ export type MemoryConnection = {
   /** Encrypted blob — never returned by API serializers. */
   accessTokenEnc?: string | null;
   refreshTokenEnc?: string | null;
+  /** Encrypted pasted credential for api_key connectors. */
+  apiKeyEnc?: string | null;
   tokenExpiresAt?: string | null;
   scopes?: string[];
+  /** Per-customer host for providers like Zendesk, Shopify, Okta. */
+  instance?: string | null;
+  /** Opaque per-tenant id in the inbound webhook path. */
+  webhookId?: string | null;
+  webhookSecretEnc?: string | null;
+  lastError?: string | null;
 };
 
 const connections = new Map<string, MemoryConnection>();
@@ -752,7 +760,7 @@ export function listConnections(tenantId: string): MemoryConnection[] {
   return [...connections.values()].filter((c) => c.tenantId === tenantId);
 }
 
-/** Public serializer — tokens never leave the store. */
+/** Public serializer — tokens and pasted credentials never leave the store. */
 export function serializeConnection(c: MemoryConnection) {
   return {
     id: c.id,
@@ -763,10 +771,13 @@ export function serializeConnection(c: MemoryConnection) {
     lastSyncedAt: c.lastSyncedAt,
     externalAccountEmail: c.externalAccountEmail,
     scopes: c.scopes ?? [],
+    instance: c.instance ?? null,
+    webhookId: c.webhookId ?? null,
+    lastError: c.lastError ?? null,
   };
 }
 
-export function upsertConnection(input: {
+export type ConnectionUpsert = {
   tenantId: string;
   userId: string | null;
   provider: string;
@@ -774,9 +785,16 @@ export function upsertConnection(input: {
   externalAccountEmail: string | null;
   accessTokenEnc?: string | null;
   refreshTokenEnc?: string | null;
+  apiKeyEnc?: string | null;
   tokenExpiresAt?: string | null;
   scopes?: string[];
-}): MemoryConnection {
+  instance?: string | null;
+  webhookId?: string | null;
+  webhookSecretEnc?: string | null;
+  lastError?: string | null;
+};
+
+export function upsertConnection(input: ConnectionUpsert): MemoryConnection {
   seedConnections(input.tenantId);
   const existing = [...connections.values()].find(
     (c) =>
@@ -795,22 +813,86 @@ export function upsertConnection(input: {
     externalAccountEmail: input.externalAccountEmail,
     accessTokenEnc: input.accessTokenEnc ?? existing?.accessTokenEnc ?? null,
     refreshTokenEnc: input.refreshTokenEnc ?? existing?.refreshTokenEnc ?? null,
+    apiKeyEnc: input.apiKeyEnc ?? existing?.apiKeyEnc ?? null,
     tokenExpiresAt: input.tokenExpiresAt ?? null,
     scopes: input.scopes ?? [],
+    instance: input.instance ?? existing?.instance ?? null,
+    webhookId: input.webhookId ?? existing?.webhookId ?? null,
+    webhookSecretEnc: input.webhookSecretEnc ?? existing?.webhookSecretEnc ?? null,
+    lastError: input.lastError ?? null,
   };
-  connections.set(`${input.tenantId}:${id}`, row);
   if (existing) connections.delete(`${input.tenantId}:${existing.id}`);
   connections.set(`${input.tenantId}:${id}`, row);
   return row;
 }
 
+export function getConnection(
+  tenantId: string,
+  id: string,
+): MemoryConnection | undefined {
+  return (
+    connections.get(`${tenantId}:${id}`) ??
+    [...connections.values()].find((c) => c.id === id && c.tenantId === tenantId)
+  );
+}
+
+export type MemoryConnectionEvent = {
+  id: string;
+  tenantId: string;
+  connectionId: string | null;
+  provider: string;
+  event:
+    | "authorized"
+    | "connected"
+    | "refreshed"
+    | "refresh_failed"
+    | "disconnected"
+    | "revoked"
+    | "sync_failed";
+  actorUserId: string | null;
+  detail: string | null;
+  createdAt: string;
+};
+
+const connectionEvents: MemoryConnectionEvent[] = [];
+
+export function recordConnectionEvent(input: {
+  tenantId: string;
+  connectionId?: string | null;
+  provider: string;
+  event: MemoryConnectionEvent["event"];
+  actorUserId?: string | null;
+  detail?: string | null;
+}): MemoryConnectionEvent {
+  const row: MemoryConnectionEvent = {
+    id: randomUUID(),
+    tenantId: input.tenantId,
+    connectionId: input.connectionId ?? null,
+    provider: input.provider,
+    event: input.event,
+    actorUserId: input.actorUserId ?? null,
+    detail: input.detail ?? null,
+    createdAt: new Date().toISOString(),
+  };
+  connectionEvents.unshift(row);
+  return row;
+}
+
+export function listConnectionEvents(
+  tenantId: string,
+  limit = 50,
+): MemoryConnectionEvent[] {
+  return connectionEvents.filter((e) => e.tenantId === tenantId).slice(0, limit);
+}
+
 export function disconnectConnection(tenantId: string, id: string): boolean {
-  const key = `${tenantId}:${id}`;
-  const row = connections.get(key) ?? [...connections.values()].find((c) => c.id === id && c.tenantId === tenantId);
+  const row = getConnection(tenantId, id);
   if (!row) return false;
   row.status = "disconnected";
   row.accessTokenEnc = null;
   row.refreshTokenEnc = null;
+  row.apiKeyEnc = null;
+  row.webhookSecretEnc = null;
   connections.set(`${tenantId}:${row.id}`, row);
   return true;
 }
@@ -1254,6 +1336,7 @@ export function __resetMemoryStore(): void {
   compliance.clear();
   surveyCycles.clear();
   connections.clear();
+  connectionEvents.length = 0;
   noticeAcks.clear();
   noticeVersions.clear();
   dsrRequests.clear();

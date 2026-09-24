@@ -3,6 +3,7 @@
 // (org_id, source, external_id) via the unique constraint in the schema.
 // deno-lint-ignore-file no-explicit-any
 import { adminClient, json, corsHeaders } from "../_shared/supabase.ts";
+import { loadProjectProfiles, routeToProject } from "../_shared/projectRouting.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -54,9 +55,46 @@ Deno.serve(async (req) => {
       resolved.push({ user_id, name: p.name, email: p.email ?? null });
     }
 
+    // Work out which project this meeting belongs to before extracting, so the
+    // commitments it produces inherit the project instead of landing unassigned.
+    let routing = { projectId: null as string | null, confidence: 0, method: "none" as string };
+    try {
+      const profiles = await loadProjectProfiles(db, org_id);
+      const calendarProjectId = external_id
+        ? (
+            await db
+              .from("calendar_events")
+              .select("project_id")
+              .eq("org_id", org_id)
+              .eq("external_id", external_id)
+              .maybeSingle()
+          ).data?.project_id ?? null
+        : null;
+      routing = await routeToProject(profiles, {
+        title,
+        text: transcript_text,
+        participantUserIds: resolved.map((p) => p.user_id).filter(Boolean) as string[],
+        calendarProjectId,
+      });
+    } catch (_e) {
+      // Routing is best-effort; an unrouted meeting is still worth ingesting.
+    }
+
     const { data: meeting, error } = await db
       .from("meetings")
-      .insert({ org_id, source, external_id, title, participants: resolved, transcript_url, recording_url, occurred_at })
+      .insert({
+        org_id,
+        source,
+        external_id,
+        title,
+        participants: resolved,
+        transcript_url,
+        recording_url,
+        occurred_at,
+        project_id: routing.projectId,
+        project_match_confidence: routing.projectId ? routing.confidence : null,
+        project_match_method: routing.method,
+      })
       .select("id")
       .single();
     if (error) return json({ error: error.message }, 500);
@@ -70,11 +108,22 @@ Deno.serve(async (req) => {
           Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ org_id, text: transcript_text, source_type: "meeting", source_meeting_id: meeting.id }),
+        body: JSON.stringify({
+          org_id,
+          text: transcript_text,
+          source_type: "meeting",
+          source_meeting_id: meeting.id,
+          project_id: routing.projectId,
+        }),
       });
     }
 
-    return json({ meeting_id: meeting.id });
+    return json({
+      meeting_id: meeting.id,
+      project_id: routing.projectId,
+      project_match_confidence: routing.confidence,
+      project_match_method: routing.method,
+    });
   } catch (e) {
     return json({ error: String(e) }, 500);
   }
