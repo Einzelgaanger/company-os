@@ -11,17 +11,17 @@ const FLOW = [
   {
     n: "01",
     title: "Detect",
-    body: "Meetings, chat, and mail become owned commitments — not notes that evaporate after the call.",
+    body: "Meetings and chat become owned commitments with a review gate when confidence is low. Notes stop evaporating after the call.",
   },
   {
     n: "02",
     title: "Track",
-    body: "Every item has an owner, a due date, and a waiting trail. The company can see what is actually in motion.",
+    body: "Every item has an owner, a due date and a waiting trail. The company can see what is actually in motion.",
   },
   {
     n: "03",
     title: "Check",
-    body: "People get calm daily prompts on Telegram (primary), with WhatsApp or email as fallback — facts about the work, not another status colour.",
+    body: "People get calm prompts in Chat by default, or on Telegram or WhatsApp when they link a channel. Facts about the work, not another status colour.",
   },
   {
     n: "04",
@@ -31,12 +31,12 @@ const FLOW = [
   {
     n: "05",
     title: "Escalate",
-    body: "When work is stuck, Company OS reads the trail — who owns it, what it depends on, who can unblock it — and routes the ask there. People are not left to guess, chase, or escalate themselves.",
+    body: "When work is stuck, Company OS reads the trail (who owns it, what it depends on, who can unblock it) and routes the ask there. People are not left to guess, chase or escalate themselves.",
   },
   {
     n: "06",
     title: "Report",
-    body: "Project managers and leads receive governed reports: where time went, what is waiting, what moved, what needs a decision.",
+    body: "Project managers and leads receive governed reports: where time went, what is waiting, what moved and what needs a decision.",
   },
 ] as const;
 
@@ -45,27 +45,27 @@ const CHANNELS = [
     n: "01",
     kicker: "Check-ins",
     title: "Daily prompts that sound like staff, not spam",
-    body: "Company OS checks in on live work the way a chief of staff would: short, specific, and timed to the item — not a blast to the whole company. Owners reply in the channel they already live in. The system records the answer, and only when something is actually stuck does it escalate — with context, not panic.",
+    body: "Company OS checks in on live work the way a chief of staff would: short, specific and timed to the item, not a blast to the whole company. Owners reply in Chat or the channel they already live in. The system records the answer. Only when something is actually stuck does it escalate: with context, not panic.",
   },
   {
     n: "02",
     kicker: "Escalation",
     tone: "forest",
     title: "Unblock without the stress",
-    body: "When someone is blocked, Company OS already has the meeting notes, owners, and dependencies. It knows who to ask next so the person doing the work does not have to chase sideways, and the project manager does not have to hunt for the right inbox. Escalation arrives with judgment — the right person, the right tone — not a public pile-on.",
+    body: "When someone is blocked, Company OS already has the meeting notes, owners and dependencies. It knows who to ask next so the person doing the work does not have to chase sideways, and the project manager does not have to hunt for the right inbox. Escalation arrives with judgment: the right person, the right tone, not a public pile-on.",
   },
   {
     n: "03",
     kicker: "Reports",
     title: "Reports for people who run projects",
-    body: "Leads see project health, waiting time, open decisions, and follow-through on commitments — scoped to their projects, not a company-wide dump. This is operational visibility: who is holding work, what is blocked, what closed. It is not a scorecard for promotion or discipline.",
+    body: "Leads see project health, waiting time, open decisions and follow-through on commitments, scoped to their projects, not a company-wide dump. This is operational visibility: who is holding work, what is blocked, what closed. It is not a scorecard for promotion or discipline.",
   },
 ] as const;
 
 const MODES = [
   {
     title: "Studios & agencies",
-    body: "Informal, fast, everyone on chat. Company OS finds who to ask and asks for you — light check-ins, lateral unblocks.",
+    body: "Informal, fast, everyone on chat. Company OS finds who to ask and asks for you: light check-ins, lateral unblocks.",
   },
   {
     title: "Founding teams",
@@ -90,9 +90,9 @@ const AUDIENCE = [
     who: "Project managers",
     title: "Know the project without chasing it",
     points: [
-      "Weekly (and optional daily) reports on waiting time, blockers, and what actually moved",
+      "Weekly (and optional daily) reports on waiting time, blockers and what actually moved",
       "Per-project health: fever, buffer, items waiting, direction versus last week",
-      "See follow-through by owner and team — operational, not a people-ranking board",
+      "See follow-through by owner and team: operational, not a people-ranking board",
     ],
   },
   {
@@ -100,17 +100,17 @@ const AUDIENCE = [
     title: "Keep promises alive between meetings",
     points: [
       "One governed loop instead of a graveyard of Slack threads and spreadsheet trackers",
-      "Escalations that arrive with judgment — quiet for ops, louder when the cost of delay is real",
-      "A waiting register: what is stuck, on whom, and who can unstick it",
+      "Escalations that arrive with judgment: quiet for ops, louder when the cost of delay is real",
+      "A waiting register: what is stuck, on whom and who can unstick it",
     ],
   },
   {
     who: "Everyone doing the work",
     title: "Answer once. Get help, not heat.",
     points: [
-      "A short prompt about the last thing that moved — not a demand for a traffic-light status",
-      "Reply on Telegram (or WhatsApp / email). The record updates everywhere.",
-      "When you are stuck, Company OS uses context to find who can unblock you — so you are not left chasing or stressed",
+      "A short prompt about the last thing that moved, not a demand for a traffic-light status",
+      "Reply in Chat, or on Telegram or WhatsApp when linked. The record updates everywhere.",
+      "When you are stuck, Company OS uses context to find who can unblock you so you are not left chasing or stressed",
     ],
   },
 ] as const;
@@ -119,7 +119,7 @@ const RIBBONS = [
   {
     index: "01",
     title: "Commitments that close",
-    body: "Every promise gets an owner, a due date, and a trail — so follow-through is the default, across any company shape you run.",
+    body: "Every promise gets an owner, a due date and a trail so follow-through is the default, across any company shape you run.",
     img: BRAND.ribbonDesk,
     reverse: false,
     forest: false,
@@ -127,7 +127,7 @@ const RIBBONS = [
   {
     index: "02",
     title: "Check-ins that feel human",
-    body: "Telegram, WhatsApp, and email prompts that sound like a chief of staff — specific to the work, never a bot spam blast.",
+    body: "Chat, Telegram and WhatsApp (when connected) prompts that sound like a chief of staff: specific to the work, never a bot spam blast.",
     img: BRAND.ribbonCheckin,
     reverse: true,
     forest: true,
@@ -135,7 +135,7 @@ const RIBBONS = [
   {
     index: "03",
     title: "Escalations that take the weight off people",
-    body: "Stuck work does not mean you have to stress or guess who to ping. Company OS uses owners, dependencies, and how your company coordinates to route the ask to the person who can actually unblock it — quietly when that is enough, louder when delay is expensive.",
+    body: "Stuck work does not mean you have to stress or guess who to ping. Company OS uses owners, dependencies and how your company coordinates to route the ask to the person who can actually unblock it: quietly when that is enough, louder when delay is expensive.",
     img: BRAND.ribbonEscalate,
     reverse: false,
     forest: false,
@@ -365,7 +365,7 @@ export default function MarketingHome() {
 
       <div className="mk-slash" aria-hidden />
 
-      <section id="how" className="mk-problem">
+      <section id="problem" className="mk-problem">
         <span className="mk-problem__big" aria-hidden>
           Staff
         </span>
@@ -376,20 +376,20 @@ export default function MarketingHome() {
             <p className="body">
               A request sits in a thread. A date slips in a meeting that nobody wrote down. A project manager spends the week chasing
               updates instead of unblocking work. By Friday the report is a collage of optimistic greens. Company OS exists so that
-              does not happen — for a five-person studio or a multi-division company.
+              does not happen: for a five-person studio or a multi-division company.
             </p>
           </Reveal>
           <Reveal delay={2} className="mk-problem__aside">
             <p>
               {BRAND.name} is the agentic chief of staff that keeps follow-through alive: capture, prompt, escalate with
-              context, report — so people are not left chasing when work gets stuck.
+              context and report. People are not left chasing when work gets stuck.
             </p>
             <ul className="tick-list">
               {[
                 "Extract and own every commitment",
                 "Prompt people before silence calcifies",
                 "When someone is stuck, find who can unblock them",
-                "Escalate with context — no chasing, no stress pile-on",
+                "Escalate with context: no chasing, no stress pile-on",
                 "Put project reports in the right hands",
               ].map((t) => (
                 <li key={t}>
@@ -404,14 +404,14 @@ export default function MarketingHome() {
         </div>
       </section>
 
-      <section className="mk-flow">
+      <section id="how" className="mk-flow">
         <div className="container">
           <Reveal>
             <p className="label">How it works</p>
             <h2>Six beats. One continuous operating loop.</h2>
             <p className="mk-flow__lead">
-              The product is not a board you babysit. It is a loop that runs while people do the work — detecting promises,
-              checking in, and writing the operating picture your leads already wish they had.
+              The product is not a board you babysit. It is a loop that runs while people do the work: detecting promises,
+              checking in and writing the operating picture your leads already wish they had.
             </p>
           </Reveal>
           <div className="mk-rail mk-rail--six">
@@ -459,7 +459,7 @@ export default function MarketingHome() {
             <h2>Not one industry template. A mode for how your organisation moves work.</h2>
             <p className="mk-modes__lead">
               A forty-person studio and a forty-person marketing agency often run the same way. A studio and a payments operations
-              team do not. Company OS changes cadence, tone, who gets asked, and how escalations route — so it feels native, not
+              team do not. Company OS changes cadence, tone, who gets asked and how escalations route so it feels native, not
               bolted on.
             </p>
           </Reveal>
@@ -510,7 +510,7 @@ export default function MarketingHome() {
               </Reveal>
             </div>
             <div className="mk-ribbon__media">
-              <img src={r.img} alt="" />
+                <img src={r.img} alt={r.title} />
             </div>
           </section>
         ))}
@@ -521,7 +521,7 @@ export default function MarketingHome() {
           <Reveal>
             <h2>Less chasing. More closing.</h2>
             <p className="mk-statement__sub">
-              Waiting made visible. Follow-through made default. Reports that describe the work — never a ranking of people.
+              Waiting made visible. Follow-through made default. Reports that describe the work, never a ranking of people.
             </p>
           </Reveal>
         </div>
@@ -545,10 +545,10 @@ export default function MarketingHome() {
         <div className="container relative z-10">
           <Reveal>
             <h2 className="max-w-[18ch] text-[clamp(1.5rem,4vw,2.25rem)] font-bold tracking-tight text-[#0E1F1A]">
-              Put an agentic chief of staff on your company.
+              Less chasing on your company. More work that closes.
             </h2>
             <p className="mt-4 max-w-[46ch] text-[15px] leading-relaxed text-[#0E1F1A]/70">
-              Create a workspace, invite the people who hold work, connect the channels you already use. Company OS starts the loop.
+              Create a workspace, invite the people who hold work and connect Chat or the channels you already use. Company OS starts the loop.
             </p>
             <div className="mt-8">
               <Link to="/signup" className="btn btn-dark">
@@ -568,7 +568,7 @@ export default function MarketingHome() {
               </div>
               <p className="mt-4 max-w-[36ch] text-sm leading-relaxed text-white/60">{BRAND.slogan}</p>
               <p className="mt-2 max-w-[40ch] text-sm leading-relaxed text-white/45">
-                Captures commitments, checks in daily, escalates with context when work is stuck — so people stop chasing.
+                Captures commitments, checks in on Chat or messaging channels and escalates with context when work is stuck so people stop chasing.
               </p>
             </div>
             <div>
@@ -576,7 +576,7 @@ export default function MarketingHome() {
               <a href="#how">How it works</a>
               <a href="#teams">For teams</a>
               <a href="#reports">Reports</a>
-              <a href="#product">Features</a>
+              <a href="#product">Product</a>
               <Link to="/signup">Get started</Link>
             </div>
             <div>
