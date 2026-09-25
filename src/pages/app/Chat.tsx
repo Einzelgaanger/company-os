@@ -13,7 +13,7 @@ import {
   preferredChannel,
   preferredChannelLabel,
 } from "@/lib/messaging";
-import { roleAtLeast, type Checkin, type User } from "@/lib/types";
+import { type Checkin, type OrgInvite, type User } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const POLL_MS = 4000;
@@ -22,13 +22,13 @@ export default function Chat() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [team, setTeam] = useState<User[]>([]);
+  const [invites, setInvites] = useState<OrgInvite[]>([]);
   const [threadUserId, setThreadUserId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Checkin[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const isManager = user ? roleAtLeast(user.role, "manager") : false;
   const activeId = threadUserId ?? user?.id ?? null;
 
   const threadUser = useMemo(
@@ -38,9 +38,14 @@ export default function Chat() {
 
   async function loadTeam() {
     if (!user) return;
-    const users = await db.listUsers(user.org_id);
-    const active = users.filter((u) => u.status === "active");
-    setTeam(active);
+    const [users, pending] = await Promise.all([
+      db.listUsers(user.org_id),
+      db.listInvites(user.org_id).catch(() => [] as OrgInvite[]),
+    ]);
+    const people = users.filter((u) => u.status !== "disabled");
+    const known = new Set(people.map((u) => u.email.toLowerCase()));
+    setTeam(people);
+    setInvites(pending.filter((inv) => !known.has(inv.email.toLowerCase())));
   }
 
   async function loadMessages() {
@@ -90,9 +95,7 @@ export default function Chat() {
 
   if (!user) return null;
 
-  const railPeople = isManager
-    ? team
-    : team.filter((u) => u.id === user.id);
+  const railPeople = [...team].sort((a, b) => a.full_name.localeCompare(b.full_name));
 
   return (
     <div className="portal-page animate-fade-in flex h-[calc(100vh-6rem)] min-h-[28rem] flex-col gap-3 lg:flex-row">
@@ -208,37 +211,46 @@ export default function Chat() {
         </div>
       </div>
 
-      {isManager && (
-        <aside className="w-full shrink-0 lg:w-56">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#5B6560]">
-            Team threads
-          </p>
-          <ul className="max-h-[70vh] space-y-1 overflow-y-auto rounded-xl border border-[rgba(14,31,26,0.1)] bg-white p-2">
-            {railPeople.map((u) => (
-              <li key={u.id}>
-                <button
-                  type="button"
-                  onClick={() => setThreadUserId(u.id)}
+      <aside className="w-full shrink-0 lg:w-56">
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#5B6560]">
+          Team
+        </p>
+        <ul className="max-h-[70vh] space-y-1 overflow-y-auto rounded-xl border border-[rgba(14,31,26,0.1)] bg-white p-2">
+          {railPeople.map((u) => (
+            <li key={u.id}>
+              <button
+                type="button"
+                onClick={() => setThreadUserId(u.id)}
+                className={cn(
+                  "w-full rounded-lg px-2.5 py-2 text-left text-sm",
+                  activeId === u.id ? "bg-ink text-white" : "hover:bg-[color:var(--brand-on-forest)]",
+                )}
+              >
+                <div className="truncate font-medium">{u.full_name}</div>
+                <div
                   className={cn(
-                    "w-full rounded-lg px-2.5 py-2 text-left text-sm",
-                    activeId === u.id ? "bg-ink text-white" : "hover:bg-[color:var(--brand-on-forest)]",
+                    "truncate text-[10px]",
+                    activeId === u.id ? "text-white/60" : "text-[#5B6560]",
                   )}
                 >
-                  <div className="truncate font-medium">{u.full_name}</div>
-                  <div
-                    className={cn(
-                      "truncate text-[10px]",
-                      activeId === u.id ? "text-white/60" : "text-[#5B6560]",
-                    )}
-                  >
-                    {preferredChannelLabel(preferredChannel(u))}
-                  </div>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </aside>
-      )}
+                  {u.status === "invited" ? "Invited" : preferredChannelLabel(preferredChannel(u))}
+                </div>
+              </button>
+            </li>
+          ))}
+          {invites.map((inv) => (
+            <li key={inv.token}>
+              <div className="w-full rounded-lg px-2.5 py-2 text-left text-sm">
+                <div className="truncate font-medium">{inv.email}</div>
+                <div className="truncate text-[10px] text-[#5B6560]">Invited</div>
+              </div>
+            </li>
+          ))}
+          {railPeople.length === 0 && invites.length === 0 && (
+            <li className="px-2.5 py-2 text-xs text-[#5B6560]">No teammates yet.</li>
+          )}
+        </ul>
+      </aside>
     </div>
   );
 }
