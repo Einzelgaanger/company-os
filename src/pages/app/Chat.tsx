@@ -99,7 +99,7 @@ export default function Chat() {
   const railPeople = [...team].sort((a, b) => a.full_name.localeCompare(b.full_name));
 
   return (
-    <div className="portal-page animate-fade-in flex h-[calc(100vh-6rem)] min-h-[28rem] flex-col gap-3 lg:flex-row">
+    <div className="portal-page animate-fade-in flex h-[calc(100dvh-11.5rem)] min-h-0 flex-col gap-3 lg:h-[calc(100vh-6rem)] lg:min-h-[28rem] lg:flex-row">
       <div className="flex min-w-0 flex-1 flex-col">
         <PageHeader
           title="Chat"

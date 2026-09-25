@@ -331,7 +331,7 @@ export function AppLayout() {
           </header>
 
           {showConnBanner && connAlert && (
-            <div className="flex items-center justify-between gap-3 border-b border-[rgba(14,31,26,0.12)] bg-[#F4FBE3] px-4 py-2 text-xs font-medium text-[#0E1F1A]">
+            <div className="flex items-center justify-between gap-3 border-b border-[rgba(14,31,26,0.12)] bg-[#F4FBE3] px-4 py-2 text-xs font-medium text-[#0E1F1A] max-lg:flex-wrap">
               <span>
                 Connection issue: <strong>{connAlert.provider}</strong> needs attention (sync stale or expired).{" "}
                 <Link to="/integrations" className="font-bold underline">
@@ -353,7 +353,7 @@ export function AppLayout() {
           )}
 
           {showChatLaunchBanner && (
-            <div className="flex items-center justify-between gap-3 border-b border-[rgba(14,31,26,0.1)] bg-[#F4FBE3] px-4 py-2 text-xs font-medium text-[#0E1F1A]">
+            <div className="flex items-center justify-between gap-3 border-b border-[rgba(14,31,26,0.1)] bg-[#F4FBE3] px-4 py-2 text-xs font-medium text-[#0E1F1A] max-lg:flex-wrap">
               <span>
                 Using <strong>In-app Chat</strong> — open{" "}
                 <Link to="/chat" className="font-bold underline">
@@ -380,7 +380,7 @@ export function AppLayout() {
           )}
 
           {showLinkChannelBanner && (
-            <div className="flex items-center justify-between gap-3 border-b border-status-waiting/40 bg-status-waiting-tint px-4 py-2 text-xs font-medium text-status-waiting-ink">
+            <div className="flex items-center justify-between gap-3 border-b border-status-waiting/40 bg-status-waiting-tint px-4 py-2 text-xs font-medium text-status-waiting-ink max-lg:flex-wrap">
               <span>
                 You prefer {pref === "telegram" ? "Telegram" : "WhatsApp"} but it isn&apos;t linked yet — messages stay in{" "}
                 <Link to="/chat" className="font-bold underline">

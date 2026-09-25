@@ -29,11 +29,16 @@ export function RequireOnboarding({ children }: { children: ReactNode }) {
   if (!user) return <Navigate to="/login" replace />;
   if (!user.org_id) return <Navigate to="/onboarding/organization" replace />;
 
+  // A workspace that already finished setup is not sent back through the wizard.
+  // Missing attestation stays visible under Settings → Compliance.
+  if (isOnboarded) return <>{children}</>;
+
+  if (!gates.complianceAttested && roleAtLeast(user.role, "admin")) {
+    return <Navigate to="/onboarding/compliance" replace />;
+  }
+
   // C-3: the org attestation in tenant_compliance must exist before any processing UI.
   if (!gates.complianceAttested) {
-    if (roleAtLeast(user.role, "admin")) {
-      return <Navigate to="/onboarding/compliance" replace />;
-    }
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-3 bg-bg px-6 text-center">
         <Logo />
@@ -78,12 +83,12 @@ export function RedirectIfAuthed({ children }: { children: ReactNode }) {
   if (loading || gates.loading) return <FullPageSpinner />;
   if (user) {
     if (!user.org_id) return <Navigate to="/onboarding/organization" replace />;
+    if (isOnboarded) return <Navigate to="/flow" replace />;
     if (!gates.complianceAttested && roleAtLeast(user.role, "admin")) {
       return <Navigate to="/onboarding/compliance" replace />;
     }
     if (!gates.noticeAcknowledged) return <Navigate to="/onboarding/notice" replace />;
-    if (!isOnboarded) return <Navigate to="/onboarding/profile" replace />;
-    return <Navigate to="/flow" replace />;
+    return <Navigate to="/onboarding/profile" replace />;
   }
   return <>{children}</>;
 }

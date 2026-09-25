@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { OnboardingLayout } from "@/components/layout/OnboardingLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,11 +8,13 @@ import { useAuth } from "@/context/AuthContext";
 import { slugify } from "@/lib/utils";
 
 export default function OnbOrganization() {
-  const { user, org, createOrganization } = useAuth();
+  const { user, org, isOnboarded, createOrganization } = useAuth();
   const navigate = useNavigate();
   const [name, setName] = useState(org?.name ?? "");
   const [busy, setBusy] = useState(false);
   const alreadyHasOrg = Boolean(user?.org_id);
+
+  if (alreadyHasOrg && isOnboarded) return <Navigate to="/flow" replace />;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

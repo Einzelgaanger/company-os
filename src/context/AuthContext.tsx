@@ -364,7 +364,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return false;
     // Provisioned users with an org are treated as onboarded once they finish the wizard
     // or if they already have a verified phone (seeded demo).
-    if (user.org_id && (onboardedFlag(user.id) || user.phone_verified_at)) return true;
+    if (user.org_id && (onboardedFlag(user.id) || user.phone_verified_at || Boolean(user.phone_number))) return true;
     return onboardedFlag(user.id);
   }, [user, onboardTick]);
 
