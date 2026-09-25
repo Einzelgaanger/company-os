@@ -302,11 +302,14 @@ export const emailTemplates = {
         category: "escalation",
         unsubscribeToken: v.recipient.email_unsubscribe_token,
         heading: v.commitmentTitle,
-        intro: `${v.ownerName} is blocked and this has been routed to you.`,
+        intro:
+          v.recipient.full_name && v.recipient.full_name === v.ownerName
+            ? "This is still with you. The escalation path has nobody else to send it to."
+            : `${v.ownerName} is blocked and this has been routed to you.`,
         ctaLabel: "Open escalation",
         ctaPath: `/escalations/${v.escalationId}`,
         bodyHtml: `
-<p style="margin:0 0 14px"><span style="color:${bandColour};font-weight:700;text-transform:uppercase;font-size:12px;letter-spacing:.06em">${escapeHtml(v.urgencyBand)}</span> Ã¢ÂÂ ${escapeHtml(v.urgencyRationale)}</p>
+<p style="margin:0 0 14px"><span style="color:${bandColour};font-weight:700;text-transform:uppercase;font-size:12px;letter-spacing:.06em">${escapeHtml(v.urgencyBand)}</span> — ${escapeHtml(v.urgencyRationale)}</p>
 ${list([
           `Owed to <strong>${escapeHtml(v.requesterName)}</strong>`,
           `Due <strong>${escapeHtml(v.dueDate)}</strong>`,
@@ -327,7 +330,7 @@ ${list([
           `<tr>
 <td style="padding:10px 0;border-bottom:1px solid #f0f0f0">
 <div style="font-weight:600"><a href="${APP_URL}/escalations/${i.id}" style="color:#0E1F1A;text-decoration:none">${escapeHtml(i.title)}</a></div>
-<div style="font-size:13px;color:#6b7280">${escapeHtml(i.band)} Ã· ${escapeHtml(i.dueIn)} Ã· ${escapeHtml(i.rationale)}</div>
+<div style="font-size:13px;color:#6b7280">${escapeHtml(i.band)} · ${escapeHtml(i.dueIn)} · ${escapeHtml(i.rationale)}</div>
 </td></tr>`,
       )
       .join("");
@@ -337,7 +340,7 @@ ${list([
         category: "escalation",
         unsubscribeToken: v.recipient.email_unsubscribe_token,
         heading: "Your escalation queue",
-        intro: "Ordered by urgency Ã¢ÂÂ most pressing first.",
+        intro: "Ordered by urgency — most pressing first.",
         ctaLabel: "Open all escalations",
         ctaPath: "/escalations",
         bodyHtml: `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table>`,
@@ -347,7 +350,7 @@ ${list([
 
   survey_invite(v: { recipient: Recipient; scopeLabel: string; questionCount: number; cycleId: string }) {
     return {
-      subject: `${v.questionCount} quick questions Ã¢ÂÂ ${v.scopeLabel}`,
+      subject: `${v.questionCount} quick questions — ${v.scopeLabel}`,
       html: layout({
         category: "survey",
         unsubscribeToken: v.recipient.email_unsubscribe_token,
@@ -368,11 +371,11 @@ ${list([
     reportId: string;
   }) {
     return {
-      subject: `Weekly team pulse Ã¢ÂÂ ${v.scopeLabel} (${v.periodLabel})`,
+      subject: `Weekly team pulse — ${v.scopeLabel} (${v.periodLabel})`,
       html: layout({
         category: "report",
         unsubscribeToken: v.recipient.email_unsubscribe_token,
-        heading: `Weekly team pulse Ã¢ÂÂ ${v.scopeLabel}`,
+        heading: `Weekly team pulse — ${v.scopeLabel}`,
         intro: v.periodLabel,
         ctaLabel: "Open full report",
         ctaPath: `/reports/${v.reportId}`,
@@ -469,7 +472,7 @@ ${list([
 
   report_ready(v: { recipient: Recipient; orgName: string; type: string; bodyMarkdown: string; reportId: string; pdfUrl?: string | null }) {
     return {
-      subject: `Company OS ${v.type} report Ã¢ÂÂ ${v.orgName}`,
+      subject: `Company OS ${v.type} report — ${v.orgName}`,
       html: layout({
         category: "report",
         unsubscribeToken: v.recipient.email_unsubscribe_token,
