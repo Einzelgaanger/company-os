@@ -72,13 +72,19 @@ export async function acceptInviteAccount(input: {
   return res.json() as Promise<{ email: string }>;
 }
 
-export function oauthStartUrl(provider: string, orgId: string, userId: string): string {
+export function oauthStartUrl(
+  provider: string,
+  orgId: string,
+  userId: string,
+  returnTo = "/integrations",
+): string {
   const state = `${orgId}:${userId}`;
   const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
   const params = new URLSearchParams({
     provider,
     action: "start",
     state,
+    return: returnTo,
   });
   // Browser navigations cannot set the gateway header. The anon key is public.
   if (anon) params.set("apikey", anon);

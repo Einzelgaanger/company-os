@@ -20,11 +20,17 @@ import { EDGE_CONNECTORS, type EdgeConnector } from "../_shared/providers.genera
 const REDIRECT_BASE =
   Deno.env.get("PUBLIC_APP_URL") ?? Deno.env.get("APP_BASE_URL") ?? "https://os.jabali.studio";
 
+const ALLOWED_RETURNS = new Set(["/integrations", "/onboarding/connections"]);
+
+function appPath(value: string | null | undefined): string {
+  return value && ALLOWED_RETURNS.has(value) ? value : "/integrations";
+}
+
 /** Browser navigations should land back in the app, never on a JSON error page. */
-function backToApp(error: string, provider = ""): Response {
+function backToApp(error: string, provider = "", returnTo?: string | null): Response {
   const params = new URLSearchParams({ error });
   if (provider) params.set("provider", provider);
-  return Response.redirect(`${REDIRECT_BASE}/integrations?${params}`, 302);
+  return Response.redirect(`${REDIRECT_BASE}${appPath(returnTo)}?${params}`, 302);
 }
 const STATE_TTL_MS = 10 * 60_000;
 
@@ -59,6 +65,7 @@ type StatePayload = {
   verifier: string;
   iat: number;
   nonce: string;
+  ret?: string;
 };
 
 async function signState(payload: StatePayload): Promise<string> {
@@ -138,9 +145,10 @@ Deno.serve(async (req) => {
   const action = isCallback ? "callback" : (actionParam ?? "start");
   const def = EDGE_CONNECTORS[provider];
 
-  const fail = (reason: string) =>
+  const returnTo = appPath(url.searchParams.get("return"));
+  const fail = (reason: string, dest = returnTo) =>
     Response.redirect(
-      `${REDIRECT_BASE}/integrations?error=${encodeURIComponent(reason)}&provider=${encodeURIComponent(provider || "unknown")}`,
+      `${REDIRECT_BASE}${dest}?error=${encodeURIComponent(reason)}&provider=${encodeURIComponent(provider || "unknown")}`,
       302,
     );
 
@@ -168,6 +176,7 @@ Deno.serve(async (req) => {
       verifier,
       iat: Date.now(),
       nonce: b64url(crypto.getRandomValues(new Uint8Array(8))),
+      ret: returnTo,
     });
 
     const params = new URLSearchParams({
@@ -187,14 +196,14 @@ Deno.serve(async (req) => {
     return Response.redirect(`${await resolveUrl(def.authorizeUrl, def)}?${params}`, 302);
   }
 
-  if (action !== "callback") return backToApp("unknown_action", provider);
+  if (action !== "callback") return backToApp("unknown_action", provider, returnTo);
 
   const failure = url.searchParams.get("error");
-  if (failure) return backToApp(failure, provider);
-
   const payload = await verifyState(rawState);
+  const dest = appPath(payload?.ret ?? returnTo);
+  if (failure) return backToApp(failure, provider, dest);
   if (!code || !payload || payload.provider !== provider) {
-    return backToApp("invalid_state", provider);
+    return backToApp("invalid_state", provider, dest);
   }
 
   const body = new URLSearchParams({
@@ -220,14 +229,14 @@ Deno.serve(async (req) => {
     body,
   });
   const text = await tokenRes.text();
-  if (!tokenRes.ok) return backToApp("token_exchange_failed", provider);
+  if (!tokenRes.ok) return backToApp("token_exchange_failed", provider, dest);
   let tokens: any;
   try {
     tokens = JSON.parse(text);
   } catch {
     tokens = Object.fromEntries(new URLSearchParams(text));
   }
-  if (!tokens.access_token || tokens.ok === false) return backToApp("no_access_token", provider);
+  if (!tokens.access_token || tokens.ok === false) return backToApp("no_access_token", provider, dest);
 
   let account: string | null = pick(tokens, def.identityFromToken);
   if (!account && def.identityUrl) {
@@ -293,7 +302,7 @@ Deno.serve(async (req) => {
   }
 
   return Response.redirect(
-    `${REDIRECT_BASE}/integrations?connected=${encodeURIComponent(provider)}`,
+    `${REDIRECT_BASE}${dest}?connected=${encodeURIComponent(provider)}`,
     302,
   );
 });

@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Check } from "lucide-react";
 import { OnboardingLayout } from "@/components/layout/OnboardingLayout";
 import { ProviderIcon } from "@/components/ProviderIcon";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/db";
 import { isMockMode } from "@/lib/supabase";
@@ -12,15 +13,45 @@ import { CORE_PROVIDERS, PROVIDERS, type ProviderMeta } from "@/lib/providers";
 import { roleAtLeast, type Connection } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+const RETURN_HERE = "/onboarding/connections";
+
 export default function OnbConnections() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { toast } = useToast();
   const [connections, setConnections] = useState<Connection[]>([]);
 
   const reload = () => {
     if (user?.org_id) void db.listConnections(user.org_id).then(setConnections);
   };
   useEffect(reload, [user]);
+
+  useEffect(() => {
+    const connected = searchParams.get("connected");
+    const failure = searchParams.get("error");
+    if (!connected && !failure) return;
+    const named =
+      PROVIDERS.find((p) => p.id === (connected ?? searchParams.get("provider")))?.name ?? "That app";
+    if (connected) toast(`${named} connected. Connect another, or choose Next when you are done.`, "success");
+    if (failure) {
+      const declined = failure === "access_denied" || failure === "consent_required";
+      const unavailable = failure === "oauth_not_configured" || failure === "token_encryption_not_configured";
+      toast(
+        declined
+          ? `${named} access was declined.`
+          : unavailable
+            ? `${named} isn't available to connect yet.`
+            : `Couldn't connect ${named}. Try again.`,
+        "error",
+      );
+    }
+    searchParams.delete("connected");
+    searchParams.delete("error");
+    searchParams.delete("provider");
+    setSearchParams(searchParams, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const isConnected = (meta: ProviderMeta) =>
     connections.some((c) => c.provider === meta.id && c.status === "connected");
@@ -66,7 +97,7 @@ export default function OnbConnections() {
                   return;
                 }
                 if (meta.auth === "oauth2" && edgeFunctionsConfigured()) {
-                  window.location.assign(oauthStartUrl(meta.id, user.org_id, user.id));
+                  window.location.assign(oauthStartUrl(meta.id, user.org_id, user.id, RETURN_HERE));
                   return;
                 }
                 navigate("/integrations");

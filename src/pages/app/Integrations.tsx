@@ -164,7 +164,7 @@ export default function Integrations() {
     // Live workspaces use the Supabase OAuth function. Clicking Connect leaves
     // for that provider's consent screen and returns here when it finishes.
     if (!isMockMode && edgeFunctionsConfigured()) {
-      window.location.assign(oauthStartUrl(meta.id, user.org_id, user.id));
+      window.location.assign(oauthStartUrl(meta.id, user.org_id, user.id, "/integrations"));
       return;
     }
     if (apiConfigured()) {

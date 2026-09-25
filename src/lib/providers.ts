@@ -168,6 +168,7 @@ export const PROVIDERS: ProviderMeta[] = [
     scopesNote: "gmail.readonly",
     icon: "logos:google-gmail",
     docsUrl: "https://developers.google.com/gmail/api/auth/scopes",
+    core: true,
   },
   {
     id: "outlook",
