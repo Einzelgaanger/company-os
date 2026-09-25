@@ -6,10 +6,12 @@ import { AuthCard } from "@/components/auth/AuthCard";
 import { AuthField } from "@/components/auth/AuthField";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
+import { accountExists } from "@/lib/launch";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const [missing, setMissing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,6 +25,13 @@ export default function ForgotPassword() {
     }
     setBusy(true);
     setError(null);
+    setMissing(false);
+    const exists = await accountExists(email);
+    if (exists === false) {
+      setBusy(false);
+      setMissing(true);
+      return;
+    }
     const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
@@ -47,8 +56,17 @@ export default function ForgotPassword() {
       >
         {sent ? (
           <p className="text-sm font-medium text-[#5B6560]">
-            If an account exists for <span className="font-semibold text-[#0E1F1A]">{email}</span>, a reset link is on its way.
+            A reset link is on its way to <span className="font-semibold text-[#0E1F1A]">{email}</span>.
           </p>
+        ) : missing ? (
+          <div className="space-y-3">
+            <p className="text-sm font-medium text-[#5B6560]">
+              No account for <span className="font-semibold text-[#0E1F1A]">{email}</span>.
+            </p>
+            <Button type="button" variant="outline" className="h-11 w-full" onClick={() => setMissing(false)}>
+              Try a different email
+            </Button>
+          </div>
         ) : (
           <form onSubmit={submit} className="space-y-3">
             <AuthField

@@ -91,6 +91,17 @@ export function oauthStartUrl(
   return `${base()}/functions/v1/oauth?${params}`;
 }
 
+/** True when this email is a registered account. Null when the lookup itself failed. */
+export async function accountExists(email: string): Promise<boolean | null> {
+  const res = await edgeFetch("account-exists", {
+    method: "POST",
+    body: JSON.stringify({ email: email.trim().toLowerCase() }),
+  });
+  if (!res.ok) return null;
+  const data = (await res.json()) as { exists?: boolean };
+  return data.exists === true;
+}
+
 export async function sendPhoneOtp(userId: string): Promise<void> {
   const res = await edgeFetch("verify-otp", {
     method: "POST",

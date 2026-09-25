@@ -35,6 +35,9 @@ verify_jwt = false          # start/callback hit from the browser + provider red
 [functions.sync-sources]
 verify_jwt = true           # cron / service role
 
+[functions.account-exists]
+verify_jwt = false          # password reset runs before anyone is signed in
+
 [functions.sync-calendar]
 verify_jwt = true
 
