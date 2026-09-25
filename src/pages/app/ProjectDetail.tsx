@@ -12,6 +12,7 @@ import { FeverChart, readFever } from "@/components/flow";
 import { StatusDot } from "@/components/StatusDot";
 import { EmptyState, TableSkeleton, ErrorState } from "@/components/states";
 import { AddCommitmentDialog } from "@/components/AddCommitmentDialog";
+import { ProjectRoom } from "@/components/project/ProjectRoom";
 import { useAuth } from "@/context/AuthContext";
 import { db, projectHealth } from "@/lib/db";
 import { computeProjectProgress } from "@/lib/progress";
@@ -63,9 +64,18 @@ export default function ProjectDetail() {
       const linkedMeetingIds = new Set(
         projectCommitments.map((c) => c.source_meeting_id).filter(Boolean),
       );
+      const needles = [p.name, p.client_name, ...(p.keywords ?? [])]
+        .filter((s): s is string => Boolean(s && s.length > 2))
+        .map((s) => s.toLowerCase());
       setProject(p);
       setCommitments(projectCommitments);
-      setMeetings(allM.filter((m) => linkedMeetingIds.has(m.id)));
+      setMeetings(
+        allM.filter((m) => {
+          if (linkedMeetingIds.has(m.id) || m.project_id === id) return true;
+          const hay = `${m.title ?? ""}`.toLowerCase();
+          return needles.some((n) => hay.includes(n));
+        }),
+      );
       setUsers(allU);
       setMilestones(ms);
       setSnapshot(
@@ -246,8 +256,9 @@ export default function ProjectDetail() {
         </section>
       ) : null}
 
-      <Tabs defaultValue="commitments">
+      <Tabs defaultValue="room">
         <TabsList>
+          <TabsTrigger value="room">Room</TabsTrigger>
           <TabsTrigger value="commitments">Commitments</TabsTrigger>
           <TabsTrigger value="flow">Flow</TabsTrigger>
           <TabsTrigger value="milestones">Milestones</TabsTrigger>
@@ -255,6 +266,12 @@ export default function ProjectDetail() {
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="progress">Progress</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="room">
+          {user && (
+            <ProjectRoom project={project} user={user} users={users} meetings={meetings} />
+          )}
+        </TabsContent>
 
         <TabsContent value="commitments">
           <div className="mb-3 flex justify-end">

@@ -1,4 +1,5 @@
 import { store } from "./store";
+import { projectRoomStore } from "../projectRoomStore";
 import { nowIso, uuid } from "../utils";
 import { classify } from "../classify";
 import type {
@@ -302,6 +303,39 @@ export const mockDb = {
       store.all("team_members").filter((m) => !(m.team_id === teamId && m.user_id === userId)),
     );
     return ok(undefined);
+  },
+
+  async listProjectChannels(projectId: string) {
+    return ok(projectRoomStore.channels(projectId));
+  },
+  async createProjectChannel(input: { org_id: string; project_id: string; name: string; created_by: string | null }) {
+    return ok(projectRoomStore.addChannel(input));
+  },
+  async listProjectMessages(channelId: string) {
+    return ok(projectRoomStore.messages(channelId));
+  },
+  async postProjectMessage(input: {
+    org_id: string;
+    project_id: string;
+    channel_id: string;
+    user_id: string;
+    body: string;
+    parent_id: string | null;
+  }) {
+    return ok(projectRoomStore.addMessage(input));
+  },
+  async listProjectFiles(projectId: string) {
+    return ok(projectRoomStore.files(projectId));
+  },
+  async addProjectFile(input: {
+    org_id: string;
+    project_id: string;
+    kind: "file" | "link" | "image";
+    name: string;
+    url: string;
+    added_by: string | null;
+  }) {
+    return ok(projectRoomStore.addFile(input));
   },
 
   async listProjectMembers(projectId: string): Promise<ProjectMember[]> {

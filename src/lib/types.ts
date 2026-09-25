@@ -340,6 +340,37 @@ export interface Connection {
 
 export type ProjectHealth = "on_track" | "at_risk" | "off_track" | "unknown";
 
+export interface ProjectChannel {
+  id: string;
+  org_id: string;
+  project_id: string;
+  name: string;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface ProjectMessage {
+  id: string;
+  org_id: string;
+  project_id: string;
+  channel_id: string;
+  user_id: string;
+  body: string;
+  parent_id: string | null;
+  created_at: string;
+}
+
+export interface ProjectFile {
+  id: string;
+  org_id: string;
+  project_id: string;
+  kind: "file" | "link" | "image";
+  name: string;
+  url: string;
+  added_by: string | null;
+  created_at: string;
+}
+
 export interface Project {
   id: string;
   org_id: string;
@@ -497,6 +528,7 @@ export interface Meeting {
   source: "fathom" | "zoom" | "teams" | "manual";
   external_id: string | null;
   title: string | null;
+  project_id?: string | null;
   participants: MeetingParticipant[];
   transcript_url: string | null;
   recording_url: string | null;

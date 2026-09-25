@@ -1382,6 +1382,68 @@ export const supabaseDb = {
     if (error) throw error;
   },
 
+  async listProjectChannels(projectId: string) {
+    const { data, error } = await client()
+      .from("project_channels")
+      .select("*")
+      .eq("project_id", projectId)
+      .order("created_at");
+    if (error) throw error;
+    return data ?? [];
+  },
+  async createProjectChannel(input: { org_id: string; project_id: string; name: string; created_by: string | null }) {
+    const name = input.name.trim().toLowerCase().replace(/\s+/g, "-");
+    const { data, error } = await client()
+      .from("project_channels")
+      .insert({ ...input, name })
+      .select("*")
+      .single();
+    if (error) throw error;
+    return data;
+  },
+  async listProjectMessages(channelId: string) {
+    const { data, error } = await client()
+      .from("project_messages")
+      .select("*")
+      .eq("channel_id", channelId)
+      .order("created_at");
+    if (error) throw error;
+    return data ?? [];
+  },
+  async postProjectMessage(input: {
+    org_id: string;
+    project_id: string;
+    channel_id: string;
+    user_id: string;
+    body: string;
+    parent_id: string | null;
+  }) {
+    const { data, error } = await client().from("project_messages").insert(input).select("*").single();
+    if (error) throw error;
+    return data;
+  },
+  async listProjectFiles(projectId: string) {
+    const { data, error } = await client()
+      .from("project_files")
+      .select("*")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  },
+  async addProjectFile(input: {
+    org_id: string;
+    project_id: string;
+    kind: "file" | "link" | "image";
+    name: string;
+    url: string;
+    added_by: string | null;
+  }) {
+    const { data, error } = await client().from("project_files").insert(input).select("*").single();
+    if (error) throw error;
+    return data;
+  },
+
   async invokeAutonomySweep(): Promise<{ checkins: number; escalations: number }> {
     const [checkinRes, spRes] = await Promise.all([
       client().functions.invoke("send-checkin", { body: {} }),
