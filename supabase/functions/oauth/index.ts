@@ -268,7 +268,7 @@ Deno.serve(async (req) => {
     scopes: (tokens.scope ?? def.scopes.join(" ")).split(" ").filter(Boolean),
     external_account_email: account,
     connected_at: new Date().toISOString(),
-    last_synced_at: new Date().toISOString(),
+    last_synced_at: null,
     error_message: null,
   };
 
@@ -288,18 +288,18 @@ Deno.serve(async (req) => {
     await db.from("connections").insert(row);
   }
 
-  // Calendar connectors have a first sync worth kicking immediately.
-  if (provider === "google_calendar" || provider === "microsoft_calendar") {
-    const base = Deno.env.get("SUPABASE_URL")!;
-    fetch(`${base}/functions/v1/sync-calendar`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ org_id: payload.tid }),
-    }).catch(() => {});
-  }
+  // First pull as soon as the account is connected. Cron repeats it.
+  const base = Deno.env.get("SUPABASE_URL")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const kick = provider === "google_calendar" || provider === "microsoft_calendar" ? "sync-calendar" : "sync-sources";
+  fetch(`${base}/functions/v1/${kick}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${serviceKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ org_id: payload.tid, provider }),
+  }).catch(() => {});
 
   return Response.redirect(
     `${REDIRECT_BASE}${dest}?connected=${encodeURIComponent(provider)}`,

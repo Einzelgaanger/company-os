@@ -231,14 +231,13 @@ export default function Governance() {
 
         <TabsContent value="calls" className="space-y-4">
           <p className="max-w-2xl text-sm text-slate">
-            Connected apps deliver a meeting as one whole call. It stays held until you tag it
-            for privacy — then it is stored, and every commitment extracted from it inherits
-            that tag.
+            Connected mail and meetings land here first and stay held until you tag them.
+            Tagging is what stores the item. Commitments extracted from it inherit that tag.
           </p>
           {heldCalls.length === 0 ? (
             <Card>
               <CardContent className="p-5 text-sm text-slate">
-                No calls waiting. New Fathom / Zoom / Teams meetings will land here first.
+                Nothing waiting. Mail and meetings from a connected app show up here after the next sync.
               </CardContent>
             </Card>
           ) : (

@@ -32,6 +32,12 @@ verify_jwt = true
 [functions.oauth]
 verify_jwt = false          # start/callback hit from the browser + provider redirect
 
+[functions.sync-sources]
+verify_jwt = true           # cron / service role
+
+[functions.sync-calendar]
+verify_jwt = true
+
 [functions.invite]
 verify_jwt = false          # peek/accept are public; send checks the caller's JWT itself
 
