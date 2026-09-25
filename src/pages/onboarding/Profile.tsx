@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { OnboardingLayout } from "@/components/layout/OnboardingLayout";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,13 @@ const COUNTRY_CODES = [
   { code: "+1", label: "🇺🇸 +1" },
 ];
 
+function splitPhone(value: string | null | undefined) {
+  if (!value) return { code: "+254", local: "" };
+  const match = COUNTRY_CODES.find((c) => value.startsWith(c.code));
+  if (!match) return { code: "+254", local: value.replace(/^\+/, "") };
+  return { code: match.code, local: value.slice(match.code.length) };
+}
+
 export default function OnbProfile() {
   const { user, refresh } = useAuth();
   const navigate = useNavigate();
@@ -24,12 +31,22 @@ export default function OnbProfile() {
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    if (!user) return;
+    setFullName(user.full_name ?? "");
+    const split = splitPhone(user.phone_number);
+    setCode(split.code);
+    setPhone(split.local);
+  }, [user?.id, user?.full_name, user?.phone_number]);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
     setBusy(true);
     try {
-      const phoneNumber = phone ? `${code}${phone.replace(/^0+/, "")}` : null;
+      const phoneNumber = phone.trim()
+        ? `${code}${phone.replace(/^0+/, "")}`
+        : user.phone_number;
       await db.updateUser(user.id, { full_name: fullName.trim(), phone_number: phoneNumber });
       await refresh();
       navigate("/onboarding/connections");
@@ -47,7 +64,14 @@ export default function OnbProfile() {
         </div>
         <div className="space-y-1.5">
           <Label>Phone number</Label>
-          <div className="flex gap-2">
+          {user?.phone_number ? (
+            <p className="text-sm text-[#0E1F1A]">
+              Already saved on this account as <span className="font-semibold">{user.phone_number}</span>. Same Google sign-in on another device keeps it. Change it only if it is wrong.
+            </p>
+          ) : (
+            <p className="text-xs text-slate">Optional. Add it if you want Telegram or WhatsApp later.</p>
+          )}
+          <div className="flex flex-col gap-2 min-[480px]:flex-row">
             <div className="w-32">
               <Select value={code} onValueChange={setCode}>
                 <SelectTrigger>

@@ -936,6 +936,125 @@
   }
 }
 
+/* Phone and tablet only. Laptop rules above stay as they are. */
+@media (max-width: 1023px) {
+  html,
+  body {
+    overflow-x: clip;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+    max-width: 100%;
+  }
+
+  img,
+  svg,
+  video,
+  canvas {
+    max-width: 100%;
+  }
+
+  [role="tablist"],
+  .underline-tabs {
+    overflow-x: auto;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .page-hero,
+  .portal-section__head,
+  .portal-toolbar {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .page-hero h1,
+  .portal-page h1,
+  .portal-page h2 {
+    overflow-wrap: anywhere;
+  }
+
+  .portal-page,
+  .content-canvas,
+  .onboarding-shell,
+  .portal-section {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .content-canvas {
+    padding-left: max(0.75rem, env(safe-area-inset-left));
+    padding-right: max(0.75rem, env(safe-area-inset-right));
+  }
+
+  /* Button rows wrap instead of running off the screen. */
+  .portal-page .flex,
+  .onboarding-shell .flex,
+  form .flex,
+  [role="dialog"] .flex {
+    flex-wrap: wrap;
+  }
+
+  .glass-tabbar,
+  .glass-tabbar .flex {
+    flex-wrap: nowrap;
+  }
+
+  .portal-page button,
+  .onboarding-shell button,
+  [role="dialog"] button,
+  form button {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .portal-page button:not(.h-7):not(.h-8):not(.h-9),
+  .onboarding-shell button,
+  form button[type="submit"] {
+    min-height: 44px;
+  }
+
+  .onboarding-shell .onboarding-nav {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    flex-direction: column;
+    align-items: stretch;
+    margin-top: 0.75rem;
+    padding: 0.75rem 0 max(0.75rem, env(safe-area-inset-bottom));
+    background: #efefee;
+  }
+
+  .onboarding-shell .onboarding-nav > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .onboarding-shell .onboarding-nav button {
+    width: 100%;
+  }
+
+  .onboarding-shell .onboarding-nav button:disabled {
+    display: none;
+  }
+
+  [role="dialog"] {
+    width: min(100vw - 1.5rem, 32rem);
+    max-height: min(90dvh, 100%);
+  }
+
+  .w-32 {
+    width: 100%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in,
   .animate-soft-rise,

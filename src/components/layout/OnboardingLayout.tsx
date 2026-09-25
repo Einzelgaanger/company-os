@@ -16,9 +16,10 @@ const STEP_PATH: Record<string, string> = {
   Notice: "/onboarding/notice",
 };
 
-function ProgressRing({ step, steps }: { step: number; steps: string[] }) {
+function ProgressRing({ step, steps, finished }: { step: number; steps: string[]; finished?: boolean }) {
   const total = steps.length;
-  const pct = ((step + 1) / total) * 100;
+  const shown = finished ? total : Math.min(step + 1, total);
+  const pct = (shown / total) * 100;
   const r = 20;
   const c = 2 * Math.PI * r;
   return (
@@ -46,13 +47,13 @@ function ProgressRing({ step, steps }: { step: number; steps: string[] }) {
           fontWeight={600}
           fill="#0E1F1A"
         >
-          {Math.min(step + 1, total)}/{total}
+          {shown}/{total}
         </text>
       </svg>
       <div className="text-sm">
-        <div className="font-semibold text-[#0E1F1A]">{steps[step] ?? "Done"}</div>
+        <div className="font-semibold text-[#0E1F1A]">{finished ? "Done" : (steps[step] ?? "Done")}</div>
         <div className="text-[11px] font-medium text-[#5B6560]">
-          Step {step + 1} of {total}
+          {finished ? "Setup complete" : `Step ${shown} of ${total}`}
         </div>
       </div>
     </div>
@@ -66,12 +67,15 @@ export function OnboardingLayout({
   children,
   footer,
   steps = STEPS,
+  finished = false,
 }: {
   step: number;
   title: string;
   description?: string;
   children: ReactNode;
   footer?: ReactNode;
+  /** Last screen. Never counts as an extra step. */
+  finished?: boolean;
   /** Override the rail when this page is not on the admin wizard (the notice). */
   steps?: string[];
 }) {
@@ -82,14 +86,14 @@ export function OnboardingLayout({
   const followingPath = following ? STEP_PATH[following] : undefined;
 
   return (
-    <div className="min-h-[100dvh] bg-[#EFEFEE]">
-      <div className="flex items-center justify-between p-6">
+    <div className="onboarding-shell min-h-[100dvh] bg-[#EFEFEE]">
+      <div className="flex items-center justify-between p-6 max-lg:px-4 max-lg:pt-[max(1rem,env(safe-area-inset-top))]">
         <Logo />
       </div>
-      <div className="flex justify-center px-4 pb-16">
+      <div className="flex justify-center px-4 pb-16 max-lg:px-3 max-lg:pb-[max(6rem,calc(env(safe-area-inset-bottom)+4.5rem))]">
         <div className="w-full max-w-xl animate-fade-in">
           <div className="mb-5 flex items-center justify-between">
-            <ProgressRing step={step} steps={steps} />
+            <ProgressRing step={step} steps={steps} finished={finished} />
             <div className="hidden gap-1 sm:flex">
               {steps.map((s, i) => (
                 <span
@@ -107,7 +111,7 @@ export function OnboardingLayout({
               <div className="mt-5">{children}</div>
             </div>
           </div>
-          <div className="mt-4 flex items-center justify-between gap-2">
+          <div className="onboarding-nav mt-4 flex items-center justify-between gap-2">
             <Button
               type="button"
               variant="outline"
@@ -118,14 +122,17 @@ export function OnboardingLayout({
             </Button>
             <div className="flex items-center gap-2">
               {footer}
-              <Button
-                type="button"
-                variant="outline"
-                disabled={!followingPath}
-                onClick={() => followingPath && navigate(followingPath)}
-              >
-                Next
-              </Button>
+              {!finished && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={cn(!followingPath && "max-lg:hidden")}
+                  disabled={!followingPath}
+                  onClick={() => followingPath && navigate(followingPath)}
+                >
+                  Next
+                </Button>
+              )}
             </div>
           </div>
         </div>
