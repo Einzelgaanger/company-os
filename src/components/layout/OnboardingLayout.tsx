@@ -1,8 +1,20 @@
 import type { ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 import { Logo } from "@/components/brand/Logo";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const STEPS = ["Organization", "Compliance", "Coordination", "Profile", "Connections", "Team"];
+
+const STEP_PATH: Record<string, string> = {
+  Organization: "/onboarding/organization",
+  Compliance: "/onboarding/compliance",
+  Coordination: "/onboarding/coordination",
+  Profile: "/onboarding/profile",
+  Connections: "/onboarding/connections",
+  Team: "/onboarding/team",
+  Notice: "/onboarding/notice",
+};
 
 function ProgressRing({ step, steps }: { step: number; steps: string[] }) {
   const total = steps.length;
@@ -63,6 +75,12 @@ export function OnboardingLayout({
   /** Override the rail when this page is not on the admin wizard (the notice). */
   steps?: string[];
 }) {
+  const navigate = useNavigate();
+  const previous = steps[step - 1];
+  const following = steps[step + 1];
+  const previousPath = previous ? STEP_PATH[previous] : undefined;
+  const followingPath = following ? STEP_PATH[following] : undefined;
+
   return (
     <div className="min-h-[100dvh] bg-[#EFEFEE]">
       <div className="flex items-center justify-between p-6">
@@ -89,7 +107,27 @@ export function OnboardingLayout({
               <div className="mt-5">{children}</div>
             </div>
           </div>
-          {footer && <div className="mt-4 flex justify-between gap-2">{footer}</div>}
+          <div className="mt-4 flex items-center justify-between gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!previousPath}
+              onClick={() => previousPath && navigate(previousPath)}
+            >
+              Back
+            </Button>
+            <div className="flex items-center gap-2">
+              {footer}
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!followingPath}
+                onClick={() => followingPath && navigate(followingPath)}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

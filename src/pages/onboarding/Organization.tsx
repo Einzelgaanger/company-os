@@ -12,14 +12,14 @@ export default function OnbOrganization() {
   const navigate = useNavigate();
   const [name, setName] = useState(org?.name ?? "");
   const [busy, setBusy] = useState(false);
-
-  // Invited users already have an org — start with transparency notice (C-3).
-  if (user?.org_id) {
-    navigate("/onboarding/notice", { replace: true });
-  }
+  const alreadyHasOrg = Boolean(user?.org_id);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (alreadyHasOrg) {
+      navigate("/onboarding/compliance");
+      return;
+    }
     setBusy(true);
     try {
       await createOrganization(name.trim());
@@ -30,7 +30,11 @@ export default function OnbOrganization() {
   }
 
   return (
-    <OnboardingLayout step={0} title="Create your organization" description="This is the workspace Company OS watches over.">
+    <OnboardingLayout
+      step={0}
+      title={alreadyHasOrg ? "Your organization" : "Create your organization"}
+      description="This is the workspace Company OS watches over."
+    >
       <form onSubmit={submit} className="space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="orgname">Organization name</Label>
@@ -38,7 +42,7 @@ export default function OnbOrganization() {
           {name && <p className="font-mono text-xs text-slate">companyos.app/{slugify(name)}</p>}
         </div>
         <Button type="submit" disabled={busy || !name.trim()}>
-          {busy ? "Creating…" : "Continue"}
+          {busy ? "Creating…" : alreadyHasOrg ? "Continue" : "Create organization"}
         </Button>
       </form>
     </OnboardingLayout>
