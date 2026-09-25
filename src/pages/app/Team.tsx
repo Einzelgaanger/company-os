@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { Input } from "@/components/ui/input";
 import { RoleBadge } from "@/components/badges";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { InviteDialog } from "@/components/InviteDialog";
 import { DataTable } from "@/components/shared/DataTable";
 import { TableSkeleton, ErrorState } from "@/components/states";
@@ -90,7 +91,12 @@ export default function Team() {
               key: "name",
               header: "Name",
               primary: true,
-              cell: (m) => <span className="font-medium text-[var(--brand-ink)]">{m.full_name}</span>,
+              cell: (m) => (
+                <span className="inline-flex items-center gap-2 font-medium text-[var(--brand-ink)]">
+                  <PersonAvatar name={m.full_name} url={m.avatar_url} className="h-7 w-7" />
+                  {m.full_name}
+                </span>
+              ),
             },
             {
               key: "role",

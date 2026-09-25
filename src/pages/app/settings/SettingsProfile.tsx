@@ -17,6 +17,7 @@ import {
 } from "@/lib/messaging";
 import type { PreferredMessagingChannel } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { PersonAvatar, readAvatarFile } from "@/components/PersonAvatar";
 
 const EMAIL_TOGGLES: { id: string; label: string; blurb: string }[] = [
   { id: "escalation", label: "Escalations", blurb: "When something is routed to you." },
@@ -53,6 +54,7 @@ export default function SettingsProfile() {
   const { user, refresh } = useAuth();
   const { toast } = useToast();
   const [fullName, setFullName] = useState("");
+  const [photo, setPhoto] = useState<string | null>(null);
   const [phone, setPhone] = useState("");
   const [checkinsOn, setCheckinsOn] = useState(true);
   const [digest, setDigest] = useState(true);
@@ -66,6 +68,7 @@ export default function SettingsProfile() {
   useEffect(() => {
     if (user) {
       setFullName(user.full_name);
+      setPhoto(user.avatar_url);
       setPhone(user.phone_number ?? "");
       setCheckinsOn(user.notification_prefs.whatsapp_checkins);
       setDigest(user.notification_prefs.daily_digest !== false);
@@ -101,6 +104,7 @@ export default function SettingsProfile() {
     await db.updateEmailPrefs(user.id, emailPrefs);
     const patch: Parameters<typeof db.updateUser>[1] = {
       full_name: fullName.trim(),
+      avatar_url: photo,
       phone_number: phone.trim() || null,
       notification_prefs: {
         whatsapp_checkins: checkinsOn,
@@ -177,6 +181,30 @@ export default function SettingsProfile() {
           <CardDescription>Your personal details and how Company OS reaches you.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="flex items-center gap-3">
+            <PersonAvatar name={fullName || user.full_name} url={photo} className="h-14 w-14 text-base" />
+            <label className="cursor-pointer text-sm font-semibold text-[#0E1F1A] underline">
+              {photo ? "Change photo" : "Add a photo"}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (!file) return;
+                  void readAvatarFile(file)
+                    .then(setPhoto)
+                    .catch((err) => toast(err instanceof Error ? err.message : "Could not read that photo.", "error"));
+                }}
+              />
+            </label>
+            {photo && (
+              <button type="button" className="text-sm text-[#5B6560]" onClick={() => setPhoto(null)}>
+                Remove
+              </button>
+            )}
+          </div>
           <div className="space-y-1.5">
             <Label>Full name</Label>
             <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />

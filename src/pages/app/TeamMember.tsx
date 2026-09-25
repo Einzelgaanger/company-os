@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CommitmentStatusBadge, PriorityBadge, RoleBadge } from "@/components/badges";
 import { TableSkeleton, ErrorState } from "@/components/states";
@@ -12,7 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/db";
 import { channelReady, preferredChannel, preferredChannelLabel } from "@/lib/messaging";
 import { roleAtLeast, type Checkin, type Commitment, type User } from "@/lib/types";
-import { formatDate, formatDateTime, initials } from "@/lib/utils";
+import { formatDate, formatDateTime } from "@/lib/utils";
 
 export default function TeamMember() {
   const { id } = useParams();
@@ -74,9 +74,7 @@ export default function TeamMember() {
 
       <Card>
         <CardContent className="flex flex-wrap items-center gap-4 p-5">
-          <Avatar className="h-12 w-12">
-            <AvatarFallback>{initials(member.full_name)}</AvatarFallback>
-          </Avatar>
+          <PersonAvatar name={member.full_name} url={member.avatar_url} className="h-12 w-12 text-sm" />
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <span className="font-medium text-ink">{member.full_name}</span>

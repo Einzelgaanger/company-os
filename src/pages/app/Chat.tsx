@@ -15,6 +15,7 @@ import {
 } from "@/lib/messaging";
 import { type Checkin, type OrgInvite, type User } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { PersonAvatar } from "@/components/PersonAvatar";
 
 const POLL_MS = 4000;
 
@@ -226,7 +227,10 @@ export default function Chat() {
                   activeId === u.id ? "bg-ink text-white" : "hover:bg-[color:var(--brand-on-forest)]",
                 )}
               >
-                <div className="truncate font-medium">{u.full_name}</div>
+                <span className="flex items-center gap-2">
+                  <PersonAvatar name={u.full_name} url={u.avatar_url} className="h-6 w-6 text-[9px]" />
+                  <span className="truncate font-medium">{u.full_name}</span>
+                </span>
                 <div
                   className={cn(
                     "truncate text-[10px]",

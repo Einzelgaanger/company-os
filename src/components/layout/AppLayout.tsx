@@ -25,13 +25,14 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AutonomyPill } from "@/components/AutonomyPill";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { BrandMark } from "@/components/brand/LoopMark";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/db";
 import { connectionHealthLocal } from "@/lib/connectionHealth";
 import { channelReady, preferredChannel } from "@/lib/messaging";
 import { roleAtLeast, type Role } from "@/lib/types";
-import { cn, initials } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
 
 interface NavItem {
@@ -175,9 +176,7 @@ export function AppLayout() {
           <div className="sidebar-divider" />
           {!collapsed && (
             <div className="m-2 flex items-center gap-2 rounded-xl bg-[#173028] px-2.5 py-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#D3F36B] text-[11px] font-bold text-[#0E1F1A]">
-                {initials(user.full_name)}
-              </div>
+              <PersonAvatar name={user.full_name} url={user.avatar_url} className="h-7 w-7 rounded-md" />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-xs font-semibold text-white">{user.full_name}</div>
                 <div className="truncate text-[10px] text-white/50">{org?.name ?? user.role}</div>
@@ -280,22 +279,31 @@ export function AppLayout() {
           </header>
 
           <header className="hidden h-14 items-center justify-between border-b border-[rgba(14,31,26,0.06)] bg-white px-4 lg:flex">
-            <form
-              className="flex min-w-0 flex-1 items-center gap-3"
-              onSubmit={(e) => {
-                e.preventDefault();
-                const data = new FormData(e.currentTarget);
-                const q = String(data.get("q") ?? "").trim();
-                navigate(q ? `/commitments?q=${encodeURIComponent(q)}` : "/commitments");
-              }}
-            >
-              <div className="truncate text-sm font-semibold text-[#5B6560]">{org?.name ?? BRAND.name}</div>
-              <input
-                name="q"
-                placeholder="Search commitments"
-                className="h-8 w-full max-w-xs rounded-md border border-[rgba(14,31,26,0.12)] bg-[#F8F8F7] px-3 text-sm outline-none focus:border-[#0E1F1A]"
-              />
-            </form>
+            <div className="flex min-w-0 flex-1 items-center gap-4">
+              <div className="min-w-0">
+                <div className="truncate text-[15px] font-bold tracking-tight text-[#0E1F1A]">
+                  {org?.name ?? BRAND.name}
+                </div>
+                <div className="truncate text-[10px] font-medium uppercase tracking-wide text-[#5B6560]">
+                  {BRAND.name}
+                </div>
+              </div>
+              <form
+                className="min-w-0 flex-1"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const data = new FormData(e.currentTarget);
+                  const q = String(data.get("q") ?? "").trim();
+                  navigate(q ? `/commitments?q=${encodeURIComponent(q)}` : "/commitments");
+                }}
+              >
+                <input
+                  name="q"
+                  placeholder="Search commitments"
+                  className="h-8 w-full max-w-sm rounded-md border border-[rgba(14,31,26,0.12)] bg-[#F8F8F7] px-3 text-sm outline-none focus:border-[#0E1F1A]"
+                />
+              </form>
+            </div>
             <div className="flex items-center gap-2">
               <AutonomyPill />
               <Link
@@ -313,9 +321,7 @@ export function AppLayout() {
                 onClick={() => navigate("/settings/profile")}
                 className="flex items-center gap-2 rounded-xl bg-[#F8F8F7] px-2 py-1.5 text-left hover:bg-[#F4FBE3]"
               >
-                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#D3F36B] text-[11px] font-bold text-[#0E1F1A]">
-                  {initials(user.full_name)}
-                </div>
+                <PersonAvatar name={user.full_name} url={user.avatar_url} className="h-8 w-8" />
                 <div className="hidden xl:block">
                   <div className="text-xs font-semibold text-[#0E1F1A]">{user.full_name}</div>
                   <div className="text-[10px] text-[#5B6560]">{user.email}</div>
