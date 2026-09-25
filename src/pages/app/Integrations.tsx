@@ -53,6 +53,16 @@ const AUTH_LABEL: Record<ProviderMeta["auth"], string> = {
   webhook: "Webhook",
 };
 
+function syncFailure(name: string, raw: string | null): string {
+  if (raw?.includes("403")) {
+    return `${name} signed in, then Google refused the read. Enable the ${name} API on the Google Cloud project for this app, then reconnect.`;
+  }
+  if (raw?.includes("401")) {
+    return `${name} signed in, but the permission was rejected. Reconnect and accept the requested access.`;
+  }
+  return raw ? `${name} signed in, but the first sync failed.` : `${name} needs a reconnect.`;
+}
+
 export default function Integrations() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -109,7 +119,15 @@ export default function Integrations() {
     const named =
       PROVIDERS.find((p) => p.id === (connected ?? searchParams.get("provider")))?.name ??
       "That app";
-    if (connected) toast(`${named} connected.`, "success");
+    if (connected) {
+      const row = connections.find((c) => c.provider === connected);
+      if (!row) return;
+      if (row.status === "error") {
+        toast(syncFailure(named, row.error_message), "error");
+      } else {
+        toast(`${named} connected.`, "success");
+      }
+    }
     if (failure) {
       const declined = failure === "access_denied" || failure === "consent_required";
       const unavailable =
@@ -130,7 +148,7 @@ export default function Integrations() {
     searchParams.delete("provider");
     setSearchParams(searchParams, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [searchParams, connections]);
 
   const isAdmin = user ? roleAtLeast(user.role, "admin") : false;
 
@@ -312,6 +330,11 @@ export default function Integrations() {
               {conn.external_account_email}
               {conn.last_synced_at && <> · synced {timeAgo(conn.last_synced_at)}</>}
             </div>
+          )}
+          {needsReconnect && conn?.error_message && (
+            <p className="text-[11px] font-medium text-red-700">
+              {syncFailure(meta.name, conn.error_message)}
+            </p>
           )}
           {connected && health.alert && (
             <p className="text-[11px] font-medium text-amber">
